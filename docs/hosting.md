@@ -25,6 +25,15 @@ Open the `*.pages.dev` address in Chrome, then open **Settings › Diagnostics**
 
 Open the site in Chrome, then install it (Settings › Install in the app, or Chrome's menu). On iPhone and iPad, use Share › Add to Home Screen. After the first visit the app works offline, and new versions install in the background.
 
+## If the page is blank or stuck on "Loading Poser…"
+
+The app's code didn't load. Usually Pages served the unbuilt source instead of the build:
+
+1. Right-click the page › **View page source**. If the script tag says `/src/main.tsx`, the build didn't run or the output directory is wrong. The built page loads `/assets/index-….js` instead.
+2. Check **Settings › Build**: build command `pnpm install --frozen-lockfile && pnpm build`, output directory `apps/web/dist`, root directory empty, `NODE_VERSION` = `22`.
+3. Settings only apply to new deployments: go to **Deployments** and **Retry deployment**, then check its build log ends with `✓ built in …`.
+4. Reload with Ctrl+Shift+R (or clear site data) so an older cached version isn't used.
+
 ## Keeping it private
 
 - Share the address only with invited adults (PLAN.md section 22). Anyone with the address can load the app itself, but there is nothing on the server to see: everything users import and create stays in their own browser storage.
