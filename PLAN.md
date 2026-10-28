@@ -2,7 +2,7 @@
 
 A web app that is a **realistic, physics-based NSFW figure modeller and anatomy study tool**. It leans toward adult/NSFW use, with anatomy study as a strong secondary purpose. Artists import their own figures (Daz3D, Virt-a-Mate, VRM, generic rigs), clothing, and props. They pose figures with joint handles like VRM Posing Desktop, let real physics settle bodies, soft tissue, and cloth, explore the anatomy underneath layer by layer, cut into it, add realistic fluids, fine-tune expressions and body states, use objects such as toys, ropes, restraints, and latex, then light, frame, and capture images.
 
-> **Website only:** the app is a browser app; there is no desktop or mobile app.
+> **Website only, private use:** a browser app for personal use and a few invited users. Not published publicly and not paid. Desktop Chrome/Edge with WebGPU is the only target.
 >
 > **Status:** planning only. Nothing gets built until the go-ahead.
 >
@@ -23,12 +23,14 @@ A web app that is a **realistic, physics-based NSFW figure modeller and anatomy 
 - Anatomical layers (skin, fat, muscle, bone, organs) inside every figure, with a cut tool that shows real cross-sections and can remove parts.
 - Realistic fluids: blood, tears, sweat, saliva, urine, and custom liquids.
 - Fine-tuned facial expressions (FACS), hands, feet, muscle tension, genital states, and whole-body states (cold, exertion, crying, and so on).
-- Lighting, cameras, study modes, and image capture.
+- Lighting, cameras, study modes, image capture, and a path-traced final render mode.
+- Pose from photo/webcam, body customization (tattoos, piercings, hair), privacy features (app lock, panic key), and backups (section 16).
 
 ### Out of scope for v1
-- Any online model sources, accounts, cloud sync, or sharing.
+- Any online model sources, cloud sync, or server-side sharing (users share files directly, section 16.7).
+- Public release, payments, and browsers without WebGPU.
 - Animation timelines (single poses only; a timeline may come later).
-- Mobile phones (tablet support is a stretch goal; desktop browsers first).
+- Phones and tablets (desktop only).
 
 ### Principles
 1. **Local-first and private.** Files never leave the device. Storage is the browser's private file system (OPFS) plus IndexedDB.
@@ -47,8 +49,8 @@ A web app that is a **realistic, physics-based NSFW figure modeller and anatomy 
 | **Daz licensing** | Using Daz 3D data inside an application (rather than as renders) needs an **Interactive License**. | Never bundle or host Daz content. Users load their own files locally. *(Not legal advice; get it reviewed before launch.)* |
 | **Virt-a-Mate** | `.var` packages are zip files with a `meta.json` (license, dependencies), plus morphs, clothing, and textures. VaM 1.x figures use a Daz Genesis 2 base mesh that **isn't inside the packages**. | Read `.var` zips and the VaM install folder. Apply morphs and clothing onto the base mesh from the user's own VaM install. |
 | **Physics engine** | Jolt (WASM) has rigid bodies, ragdolls with motors, constraints, and soft bodies. Rapier has no soft bodies. | Use Jolt for bodies and props. |
-| **Cloth** | There is no mature, reusable browser cloth library; only demos (XPBD on WebGPU, mass-spring papers). | Write our own XPBD cloth solver on WebGPU compute, with a CPU fallback. |
-| **WebGPU** | Available in Chrome, Edge, Safari 17.4+, and Firefox (default since late 2025). | WebGPU is the primary target; WebGL2 is the fallback with reduced features. |
+| **Cloth** | There is no mature, reusable browser cloth library; only demos (XPBD on WebGPU, mass-spring papers). | Write our own XPBD cloth solver on WebGPU compute. |
+| **WebGPU** | Available in Chrome, Edge, Safari 17.4+, and Firefox (default since late 2025). | With only a few known users, require WebGPU (desktop Chrome/Edge) and skip WebGL2 and CPU fallbacks entirely. This saves significant work. |
 | **Marvelous Designer** | OBJ export with an optional XML sidecar holding physical properties. Units default to millimetres. | Import MD garments with auto-scaling and fabric mapping. |
 | **Anatomy data** | Z-Anatomy (CC BY-SA 4.0), built on BodyParts3D (CC BY-SA 2.1 JP), is a complete labelled 3D anatomy, mostly from one male body. The NIH Visible Human cross-sections are free to use with acknowledgment since 2019. | Bundle a fitted version of Z-Anatomy with attribution; build or commission a female template; use Visible Human as the cut-surface reference. |
 | **Mesh cutting** | Manifold (`manifold-3d`) is a WASM library with guaranteed-correct booleans, but it needs closed (watertight) meshes. | Use it for cuts; generate watertight cutting versions of skin at import. |
@@ -86,7 +88,7 @@ A web app that is a **realistic, physics-based NSFW figure modeller and anatomy 
 - Panels collapse for a full-screen viewport. Light and dark themes.
 
 ### 3.2 Main user flows
-1. **First run:** age gate → short tour → a scene with a built-in CC0 figure, so posing can be tried immediately.
+1. **First run:** sign in through the invite gate → set an app lock → short tour → a scene with a built-in CC0 figure, so posing can be tried immediately.
 2. **Import:** drag in files, folders, or zips (or add a library folder) → import wizard → asset appears in the Library.
 3. **Pose:** click a joint → rotate it, or drag a hand/foot effector → IK follows. Pin feet, mirror, apply a hand preset.
 4. **Make it physical:** press **Settle** → the body drops under gravity onto the floor or props, soft tissue rests, clothes drape → the result freezes for editing.
@@ -244,7 +246,6 @@ NSFW scenes depend on bodies touching convincingly, so contact between figures i
 - **Collision** against a signed distance field of the body, rebuilt each frame from the skinned mesh, plus capsules as a fast first pass. Props collide via their own distance fields or hulls. Self-collision with a spatial hash comes in Phase 3.
 - **Friction** between cloth and skin, so straps stay on shoulders and waistbands hold.
 - **Simulation proxy:** a 5–20k vertex simulation mesh drives the detailed visible garment.
-- **CPU fallback:** the same solver in a Web Worker at lower resolution when WebGPU isn't available.
 
 ### 8.2 Garments
 - Garments arrive fitted to a figure in its rest pose (Daz, VaM, Marvelous Designer, glTF).
@@ -588,7 +589,55 @@ Additions that make scenes look and behave like the real thing:
 
 ---
 
-## 16. Rendering and reference tools
+## 16. More features for realism and convenience
+
+### 16.1 Pose and expression from photos or webcam
+- Load a reference photo (or use a webcam) and auto-pose the figure from it: body, hands, and face.
+- Uses Google's **MediaPipe** in the browser (pose, hand, and face landmark models; the face model outputs 52 ARKit-style expression values, which map onto the FACS system in section 13.1). Runs locally; images never leave the device.
+- The result is a starting pose to refine with the normal tools.
+
+### 16.2 Skin and body realism
+- **Skin folds and creases:** belly rolls when bending or sitting, creases at hips, armpits, under breasts and buttocks, knuckle and toe wrinkles, driven by joint angles and flesh compression.
+- **Skin sliding:** skin slides slightly over muscle and bone instead of stretching rigidly (e.g. over the ribs, shoulder blades, kneecaps).
+- **Gravity effects:** a flushed, redder face when upside down for a while; pooling and sag follow body orientation.
+- **Involuntary reactions:** presets and Live-mode effects such as trembling or fatigued muscles, back arch, toe curl, hand clench, shiver, linked to body states (section 13.6).
+- **Male soft tissue:** scrotum and testicles as gravity-affected soft bodies; erection rigidity as a stiffness slider that affects contact (section 7.5).
+- **Breast implants vs natural tissue:** implants behave differently (firmer, rounder upper shape, less sag, different motion), as a breast option.
+- **Mouth interior:** posable tongue (several bones), teeth, gums, and saliva strings (fluids).
+- **Eyes:** look-at target (camera, another figure, an object), blink amount, wet eyes.
+
+### 16.3 Body customization
+- **Tattoos:** painted or image decals on skin that stretch and fold with it.
+- **Piercings and jewelry:** attachable to ears, nose, lips, tongue, navel, nipples, and genitals, with small-scale physics (rings swing, chains hang).
+- **Makeup and nails:** color and gloss layers.
+- **Body hair:** density and length per region (arms, legs, underarms, pubic), including stubble.
+- **Tan lines, scars, freckles, moles, birthmarks.**
+
+### 16.4 Image quality
+- **Final render mode:** a path tracer for photo-realistic still images (**three-gpu-pathtracer**, MIT license, running on a separate WebGL2 renderer). Progressive: it improves over a few seconds to minutes while the scene is frozen.
+- **Camera effects:** depth of field, lens blur, film grain, vignette, exposure, color grading presets.
+- **Practical lights:** candles, neon, LED strips, window light; volumetric haze and light shafts.
+- **Video and GIF capture** of Live-mode simulation (browser MediaRecorder), for short physics clips.
+
+### 16.5 Built-in environments
+- A few bundled rooms (bedroom, bathroom with shower, photo studio, dungeon-style room, living room) with furniture already set up as physics props with anchor points.
+- Built from CC0 assets (e.g. Poly Haven props, textures, HDRIs, bundled with the app at build time, not downloaded by users).
+
+### 16.6 Privacy for a personal NSFW app
+- **App lock:** passphrase or PIN on opening the app (and after idle time).
+- **Panic key:** one key instantly hides everything behind a neutral screen.
+- **Neutral tab title and icon** option.
+- **Encrypted local storage** (optional): the library and scenes are encrypted on disk with the passphrase, using the browser's built-in cryptography.
+- **Blurred thumbnails** option in the Library.
+
+### 16.7 Backups and sharing between the few users
+- **Automatic backup** to a folder the user picks (e.g. a synced cloud folder), so browser storage being cleared doesn't lose work.
+- **Sharing:** users send each other `.poser` scene files and pose/tie/preset packs as files. There is no server-side sharing, which keeps the app simple and private.
+- **Preset packs:** export and import poses, expressions, tie templates, fabric and fluid presets, and lighting setups as small files.
+
+---
+
+## 17. Rendering and reference tools
 
 - **Skin:** physically based skin with a subsurface-scattering approximation, detail normals, and translucency for ears and fingers. Daz/VaM texture channels are mapped automatically (diffuse, translucency, specular/roughness, normal, bump).
 - **Eyes, hair, and cloth materials:** dedicated shaders (eye refraction, hair anisotropy, cloth sheen).
@@ -603,7 +652,7 @@ Additions that make scenes look and behave like the real thing:
 
 ---
 
-## 17. Data model and storage
+## 18. Data model and storage
 
 ```
 Project
@@ -643,15 +692,15 @@ Asset (in Library)
 
 ---
 
-## 18. Tech stack
+## 19. Tech stack
 
 | Layer | Choice |
 |---|---|
 | Language and build | TypeScript, Vite, pnpm workspaces (monorepo) |
 | UI | React, Zustand (state), Radix UI (accessible components) |
-| 3D | three.js with WebGPU renderer (WebGL2 fallback), TSL node materials; GLTF/FBX/OBJ loaders, `@pixiv/three-vrm` |
+| 3D | three.js with WebGPU renderer (WebGPU required), TSL node materials; GLTF/FBX/OBJ loaders, `@pixiv/three-vrm` |
 | Physics | JoltPhysics.js (WASM) in a Web Worker |
-| Cloth and soft tissue | Custom XPBD on WebGPU compute, plus a CPU worker fallback |
+| Cloth and soft tissue | Custom XPBD on WebGPU compute |
 | Cutting | Manifold (`manifold-3d`, WASM) booleans in a worker |
 | Ropes | Custom XPBD rod (Cosserat) solver on WebGPU compute |
 | Fluids | Custom MLS-MPM on WebGPU compute, texture-space surface flow, screen-space fluid rendering |
@@ -659,7 +708,9 @@ Asset (in Library)
 | Asset processing | meshoptimizer (decimation and compression), KTX2/Basis encoder, fflate (zip/gzip), V-HACD (convex decomposition), all WASM in workers |
 | Storage | OPFS + IndexedDB; File System Access API for library folders |
 | Testing | Vitest (unit), Playwright (end-to-end and screenshot comparison), physics regression scenes |
-| Hosting | Static site on an adult-content-friendly host, with the security headers that enable shared memory. No backend except an age-verification provider where required. |
+| Hosting and access | Static site (e.g. Cloudflare Pages) behind **Cloudflare Access** (free for teams under 50 users): only invited email addresses can open it. Security headers that enable shared memory. Search engines blocked. No backend. |
+| Photo/webcam posing | MediaPipe pose, hand, and face landmarkers (in-browser) |
+| Final render | three-gpu-pathtracer (MIT) on a separate WebGL2 renderer, used only for still images |
 
 ### Code layout
 ```
@@ -671,7 +722,7 @@ poser/
   packages/rig/          canonical skeleton, rig maps, joint limits, mirror tables
   packages/posing/       gizmos, IK solvers, pins, pose library
   packages/physics/      Jolt worker, ragdoll builder, prop colliders
-  packages/cloth/        XPBD solver (GPU + CPU), garment prep, fabrics
+  packages/cloth/        XPBD solver (GPU), garment prep, fabrics
   packages/softtissue/   spring bones, contact compression, tet flesh
   packages/render/       materials, lighting, cameras, study modes, capture
   packages/anatomy/      layer templates, fitting, labels, peel, layered flesh
@@ -689,7 +740,7 @@ poser/
 
 ---
 
-## 19. Quality targets
+## 20. Quality targets
 
 | Area | Target |
 |---|---|
@@ -701,7 +752,7 @@ poser/
 | Fluids | About 100k particles at 30+ fps on WebGPU; surface flow always real time |
 | Ropes | A full harness plus suspension (about 20 rope segments) settles in under 5 seconds |
 | Memory | Warn before going past roughly 2 GB of GPU memory |
-| Browsers | Latest Chrome/Edge (full), Safari and Firefox (full where WebGPU is on; otherwise reduced) |
+| Browsers | Latest desktop Chrome/Edge with WebGPU |
 
 ### Testing
 - Unit tests for rig mapping, IK, joint limits, importers, and serialization.
@@ -716,32 +767,29 @@ poser/
 
 ---
 
-## 20. Content policy, safety, and legal
+## 21. Content policy, safety, and legal
 
-- **18+ only.** Because the app leans NSFW, a click-through age gate may not be enough. Over two dozen US states (following the Supreme Court's 2025 *Free Speech Coalition v. Paxton* ruling) and the UK Online Safety Act require real age verification for sites where a substantial share of content is sexual. Whether a tool that hosts no content counts depends on what the site itself shows (marketing images, bundled nude figures). Plan for a third-party age-verification provider at sign-up or download, enabled per jurisdiction, and get legal advice.
-- Everything stays local: no uploads, accounts, or sharing in v1.
-- **Separate graphic-content setting:** blood, open wounds, removed body parts, and bodily fluids are off by default and turned on separately from nudity, with a warning. Anatomy layers (muscles, skeleton) are always available.
-- Anatomy data is credited (BodyParts3D, Z-Anatomy, NLM Visible Human) on an About/credits screen, as their licenses require.
-- **Terms of use:** adult figures only; any sexual depiction of minors or child-like figures is prohibited, and the app has no child body proportions. Users are responsible for having the right to use the files they import.
-- **Real people:** prohibit making sexual content of real people without consent (many places now outlaw non-consensual intimate imagery, including digital fakes). Users import their own models, so this is enforced through the terms rather than technically.
-- **No bundled third-party content.** Built-ins are original or CC0.
-- Licenses recorded from `.var` metadata are shown in the Library.
-- **Payments:** mainstream processors such as Stripe don't accept adult content businesses. Use an adult-content processor (CCBill, Segpay, Epoch, or similar) if the app is sold.
-- **Showcased content:** card networks and adult payment processors restrict content that combines sexual material with violence, gore, or non-consent themes. Since users create scenes locally, this mainly affects the app's own marketing images, demos, and any future gallery. Keep those free of such combinations, and check the chosen processor's rules.
-- **Hosting and distribution:** pick hosting whose terms allow adult content, and expect mainstream app stores to reject it; distribute via the website only.
-- Legal review before launch, especially the Daz Interactive License question and the terms of use.
+Because the app is private (personal use plus a few invited users, not public, not paid), most commercial adult-site rules don't apply: no payment processor, no public age-verification system, no app stores. What still matters:
+- **Private access:** the site sits behind Cloudflare Access with an invite list, and search engines are blocked. Only invite adults (18+).
+- **Everything stays local:** user content never touches the server; the site only serves the app's code and built-in CC0/CC BY-SA assets.
+- **Separate graphic-content setting:** blood, open wounds, removed body parts, and bodily fluids can be switched on or off separately from nudity (per-user preference).
+- **Adult figures only:** the app has no child body proportions, and depicting minors sexually is illegal. Keep this as a hard rule for anyone invited.
+- **Real people:** sexual images of real people without consent (including digital fakes) are illegal in many places, especially if shared, so the group should avoid it.
+- **Licensing:** personal use of your own Daz/VaM files is the normal use case; don't pass purchased Daz/VaM content between users unless its license allows it (`.var` licenses are shown in the Library). Anatomy data is credited on an About screen as its licenses require.
+- **If it ever goes public or paid,** revisit age-verification laws, payment processors (Stripe doesn't accept adult content), hosting terms, and the Daz Interactive License.
 
 ---
 
-## 21. Roadmap
+## 22. Roadmap
 
 Each phase ends with something usable. Week estimates assume one full-time developer.
 
 ### Phase 0: Foundation (about 2 weeks)
 - [ ] Monorepo, Vite, React shell, panel layout, themes
-- [ ] three.js WebGPU viewport with WebGL2 fallback, orbit camera, view cube, grid, floor
+- [ ] three.js WebGPU viewport (WebGPU required, with a clear message otherwise), orbit camera, view cube, grid, floor
 - [ ] Scene store, undo/redo, autosave to IndexedDB/OPFS
-- [ ] Age gate, terms screen
+- [ ] Private access via Cloudflare Access, adults-only notice
+- [ ] App lock, panic key, neutral tab option; automatic backup folder
 - [ ] Load a bundled CC0 female figure (a male figure is bundled too)
 - [ ] **Start the female anatomy template workstream:** contract or hire a 3D character artist; runs in parallel for about 2–4 months
 - **Done when:** the app opens with a figure, the user can orbit it, and the scene saves and reloads.
@@ -752,6 +800,7 @@ Each phase ends with something usable. Week estimates assume one full-time devel
 - [ ] Canonical rig with Daz G8/G9, VaM-export, Mixamo, CC4, and VRM maps, plus the manual mapping wizard
 - [ ] Joint handles, rotation gizmo, IK effectors, pins, joint limits, mirror, hand presets, morph sliders
 - [ ] Pose library and BVH/VRMA pose import
+- [ ] Built-in CC0 environments (bedroom, bathroom, studio, dungeon-style room, living room)
 - [ ] Props (visual only), lighting presets, lens/ortho cameras, study modes (clay, silhouette, notan)
 - [ ] Screenshot capture; Daz export guide
 - **Done when:** a Daz G8 FBX and a Mixamo character are imported, posed convincingly with IK and limits, lit, and captured.
@@ -759,13 +808,14 @@ Each phase ends with something usable. Week estimates assume one full-time devel
 ### Phase 2: Physics and cloth (about 8 weeks)
 - [ ] Jolt worker, automatic ragdoll, muscle motors, Settle and Live modes
 - [ ] Prop colliders (primitives, hulls, V-HACD), physics materials
+- [ ] Scrotum/testicle soft bodies, erection rigidity slider; breast implant option
 - [ ] **Breast soft-body simulation** (volume-based, glandular/fat stiffness, ligament support), checked standing, lying, on the side, bent forward, and pressed
 - [ ] Two-way clothing ↔ flesh interaction (bra support, waistband and strap indentation)
 - [ ] Spring-bone fallback for other soft tissue; contact compression
 - [ ] Figure-to-figure contact: two-way soft-body contact, skin friction, hands gripping flesh, two-figure pose helpers
 - [ ] Attachment and holding system (attachment points on skin, joints, hold and place tools), measure tool
 - [ ] Rigid toys and props, cuffs and chains, soft surfaces (mattresses, cushions)
-- [ ] XPBD cloth on WebGPU with CPU fallback: body collision field, friction, pins, fabric presets, drape from rest, simulation proxy
+- [ ] XPBD cloth on WebGPU: body collision field, friction, pins, fabric presets, drape from rest, simulation proxy
 - [ ] Marvelous Designer OBJ + XML import
 - [ ] Balance overlay (center of gravity)
 - **Done when:** a female figure Settles into an imported chair with thighs compressing on the seat, her breasts rest correctly when she lies down or leans forward, and a bra, shirt, and skirt fit and drape realistically.
@@ -778,6 +828,9 @@ Each phase ends with something usable. Week estimates assume one full-time devel
 - **Done when:** a Genesis 9 figure with a dForce dress, and a VaM look with clothing, load straight from the user's folders with no Blender step.
 
 ### Phase 4: Face, hands, feet, muscles, and body states (about 7 weeks)
+- [ ] Pose, hands, and expression from photo or webcam (MediaPipe)
+- [ ] Tongue posing, teeth, eye look-at and blink
+- [ ] Tattoos, makeup, nails, body hair density, tan lines, scars
 - [ ] FACS action-unit system with left/right sliders, presets, blending; mapping for Daz G8/G9 and ARKit 52 rigs
 - [ ] Build or commission the FACS template face; transfer action units to figures without face rigs
 - [ ] Wrinkle maps, blush/flush/pallor skin color maps, eyes (pupil, lids, tear film)
@@ -795,6 +848,7 @@ Each phase ends with something usable. Week estimates assume one full-time devel
 - [ ] Genital soft bodies with deformable openings for figure-to-figure and figure-to-prop contact (section 7.5)
 - [ ] Fitting pipeline: skeleton match, skin registration, volumetric warp, fat thickness, sex detection
 - [ ] Layer viewer: visibility/transparency, presets, peel brush, labels and descriptions
+- [ ] Skin folds and creases, skin sliding over bone and muscle
 - [ ] Layered flesh simulation (fat and muscle volumes with XPBD), muscle volume bulge from tension, erectile tissue volume for genital states
 - [ ] Credits screen for anatomy data
 - **Done when:** every figure in the female body-diversity set, plus male figures, shows plausible fitted anatomy that moves with posing, with no bones through the skin.
@@ -809,6 +863,7 @@ Each phase ends with something usable. Week estimates assume one full-time devel
 - [ ] Latex and tight materials: high-stretch cloth, two-way compression, gloss and stretch-thinning shading, vacuum and inflatable items
 - [ ] Skin marks (pressure, impact, scratches) with time slider; clothing states (displaced, unbuttoned, torn)
 - [ ] Hair grabbing, pulling, and tying
+- [ ] Piercings and jewelry with small-scale physics
 - [ ] Scenario snapshots
 - **Done when:** a female figure in a rope chest harness and suspension hangs realistically with rope pressing into flesh and leaving marks after removal; a latex catsuit compresses and shines correctly; a soft toy deforms and follows the anatomical channel in X-ray view.
 
@@ -834,6 +889,10 @@ Each phase ends with something usable. Week estimates assume one full-time devel
 - **Done when:** a forearm cut bleeds realistically down the arm, soaks a sleeve, and pools on the floor; a crying figure has tears running down the cheeks.
 
 ### Phase 9: Polish and extra reference tools (ongoing)
+- [ ] Path-traced final render mode, camera effects (depth of field, grain, grading), practical lights and haze
+- [ ] Video/GIF capture of Live mode
+- [ ] Involuntary reactions (trembling, arching, toe curl), upside-down face flush
+- [ ] Optional encrypted storage, blurred thumbnails, preset packs
 - [ ] Better skin shading, hair strand/card physics, mirrors, POV camera refinements
 - [ ] Planes study mode, turnaround sheets, gesture-drawing mode
 
@@ -841,7 +900,7 @@ Each phase ends with something usable. Week estimates assume one full-time devel
 - [ ] WebXR: pose figures in VR
 - [ ] Simple timeline for pose-to-pose motion studies
 
-**Total:** roughly 70–75 weeks of work for one full-time developer through Phase 8. Phases 4–8 can partly run in parallel with more people: face/states and fluids are mostly independent, while restraints/toys and cutting depend on the anatomy layers.
+**Total:** roughly 75–80 weeks of work for one full-time developer through Phase 8. Phases 4–8 can partly run in parallel with more people: face/states and fluids are mostly independent, while restraints/toys and cutting depend on the anatomy layers.
 
 ### Prototype the hardest parts first
 Before Phase 1 is finished, build throwaway prototypes to prove the risky tech:
@@ -854,7 +913,7 @@ Before Phase 1 is finished, build throwaway prototypes to prove the risky tech:
 
 ---
 
-## 22. Risks
+## 23. Risks
 
 | Risk | Mitigation |
 |---|---|
@@ -862,7 +921,7 @@ Before Phase 1 is finished, build throwaway prototypes to prove the risky tech:
 | Heavy meshes and textures exhaust browser memory | Decimation, KTX2, LODs, morph pruning, memory warnings, quality levels |
 | Cloth instability (explosions, poke-through) | Small substeps, thick collision fields, drape from rest, velocity clamping, "reset cloth" button |
 | Daz bend/twist rigs deform poorly | Dedicated twist splitting; corrective morphs in Phase 3 |
-| WebGPU missing or buggy on a device | WebGL2 render fallback and CPU cloth at lower resolution |
+| A user's machine lacks WebGPU or a strong enough GPU | Known small user group: check hardware up front; quality levels for weaker GPUs |
 | Browser file-access differences (Safari/Firefox lack persistent folder access) | Manual re-scan; drag-and-drop always works; recommend Chrome/Edge for large libraries |
 | Browser storage limits for big libraries | Request persistent storage, show usage, read library folders in place instead of copying, cache only processed versions |
 | Anatomy fit looks wrong on unusual body types | Landmark-guided fitting, per-region manual sliders, test set of very different bodies |
@@ -875,25 +934,26 @@ Before Phase 1 is finished, build throwaway prototypes to prove the risky tech:
 | Booleans fail on bad meshes, or cuts are slow | Generate watertight cutting meshes at import, run cuts in a worker with a preview, simplify far-from-cut regions |
 | Memory and GPU load with full anatomy, flesh sim, cloth, and fluids together | Load layers on demand, LODs, quality levels, and a budget that limits simultaneous systems on weaker GPUs |
 | No openly licensed FACS face template | Budget for building or commissioning one |
-| Hosting providers, payment processors, or app stores reject NSFW content | Adult-friendly host, adult payment processor, direct distribution via the website |
-| Age-verification laws apply to the site | Age-verification provider per jurisdiction; legal advice before launch |
-| Legal and hosting issues around NSFW and licensed content | Local-only, nothing bundled, age gate, clear terms, legal review |
+| Data loss from browser storage being cleared | Automatic backups to a user folder, persistent storage request |
+| Private content exposed on a shared computer | App lock, panic key, optional encryption, blurred thumbnails |
 
 ---
 
-## 23. Open decisions for the owner
-1. **App name and branding.** "Poser" is already the name of a commercial product, so a different public name is probably needed.
-2. **Target hardware:** desktop only, or tablets (touch posing) too?
-3. **Business model:** free, one-time purchase, or subscription? This affects licensing, payments, and age verification.
-4. **Built-in content:** are CC0 MakeHuman/MPFB starter figures enough, or should we commission original realistic figures?
-5. **Priority order** after the core (Phases 0–2): native Daz/VaM import, face and states, anatomy layers, cutting, or fluids? The plan's order is one option.
-6. **Female anatomy template budget:** hire or contract a 3D character artist (about 2–4 months)? This is the most important external cost.
-7. **FACS face template:** build in-house or commission (female face first)?
-8. **Graphic content:** keep blood and wounds behind a separate setting (recommended), or on by default?
+## 24. Open decisions for the owner
+1. **Users' hardware:** confirm each invited user has desktop Chrome/Edge and a reasonably strong GPU (WebGPU-only plan).
+2. **Built-in content:** are CC0 MakeHuman/MPFB starter figures enough, or should we commission original realistic figures?
+3. **Priority order** after the core (Phases 0–2): native Daz/VaM import, face and states, anatomy layers, cutting, or fluids? The plan's order is one option.
+4. **Female anatomy template budget:** hire or contract a 3D character artist (about 2–4 months)? This is the most important external cost.
+5. **FACS face template:** build in-house or commission (female face first)?
+6. **Graphic content:** a per-user on/off setting (recommended), or always on?
+7. **Sharing:** are `.poser` files and preset packs passed around by hand enough for the group, or is a small private shared library worth adding later?
 
 ---
 
 ## Sources
+- Cloudflare Access (free plan under 50 users): https://www.cloudflare.com/en-au/products/cloudflare-access
+- MediaPipe Face Landmarker (52 blendshapes): https://developers.google.com/edge/mediapipe/solutions/vision/face_landmarker
+- three-gpu-pathtracer: https://github.com/gkjohnson/three-gpu-pathtracer
 - US state age-verification laws: https://avpassociation.com/us-state-age-verification-laws-for-adult-content/
 - Age verification law overview 2026: https://www.jumio.com/age-verification-laws/
 - Missouri age-verification law (2026): https://www.stlpr.org/government-politics-issues/2026-08-28/age-verification-law-for-porn-sites-now-in-effect-in-missouri
