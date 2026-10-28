@@ -29,6 +29,16 @@ import { useEffectiveQuality, useUi } from '../state/ui';
 
 export const LOCK_KEY = 'appLock';
 
+/** Prototype pages (PLAN.md section 23); 2, 4, 5, and 6 need WebGPU. */
+const PROTOTYPES: [string, string][] = [
+  ['ragdoll', '1 · Ragdoll Settle'],
+  ['cloth', '2 · GPU cloth'],
+  ['cut', '3 · Anatomy fit and cut'],
+  ['fluids', '4 · Fluids'],
+  ['rope', '5 · Rope on a limb'],
+  ['channel', '6 · Insertion channel'],
+];
+
 const SEEDS = ['#8e4e6b', '#6750a4', '#3f6a8a', '#4f6b3a', '#8a5a2b', '#5f5f5f'];
 
 function formatBytes(n: number): string {
@@ -303,9 +313,11 @@ function DiagnosticsTab() {
       <ListSubheader>Prototypes</ListSubheader>
       <p className="hint">Throwaway tests of the riskiest technology (PLAN.md section 23). Try them on each device.</p>
       <div className="button-wrap">
-        <Button variant="tonal" icon="science" onClick={() => window.open('/prototypes/ragdoll.html', '_blank')}>
-          1 · Ragdoll Settle
-        </Button>
+        {PROTOTYPES.map(([file, label]) => (
+          <Button key={file} variant="tonal" icon="science" onClick={() => window.open(`/prototypes/${file}.html`, '_blank')}>
+            {label}
+          </Button>
+        ))}
       </div>
       <ListSubheader>Error log</ListSubheader>
       {log.length === 0 ? (

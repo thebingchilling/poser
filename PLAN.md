@@ -4,7 +4,7 @@ A web app that is a **realistic, physics-based NSFW figure modeller and anatomy 
 
 > **Website only, private use:** a browser app for personal use and a few invited users. Not published publicly and not paid. Requires **Chrome**. Runs on Windows, macOS, Android, and iPhone/iPad through one installable website (PWA): full quality on PCs and laptops, reduced by default on mobile, with GPU auto-detection and crash fallbacks (section 3.5).
 >
-> **Status:** building. Phase 0 (Foundation) is in place and waiting for device testing (docs/device-testing.md); the risky prototypes and Phase 1 are next.
+> **Status:** building. Phase 0 (Foundation) and all six risky-tech prototypes are in place and waiting for device testing (docs/device-testing.md, Settings › Diagnostics › Prototypes); Phase 1 is next.
 >
 > **Primary focus: female figures.** Female anatomy is built first and to the highest standard; male anatomy is fully supported but comes second (section 10).
 
@@ -875,7 +875,8 @@ poser/
   packages/rig/          canonical skeleton, rig maps, joint limits, mirror tables
   packages/posing/       gizmos, IK solvers, pins, pose library
   packages/physics/      Jolt worker, ragdoll builder, prop colliders
-  packages/cloth/        XPBD solver (GPU), garment prep, fabrics
+  packages/xpbd/         shared GPU XPBD particle solver (cloth, rope, soft tissue)
+  packages/cloth/        garments, fabrics, skirt prototype
   packages/softtissue/   spring bones, contact compression, tet flesh
   packages/render/       materials, lighting, cameras, study modes, capture
   packages/anatomy/      layer templates, fitting, labels, peel, layered flesh
@@ -911,6 +912,7 @@ poser/
 
 ### Testing
 - Unit tests for rig mapping, IK, joint limits, importers, and serialization.
+- GPU simulation tests run the real WebGPU shaders in Node through Dawn (the `webgpu` package); without a GPU driver they use Chromium's SwiftShader software Vulkan, which checks correctness and stability but not speed.
 - A **golden test set** of real files, mostly female (Daz Genesis 8 Female, Genesis 9 with a female shape, VaM female looks, female VRM and Mixamo figures), plus some male figures and MD garments: each must import, map, and pose correctly.
 - A **female body-diversity set** (slim, curvy, heavy, muscular, large and small breasts, young adult to elderly, pregnant) for anatomy fitting and breast physics checks.
 - Visual accuracy checks of the female template against illustrated and photo references.
@@ -1087,11 +1089,13 @@ Each phase ends with something usable. Week estimates assume one full-time devel
 ### Prototype the hardest parts first
 These run **in parallel with Phase 0** (the owner's choice), as throwaway tests that prove the risky tech before it's built for real:
 1. **Ragdoll Settle:** a Jolt ragdoll holding a pose with motors and sitting on a box. **Done** (`packages/physics`, page at `/prototypes/ragdoll.html`, linked from Settings › Diagnostics). Results in Node: female and male figures settle onto a 42 cm seat in 0.6–1.1 s (target 3 s), hold the sitting pose to within 1°, stay stable when dropped from 40 cm, and joint limits refuse impossible poses (a knee bent backwards). Each step costs 0.1–0.5 ms on the main thread. Lessons for the real build: motors need explicit stiffness (N·m/rad) sized to the load each joint carries, because Jolt's frequency-based springs only count the two bodies at a joint and let the torso fold; and body parts that overlap at rest (waist and thighs) must not collide with each other.
-2. **GPU cloth:** a XPBD skirt on WebGPU colliding with an animated capsule body at 30+ fps.
-3. **Anatomy fit and cut:** fit a rough placeholder anatomy (simple sculpted skeleton, muscle, and fat volumes) into one imported figure and cut through a limb with Manifold, to measure fit quality and cut speed early.
-4. **Fluids:** MLS-MPM blood colliding with a skinned body, plus a basic surface-flow trickle.
-5. **Rope:** a GPU rope wrapped around a limb, holding by friction and pressing into a soft-body flesh layer.
-6. **Insertion channel:** a soft toy following a soft-body channel with stretch limits, to prove stability early.
+2. **GPU cloth:** a XPBD skirt on WebGPU colliding with an animated capsule body at 30+ fps. **Done** (`packages/xpbd` shared solver, `packages/cloth`, `/prototypes/cloth.html`). 1,600-particle flared skirt on a walking capsule body: no poke-through over 3 s of walking, fabric stretch within 10% at full stride, natural hang. Lesson: 20 substeps per frame are needed (12 let the hanging fabric stretch 14%); stiff one-sided stretch limits on structural threads. **Frame rate still to be measured on real devices.**
+3. **Anatomy fit and cut:** fit a rough placeholder anatomy (simple sculpted skeleton, muscle, and fat volumes) into one imported figure and cut through a limb with Manifold, to measure fit quality and cut speed early. **Done** (`packages/cutting`, `/prototypes/cut.html`, works without WebGPU). On irregular stand-in thighs (slim and heavy) the fit never needed clamping and always kept 13–20 mm of muscle around the femur, with fat 4–53 mm; all 9 layers (skin, fat, three muscle groups, femoral artery and vein, cortex, marrow) cut in about 70 ms (target 1 s) with volume conserved and the layers correctly nested. Lessons: cut faces need flat normals; the fit should be re-checked on the owner's real imports.
+4. **Fluids:** MLS-MPM blood colliding with a skinned body, plus a basic surface-flow trickle. **Done** (`packages/fluids`, `/prototypes/fluids.html`). Blood from a forearm wound flows over the arm with no particles inside it and drains to the floor; the surface film runs around the arm toward the wrist, drips from the underside, and conserves mass exactly. Lessons: thin films need a rivulet thickness (surface tension) or they smear instead of trickling; particle pools spread to one cell thick and particles alone leave no coating, so settled fluid should hand over to the surface-flow and stain layers (the planned design).
+5. **Rope:** a GPU rope wrapped around a limb, holding by friction and pressing into a soft-body flesh layer. **Done** (`packages/rope`, `/prototypes/rope.html`). On a 30° limb the wraps settle 2.6 cm while tightening, then creep 0.1 mm with friction (62 cm without); flesh dents 1.1 mm under a light load and 7.6 mm under 3 kg. Lessons: heavy loads on light rope segments need long-range stretch limits; rope beads must not overlap their neighbours (it silently weakens contact and friction); soft tissue needs to resist sliding while still compressing.
+6. **Insertion channel:** a soft toy following a soft-body channel with stretch limits, to prove stability early. **Done** (`packages/interaction`, `/prototypes/channel.html`). With the guide curve the toy tip follows the curved channel 10.7 cm deep within 6.5 mm of the centre line; the channel opens 1.85× (ring stretch 2.2× of a 4× limit), stays stable through insertion and withdrawal, and closes again. Without the guide curve the toy deflected off the closed entrance, which confirms guide curves are needed. Lesson: wall particles bunch on one side; the real build needs even spreading around each ring.
+
+**Prototype summary:** all six prove out. Correctness and stability are tested automatically (the GPU prototypes run their real WebGPU shaders in Node through Dawn and a software GPU); speed and look need the owner's devices: open each from Settings › Diagnostics › Prototypes and note the step times and frame rate. The shared GPU particle solver (`packages/xpbd`) now serves cloth, rope, and soft tissue; particle contacts are all-pairs for now and need a spatial grid in the real build.
 
 ---
 
