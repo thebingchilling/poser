@@ -1,0 +1,9 @@
+node_modules/
+dist/
+*.tsbuildinfo
+.vite/
+coverage/
+test-results/
+playwright-report/
+# Owner-supplied test assets are never committed (PLAN.md section 24)
+test-assets/
