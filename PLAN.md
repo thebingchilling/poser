@@ -1,6 +1,6 @@
 # Poser: app plan
 
-A web app for **realistic, physics-based anatomy reference**. Artists import their own figures (Daz3D, Virt-a-Mate, VRM, generic rigs), clothing, and props. They pose figures with joint handles like VRM Posing Desktop, let real physics settle bodies, soft tissue, and cloth, then light, frame, and capture reference images.
+A web app for **realistic, physics-based anatomy reference**. Artists import their own figures (Daz3D, Virt-a-Mate, VRM, generic rigs), clothing, and props. They pose figures with joint handles like VRM Posing Desktop, let real physics settle bodies, soft tissue, and cloth, explore the anatomy underneath layer by layer, cut into it, add realistic fluids, fine-tune expressions and body states, then light, frame, and capture reference images.
 
 > **Status:** planning only. Nothing gets built until the go-ahead.
 
@@ -14,6 +14,9 @@ A web app for **realistic, physics-based anatomy reference**. Artists import the
 - Posing with FK rotation handles, IK effectors, pins, joint limits, mirroring, hand presets, and a pose library.
 - Physics: gravity and contact settling (ragdoll), soft tissue, cloth draping, prop collisions.
 - Importing props and environments that figures and cloth interact with.
+- Anatomical layers (skin, fat, muscle, bone, organs) inside every figure, with a cut tool that shows real cross-sections and can remove parts.
+- Realistic fluids: blood, tears, sweat, saliva, urine, and custom liquids.
+- Fine-tuned facial expressions (FACS), hands, feet, muscle tension, genital states, and whole-body states (cold, exertion, crying, and so on).
 - Lighting, cameras, study modes, and image capture.
 
 ### Out of scope for v1
@@ -40,6 +43,10 @@ A web app for **realistic, physics-based anatomy reference**. Artists import the
 | **Cloth** | There is no mature, reusable browser cloth library; only demos (XPBD on WebGPU, mass-spring papers). | Write our own XPBD cloth solver on WebGPU compute, with a CPU fallback. |
 | **WebGPU** | Available in Chrome, Edge, Safari 17.4+, and Firefox (default since late 2025). | WebGPU is the primary target; WebGL2 is the fallback with reduced features. |
 | **Marvelous Designer** | OBJ export with an optional XML sidecar holding physical properties. Units default to millimetres. | Import MD garments with auto-scaling and fabric mapping. |
+| **Anatomy data** | Z-Anatomy (CC BY-SA 4.0), built on BodyParts3D (CC BY-SA 2.1 JP), is a complete labelled 3D anatomy, mostly from one male body. The NIH Visible Human cross-sections are free to use with acknowledgment since 2019. | Bundle a fitted version of Z-Anatomy with attribution; build or commission a female template; use Visible Human as the cut-surface reference. |
+| **Mesh cutting** | Manifold (`manifold-3d`) is a WASM library with guaranteed-correct booleans, but it needs closed (watertight) meshes. | Use it for cuts; generate watertight cutting versions of skin at import. |
+| **Fluids** | WebGPU MLS-MPM demos simulate around 100k particles in real time in the browser, and MPM avoids SPH's neighbor-search cost. | Use MLS-MPM for particle fluids plus a texture-space surface-flow method for thin films. |
+| **Face rigs** | No openly licensed FACS template face was found. | Map existing Daz/ARKit face rigs; build or commission our own FACS template. |
 | **Built-in figures** | MakeHuman/MPFB core assets and exports are CC0. Exports must come from an official, unmodified MakeHuman build, and third-party add-on assets keep their own licenses. | Use them as the bundled starter male and female figures, so the app is usable before anything is imported. |
 
 ---
@@ -166,8 +173,8 @@ This is what lets one pose work on any figure, one ragdoll builder serve all of 
 - **Pins:** lock any effector in world space (e.g. feet planted while moving the hips).
 - **Joint limits:** a per-joint range-of-motion table from clinical data, with presets *Realistic*, *Flexible*, and *Unlimited*. Handles turn orange near a limit and red past it.
 - **Mirror:** copy left ↔ right, or flip the whole pose.
-- **Hands:** presets (relaxed, fist, point, pinch, open, grip) plus per-finger curl and spread sliders.
-- **Face:** expression morph sliders and eye gaze.
+- **Hands and feet:** presets plus per-joint fine-tuning (section 12).
+- **Face:** full FACS expression system (section 12).
 - **Body shape:** morph sliders for whatever shape morphs the figure has (Daz/VaM/glTF morph targets).
 - **Pose library:** save, load, and thumbnail poses in canonical form, so they work across figures. Import/export BVH/VRMA single frames.
 - **Multi-figure:** several figures in one scene, with contact between them in physics modes.
@@ -201,7 +208,7 @@ This is what lets one pose work on any figure, one ragdoll builder serve all of 
 |---|---|---|
 | 2 | Spring-bone chains on breasts, glutes, belly, and thighs, colliding with body capsules | Correct sag for the body's orientation (lying vs standing) and jiggle in Live mode |
 | 2 | Contact compression: skin vertices pushed out of touching surfaces, with the displacement spread to neighbours as a bulge (GPU pass) | Thighs flatten on a seat, cheek squashes on a hand, body presses into a figure it leans on |
-| 4 | Volumetric flesh: a coarse tetrahedral mesh between bone and skin, simulated with XPBD (volume-preserving), driving the visible mesh | True sag, compression, and wobble everywhere |
+| 5 | Layered flesh: the fat and muscle volumes from the anatomy layers simulated with XPBD (section 9.5), driving the visible skin | True sag, compression, wobble, and realistic wound behavior |
 
 ### 7.5 Simulation step (each frame)
 1. Pose/IK produces target joint rotations.
@@ -235,14 +242,179 @@ Cotton, jersey/T-shirt, silk/satin, denim, leather, spandex/lycra, wool knit, ch
 
 ---
 
-## 9. Rendering and reference tools
+## 9. Anatomical layers
+
+The body is modelled from the outside in, not as a hollow skin shell, so cuts, X-ray views, and flesh physics show real anatomy.
+
+### 9.1 Layers
+| Layer | Contents | Display |
+|---|---|---|
+| Skin | Epidermis/dermis as a thick shell (2–4 mm, varies by region) | The imported figure's own skin and textures |
+| Subcutaneous fat | Fat volume between skin and muscle; thickness varies by region and body type | Yellow, lobular tissue |
+| Fascia | Thin sheets over muscle groups | Optional, semi-transparent |
+| Muscles | Around 600 named muscles with fiber direction, origin, and insertion | Red-brown with fiber striations |
+| Tendons and ligaments | Connecting muscles to bones and bones to bones | White, glossy |
+| Skeleton | 206 bones, cartilage, teeth; bones have a cortical shell and trabecular (spongy) interior with marrow | Ivory surface, layered when cut |
+| Organs | Brain, eyes, heart, lungs, digestive tract, liver, kidneys, bladder, reproductive organs (male and female) | Tissue-specific materials |
+| Vessels and nerves | Major arteries, veins, and nerves | Optional; also used to decide how cuts bleed (section 11) |
+
+### 9.2 Where the anatomy comes from
+- **Template:** Z-Anatomy (CC BY-SA 4.0), built on BodyParts3D (CC BY-SA 2.1 Japan). It is a complete, labelled, open human anatomy model. Both licenses allow bundling with attribution; share-alike applies to our edited anatomy meshes, not to the app's code.
+- **Gaps to fill:** the source data is mostly based on one male body. A female template (pelvis shape, breast tissue with glands and fat, reproductive organs) has to be built or commissioned. Fat layer thickness maps and bone interiors also need to be authored.
+- **Cross-section textures:** the NIH Visible Human Project (male and female photographic cross-sections, free to use with acknowledgment of the National Library of Medicine since 2019) is the reference for realistic cut-surface textures.
+
+### 9.3 Fitting the anatomy to any imported figure
+Imported figures only have a skin surface, so the template anatomy is fitted inside each one:
+1. Match the template skeleton to the figure's canonical rig (joint positions → bone lengths and proportions).
+2. Fit the template skin to the figure's skin with a non-rigid surface registration (landmarks + iterative closest point).
+3. Carry that deformation into the interior with a smooth volumetric warp, so bones follow the skeleton and muscles and organs fill the space.
+4. Set fat thickness from the gap between the fitted muscles and the real skin: a lean figure gets thin fat, a heavy figure thick fat.
+5. Pick male or female internal anatomy from the figure (detected, user-confirmable).
+6. Bind all layers to the same skeleton, so they move with posing. Muscle bulging comes from section 12.4.
+
+The fit runs once at import in a worker and is cached. The user can tweak per-region fat and muscle sliders afterwards.
+
+### 9.4 Viewing layers
+- Per-layer visibility and transparency sliders, plus presets: **Skin**, **Muscles** (écorché), **Skeleton**, **Organs**, **X-ray**.
+- A **peel brush** that hides layers locally (e.g. remove skin just over the forearm).
+- **Labels:** hover any structure for its name; click for a short description, origin/insertion, and action for muscles.
+- Layers load on demand and use level of detail; the full anatomy is millions of triangles and is never all drawn at once.
+
+### 9.5 Layered flesh physics
+This replaces the generic "tetrahedral flesh" idea. The fat and muscle layers become real simulated volumes (XPBD tetrahedral meshes) attached to the bones. That gives realistic sag, compression against surfaces, wobble, and wound behavior when cut (section 10).
+
+---
+
+## 10. Cutting and removing body parts
+
+A cut has to show what is really inside at that spot: the skin rim, fat, the muscles crossing that plane, bone with its cortex and marrow, vessels, and organs.
+
+### 10.1 Tools
+| Tool | Behavior |
+|---|---|
+| **Section plane** | A movable plane that cuts through the whole body, like a CT/MRI slice or anatomy-atlas cross-section. Non-destructive and instant. |
+| **Knife** | Draw a stroke on screen and set a depth; it cuts along that surface (a laceration, an incision, a deep cut). |
+| **Scalpel/flap** | Cut and peel back a skin/fat flap to expose the muscles beneath, like a dissection. |
+| **Saw/remove** | Cut fully through a limb or region; the removed part becomes a separate object that can be moved, deleted, or dropped and simulated. |
+| **Hole/puncture** | A cylindrical cut of chosen diameter and depth. |
+
+### 10.2 How it works
+- **Closed volumes:** every anatomical structure is a closed (watertight) mesh. Imported skin often has holes (eyes, mouth, seams), so a watertight version of the skin is generated at import for cutting only.
+- **Booleans:** cuts are computed with **Manifold** (`manifold-3d`, a WASM geometry library with guaranteed-correct mesh booleans), in a worker.
+- **Cut in rest pose:** each cut is transformed into the figure's rest pose before it is applied, so cut geometry keeps its skin weights and still deforms correctly when the figure is re-posed.
+- **Cap surfaces:** each structure's cut face gets its own material: skin, fat lobules, muscle with fibers running in the muscle's direction, tendon, bone (cortical ring, trabecular interior, marrow), organ tissue, vessel lumens. Textures are procedural with Visible Human photos as the reference.
+- **Non-destructive cut stack:** every cut is stored as an editable operation (shape, depth, position on the body). Cuts can be adjusted, reordered, or deleted, and are re-applied automatically after re-posing or changing a figure.
+- **After a cut:** wound edges retract by tissue type (skin pulls back, contracted muscle retracts more), driven by the layered flesh simulation. Removed parts become physics objects with their own colliders, and the ragdoll drops the bones that were removed.
+- **Bleeding:** cuts emit blood based on what they hit (section 11.3).
+- **Clothing:** cuts can optionally go through garments too, so cloth tears along the same cut.
+
+### 10.3 Performance
+- A section plane is a shader-only effect and always real time.
+- Knife and saw cuts take a short background computation (target: under 1 second per cut on a mid-range machine), with a preview first.
+
+---
+
+## 11. Fluids
+
+### 11.1 Two simulation methods
+| Method | Used for | How |
+|---|---|---|
+| **Surface flow** | Thin liquids on skin and cloth: tears, sweat, a trickle of blood, drool | Liquid stored as a "wetness and film-thickness" map on the body's texture space. It flows downhill according to the current pose and gravity, beads up, and drips off as particles when thick enough. Cheap and very realistic for thin films. |
+| **Particle fluid** | Pouring, spurting, splashing, pooling: bleeding from wounds, urination, spilled liquids | **MLS-MPM** on WebGPU compute (browser demos run around 100k particles in real time), rendered as a smooth surface with refraction and thickness-based color. |
+
+Particles that settle on a surface turn into surface flow or a puddle, and surface flow that gets thick drips as particles, so the two work together.
+
+### 11.2 Fluid presets
+Each fluid has viscosity, density, color, opacity, surface tension, stickiness, and drying/staining behavior. Presets:
+- **Blood:** thick and slightly non-Newtonian; bright red when fresh, darkening to brown as it dries and clots; leaves stains.
+- **Tears:** water-like, clear, with a slight film on the eye.
+- **Sweat:** beads and sheen on skin; makes skin glossier.
+- **Saliva:** clear, stringy, and sticky.
+- **Urine:** water-like, pale yellow.
+- **Water, oil,** and a **custom fluid editor** for anything else (mucus, vomit, other bodily fluids, paint).
+
+### 11.3 Sources (emitters)
+- **Wounds:** bleeding rate and pattern come from what a cut hit: oozing from skin and fat; steady flow from veins; pulsing spurts timed to a heart rate when an artery is hit.
+- **Body openings:** tear ducts, mouth, nose, urethra, and others, each placed on the anatomy and following posing.
+- **Skin:** sweat from regions (forehead, chest, armpits, back) at a chosen intensity.
+- **Custom emitters:** placed anywhere, with flow rate, direction, and pressure.
+
+### 11.4 Interactions
+- Fluids collide with the body, clothing, and props.
+- **Cloth absorbs fluid:** wet cloth darkens, gets heavier, and clings (it changes the cloth simulation's mass and friction).
+- **Skin becomes wet:** glossier and slightly darker, with streaks along where fluid ran.
+- **Pooling and stains** on floors and props, with spreading and drying over time.
+- **Freeze** (like Settle): run the fluid for a few seconds, then freeze it as a mesh and stains so the scene can be posed and captured.
+
+---
+
+## 12. Face, hands, feet, muscles, and body states
+
+### 12.1 Facial expressions (FACS)
+- Expressions are built on **FACS** (the Facial Action Coding System used in psychology and film): around 45 action units such as inner brow raise, nose wrinkle, lip corner pull, jaw drop.
+- **Fine-tuning:** every action unit has a slider with separate left and right sides, plus eyes (gaze, lid opening, pupil size), jaw, lips, tongue, teeth, and cheek puff.
+- **Presets** as starting points, all adjustable: neutral, joy, laughter, sadness, crying, anger, fear, surprise, disgust, contempt, pain, exertion, fatigue, concentration, and others; blend several presets together.
+- **Figures' own face rigs:** Daz Genesis 8/9 faces and ARKit's 52-shape standard map onto the action units. Figures without facial morphs get action units transferred from a template face. This template needs to be built or commissioned, since no suitable openly licensed FACS face was found.
+- **Wrinkles:** wrinkle maps blended in as action units fire (forehead lines, crow's feet, nasolabial folds, frown lines).
+- **Skin color changes:** blushing and flushing, paleness, red eyes and nose when crying.
+
+### 12.2 Hands
+- Sliders for every finger joint (curl, spread, twist), the thumb's opposition, and the wrist.
+- **Fingertip IK:** drag a fingertip to place it on a surface.
+- **Grip:** close the hand around a prop; fingers stop where they touch it.
+- Presets (relaxed, fist, point, pinch, claw, open, grips, gestures), mirroring, saving custom hand poses.
+- Tendons and veins on the back of the hand show more when the hand is tense.
+
+### 12.3 Feet
+- Sliders for the ankle, every toe joint (curl, spread), and the big toe separately.
+- Arch height and foot flattening under weight: when a foot bears weight in Settle, the sole flattens and spreads.
+- Presets (relaxed, pointed, flexed, tiptoe, gripping, splayed).
+
+### 12.4 Muscle tension
+- **Per muscle group:** a relaxed ↔ flexed slider for each group (biceps, triceps, abdominals, glutes, quadriceps, calves, neck, and so on), plus a global tension control.
+- **What tension changes:**
+  - Shape: a tensed muscle shortens and thickens (keeping its volume), pushing the skin out via the anatomy layers.
+  - Definition: sharper muscle separation, visible striations, more visible veins and tendons.
+  - Physics: ragdoll motor strength and flesh stiffness, so a tense body holds a pose and a relaxed one sags.
+- **Body sliders:** overall muscle mass, body fat, and fat distribution, which also update the anatomy layers.
+- **Automatic tension** (optional): muscles that are working to hold the pose against gravity tense up automatically after Settle.
+
+### 12.5 Genital and secondary sexual anatomy states
+Neutral, clinical controls for anatomy reference:
+- **Male:** penis from flaccid to fully erect (length, girth, angle, curvature), foreskin from covered to retracted, scrotum from relaxed to tight (temperature and arousal).
+- **Female:** labia and clitoral states (relaxed to engorged), vaginal opening, breast changes (fullness, nipple and areola).
+- **Both:** nipple erection (cold or arousal), areola texture.
+- Driven by the anatomy layers (e.g. erectile tissue volume) where possible, and by the figure's own morphs (Daz and VaM genital add-ons usually include them).
+
+### 12.6 Body states
+A **State** panel where one slider drives many linked details at once. Each detail can still be fine-tuned separately.
+
+| State | What it drives |
+|---|---|
+| **Cold** | Goosebumps, pale or bluish extremities, tight scrotum, erect nipples, tense posture, shivering in Live mode |
+| **Hot** | Flushed skin, sweat, relaxed posture |
+| **Exertion** | Sweat, flush, visible veins, muscle pump, heavy breathing |
+| **Breathing** | Inhale ↔ exhale (chest and belly expansion), breathing rate in Live mode |
+| **Crying** | Tears, red and swollen eyes, red nose, crying expression |
+| **Fear / shock** | Paleness, dilated pupils, tension, sweat |
+| **Embarrassment** | Blushing on face, ears, and neck |
+| **Arousal** | Flushing, nipple changes, genital states (12.5), dilated pupils |
+| **Fatigue** | Slumped posture tendencies, eye bags, lower muscle tone |
+| **Injury marks** | Bruises (color changes with age: red → purple → green → yellow), scrapes, cuts, burns, painted as decals |
+| **Skin condition** | Wet, oily, dirty, sunburned, tan lines |
+
+States are saved with the scene and can be combined.
+
+---
+
+## 13. Rendering and reference tools
 
 - **Skin:** physically based skin with a subsurface-scattering approximation, detail normals, and translucency for ears and fingers. Daz/VaM texture channels are mapped automatically (diffuse, translucency, specular/roughness, normal, bump).
 - **Eyes, hair, and cloth materials:** dedicated shaders (eye refraction, hair anisotropy, cloth sheen).
 - **Lighting:** presets (Rembrandt, loop, split, butterfly, rim, overcast, harsh sun, studio three-point), movable lights with gizmos, and HDRI environments from user files or a few bundled CC0 ones. Shadows on.
 - **Cameras:** lens presets (24/35/50/85/135 mm), orthographic front/side/top, camera bookmarks, rule-of-thirds and golden-ratio overlays.
 - **Study modes:** clay (no textures), silhouette, 2- and 3-value notan, contour lines, and planes/low-poly simplification (Phase 4).
-- **Anatomy overlays:** skeleton overlay, proportion grid in head units, center of gravity with support area (is the pose balanced?), and later muscle-group overlays.
+- **Anatomy overlays:** proportion grid in head units, center of gravity with support area (is the pose balanced?). Full anatomy views come from the layer system (section 9).
 - **Capture:**
   - PNG at any resolution, with a transparent background option.
   - Turnaround sheet (8 or 16 angles in a grid).
@@ -250,7 +422,7 @@ Cotton, jersey/T-shirt, silk/satin, denim, leather, spandex/lycra, wool knit, ch
 
 ---
 
-## 10. Data model and storage
+## 14. Data model and storage
 
 ```
 Project
@@ -259,8 +431,14 @@ Project
  │   └─ Scene
  │       ├─ figures[]  { assetId, transform, canonicalPose, morphValues,
  │       │               pins, jointLimitPreset, muscleTone,
+ │       │               face { actionUnits{L,R} }, hands, feet,
+ │       │               muscleTension{group: value}, genitalState,
+ │       │               states{cold, exertion, crying, …}, decals[],
+ │       │               anatomy { fitId, layerVisibility, peelMasks },
+ │       │               cuts[] { tool, shape, depth, bindSpaceTransform },
  │       │               garments[] { assetId, fabric, pins, layer } , hair[] }
  │       ├─ props[]    { assetId, transform, physicsType, material }
+ │       ├─ fluids     { emitters[], frozenMeshes, wetnessMaps, stains }
  │       ├─ lights[]   { type, transform, color, intensity, shadow }
  │       ├─ cameras[]  { lens | ortho, transform, bookmarkName }
  │       └─ environment { hdriAssetId, floor, background }
@@ -269,7 +447,8 @@ Project
 Asset (in Library)
  { id, kind: figure|garment|hair|morphs|prop|pose|hdri|texture,
    baseFigure, name, creator, license, sourcePath, importedAt,
-   files: { meshLODs, textures, morphs, rigMap, colliders, simProxy },
+   files: { meshLODs, textures, morphs, rigMap, colliders, simProxy,
+            watertightSkin, anatomyFit, facsMap },
    thumbnail, tags }
 ```
 
@@ -279,7 +458,7 @@ Asset (in Library)
 
 ---
 
-## 11. Tech stack
+## 15. Tech stack
 
 | Layer | Choice |
 |---|---|
@@ -288,6 +467,9 @@ Asset (in Library)
 | 3D | three.js with WebGPU renderer (WebGL2 fallback), TSL node materials; GLTF/FBX/OBJ loaders, `@pixiv/three-vrm` |
 | Physics | JoltPhysics.js (WASM) in a Web Worker |
 | Cloth and soft tissue | Custom XPBD on WebGPU compute, plus a CPU worker fallback |
+| Cutting | Manifold (`manifold-3d`, WASM) booleans in a worker |
+| Fluids | Custom MLS-MPM on WebGPU compute, texture-space surface flow, screen-space fluid rendering |
+| Anatomy data | Z-Anatomy / BodyParts3D (CC BY-SA), fitted per figure; Visible Human as texture reference |
 | Asset processing | meshoptimizer (decimation and compression), KTX2/Basis encoder, fflate (zip/gzip), V-HACD (convex decomposition), all WASM in workers |
 | Storage | OPFS + IndexedDB; File System Access API for library folders |
 | Testing | Vitest (unit), Playwright (end-to-end and screenshot comparison), physics regression scenes |
@@ -307,20 +489,28 @@ poser/
   packages/cloth/        XPBD solver (GPU + CPU), garment prep, fabrics
   packages/softtissue/   spring bones, contact compression, tet flesh
   packages/render/       materials, lighting, cameras, study modes, capture
+  packages/anatomy/      layer templates, fitting, labels, peel, layered flesh
+  packages/cutting/      cut tools, booleans, caps, cut stack, removed parts
+  packages/fluids/       MPM solver, surface flow, emitters, wetness, stains
+  packages/face/         FACS action units, rig mapping, wrinkles, presets
+  packages/states/       body states, muscle tension, genital states, decals
   assets/builtin/        CC0 starter figures (MakeHuman/MPFB), props, HDRIs
+  assets/anatomy/        fitted-ready anatomy templates (CC BY-SA, with attribution)
   docs/                  import guides, architecture notes
 ```
 
 ---
 
-## 12. Quality targets
+## 16. Quality targets
 
 | Area | Target |
 |---|---|
 | Posing frame rate | 60 fps with 2 figures on a mid-range GPU (e.g. RTX 3060 / M1) |
 | Cloth | About 20k simulated vertices at 30+ fps on WebGPU |
 | Settle | Finishes in 3 seconds or less for one figure with clothing |
-| Import | A Genesis 8 FBX with textures imported in under 30 seconds |
+| Import | A Genesis 8 FBX with textures imported in under 30 seconds (plus under 60 seconds for anatomy fitting) |
+| Cuts | Knife or saw cut applied in under 1 second, with an instant preview |
+| Fluids | About 100k particles at 30+ fps on WebGPU; surface flow always real time |
 | Memory | Warn before going past roughly 2 GB of GPU memory |
 | Browsers | Latest Chrome/Edge (full), Safari and Firefox (full where WebGPU is on; otherwise reduced) |
 
@@ -329,13 +519,16 @@ poser/
 - A **golden test set** of real files (Daz G8 FBX, G9 glTF, VaM `.var`, VRM, Mixamo, MD garment): each must import, map, and pose correctly.
 - Screenshot tests for rendering and study modes.
 - Physics regression scenes (sitting in a chair, lying on the floor, a skirt in a seated pose) checked for penetration and stability.
+- Anatomy fitting checks on very different body types (no bones poking through skin, sensible fat thickness), and cut tests comparing cross-sections with reference atlas slices.
 
 ---
 
-## 13. Content policy, safety, and legal
+## 17. Content policy, safety, and legal
 
 - **18+ age gate** on first launch, explaining that the app shows nudity for anatomy reference.
 - Everything stays local: no uploads, accounts, or sharing in v1.
+- **Separate graphic-content setting:** blood, open wounds, removed body parts, and bodily fluids are off by default and turned on separately from nudity, with a warning. Anatomy layers (muscles, skeleton) are always available.
+- Anatomy data is credited (BodyParts3D, Z-Anatomy, NLM Visible Human) on an About/credits screen, as their licenses require.
 - **Terms of use:** adult figures only; sexualized depictions of minors are prohibited. Users are responsible for having the right to use the files they import.
 - **No bundled third-party content.** Built-ins are original or CC0.
 - Licenses recorded from `.var` metadata are shown in the Library.
@@ -344,7 +537,7 @@ poser/
 
 ---
 
-## 14. Roadmap
+## 18. Roadmap
 
 Each phase ends with something usable. Week estimates assume one full-time developer.
 
@@ -382,24 +575,65 @@ Each phase ends with something usable. Week estimates assume one full-time devel
 - [ ] Cloth self-collision, multiple garment layers, cloth on props (a sheet on a bed)
 - **Done when:** a Genesis 9 figure with a dForce dress, and a VaM look with clothing, load straight from the user's folders with no Blender step.
 
-### Phase 4: Realism and reference tools (ongoing)
-- [ ] Tetrahedral XPBD flesh, soft props (mattress, cushions)
-- [ ] Better skin shading; hair strand/card physics
-- [ ] Muscle-group overlays, planes study mode, turnaround sheets, gesture-drawing mode
+### Phase 4: Face, hands, feet, muscles, and body states (about 7 weeks)
+- [ ] FACS action-unit system with left/right sliders, presets, blending; mapping for Daz G8/G9 and ARKit 52 rigs
+- [ ] Build or commission the FACS template face; transfer action units to figures without face rigs
+- [ ] Wrinkle maps, blush/flush/pallor skin color maps, eyes (pupil, lids, tear film)
+- [ ] Per-joint hand and foot fine-tuning, fingertip IK, grip-to-prop, foot flattening under weight
+- [ ] Muscle tension per group (shape via morphs/normal maps first; full volume bulge comes with Phase 5), body fat and muscle sliders
+- [ ] Genital and secondary sexual anatomy states (morph-driven first)
+- [ ] State panel (cold, hot, exertion, breathing, crying, fear, embarrassment, arousal, fatigue), injury and skin decals
+- **Done when:** a figure can be set to "crying, cold, tense" with matching face, skin, posture, and anatomy details, all fine-tunable.
 
-### Phase 5 (optional)
+### Phase 5: Anatomical layers (about 10 weeks)
+- [ ] Prepare the Z-Anatomy/BodyParts3D template: clean, close every mesh, bind to the canonical rig, author fat and bone-interior data
+- [ ] Build or commission the female internal anatomy template
+- [ ] Fitting pipeline: skeleton match, skin registration, volumetric warp, fat thickness, sex detection
+- [ ] Layer viewer: visibility/transparency, presets, peel brush, labels and descriptions
+- [ ] Layered flesh simulation (fat and muscle volumes with XPBD), muscle volume bulge from tension, erectile tissue volume for genital states
+- [ ] Credits screen for anatomy data
+- **Done when:** any imported figure (thin, heavy, muscular, male, female) shows plausible fitted anatomy that moves with posing, with no bones through the skin.
+
+### Phase 6: Cutting (about 8 weeks)
+- [ ] Watertight skin generation at import; Manifold booleans in a worker
+- [ ] Section plane (shader-based), knife, scalpel/flap, saw/remove, puncture tools
+- [ ] Cuts in rest pose so they survive re-posing; editable cut stack
+- [ ] Tissue cap materials (skin, fat, muscle fibers, tendon, bone cortex/marrow, organs, vessels)
+- [ ] Wound edge retraction via layered flesh; removed parts become physics objects; ragdoll updates
+- [ ] Optional cutting through clothing
+- [ ] Graphic-content setting
+- **Done when:** a cut through the thigh shows skin, fat, the correct muscles, femur cortex and marrow, and the femoral vessels in the right places, and stays correct after re-posing.
+
+### Phase 7: Fluids (about 8 weeks)
+- [ ] Surface flow on skin and cloth (texture-space wetness and film thickness, gravity-driven, dripping)
+- [ ] MLS-MPM particle fluids on WebGPU with surface rendering
+- [ ] Fluid presets (blood, tears, sweat, saliva, urine, water, oil) and custom fluid editor
+- [ ] Emitters: wounds (ooze, venous flow, arterial pulsing from vessels hit), tear ducts, mouth, nose, urethra, sweat regions, custom
+- [ ] Cloth absorption (darker, heavier, clingier), wet skin shading, pooling, stains, drying and blood darkening
+- [ ] Freeze fluids into meshes and stains for capture
+- **Done when:** a forearm cut bleeds realistically down the arm, soaks a sleeve, and pools on the floor; a crying figure has tears running down the cheeks.
+
+### Phase 8: Polish and extra reference tools (ongoing)
+- [ ] Soft props (mattress, cushions), better skin shading, hair strand/card physics
+- [ ] Planes study mode, turnaround sheets, gesture-drawing mode
+
+### Phase 9 (optional)
 - [ ] Desktop app (Tauri) for very large libraries
 - [ ] WebXR: pose figures in VR
 - [ ] Simple timeline for pose-to-pose motion studies
+
+**Total:** roughly 60+ weeks of work for one full-time developer through Phase 7. Phases 4–7 can partly run in parallel with more people, since the face/states, anatomy, and fluids work are mostly independent; cutting depends on anatomy.
 
 ### Prototype the hardest parts first
 Before Phase 1 is finished, build two throwaway prototypes to prove the risky tech:
 1. **Ragdoll Settle:** a Jolt ragdoll holding a pose with motors and sitting on a box.
 2. **GPU cloth:** a XPBD skirt on WebGPU colliding with an animated capsule body at 30+ fps.
+3. **Anatomy fit and cut:** fit Z-Anatomy into one imported figure and cut through a limb with Manifold, to measure fit quality and cut speed early.
+4. **Fluids:** MLS-MPM blood colliding with a skinned body, plus a basic surface-flow trickle.
 
 ---
 
-## 15. Risks
+## 19. Risks
 
 | Risk | Mitigation |
 |---|---|
@@ -409,20 +643,34 @@ Before Phase 1 is finished, build two throwaway prototypes to prove the risky te
 | Daz bend/twist rigs deform poorly | Dedicated twist splitting; corrective morphs in Phase 3 |
 | WebGPU missing or buggy on a device | WebGL2 render fallback and CPU cloth at lower resolution |
 | Browser file-access differences (Safari/Firefox lack persistent folder access) | Manual re-scan; drag-and-drop always works; Tauri desktop option later |
+| Anatomy fit looks wrong on unusual body types | Landmark-guided fitting, per-region manual sliders, test set of very different bodies |
+| Anatomy data is male-centric and share-alike licensed | Build or commission the female template; keep anatomy data separate and attributed so share-alike only covers it |
+| Booleans fail on bad meshes, or cuts are slow | Generate watertight cutting meshes at import, run cuts in a worker with a preview, simplify far-from-cut regions |
+| Memory and GPU load with full anatomy, flesh sim, cloth, and fluids together | Load layers on demand, LODs, quality levels, and a budget that limits simultaneous systems on weaker GPUs |
+| No openly licensed FACS face template | Budget for building or commissioning one |
+| Hosting providers or app stores reject gore plus nudity | Graphic content off by default, clinical framing, Tauri desktop as a fallback distribution |
 | Legal and hosting issues around NSFW and licensed content | Local-only, nothing bundled, age gate, clear terms, legal review |
 
 ---
 
-## 16. Open decisions for the owner
+## 20. Open decisions for the owner
 1. **App name and branding.** "Poser" is already the name of a commercial product, so a different public name is probably needed.
 2. **Target hardware:** desktop only, or tablets (touch posing) too?
 3. **Business model:** free, one-time purchase, or subscription? This affects the desktop wrapper and licensing work.
 4. **Built-in content:** are CC0 MakeHuman/MPFB starter figures enough, or should we commission original realistic figures?
-5. **Priority:** if the timeline gets tight, is native Daz/VaM import (Phase 3) or physics realism (Phase 2/4) more important?
+5. **Priority order** after the core (Phases 0–2): native Daz/VaM import, face and states, anatomy layers, cutting, or fluids? The plan's order is one option.
+6. **Female anatomy and FACS face templates:** build in-house, or budget to commission them from a medical/3D artist?
+7. **Graphic content:** keep blood and wounds behind a separate setting (recommended), or on by default?
 
 ---
 
 ## Sources
+- Z-Anatomy models and license: https://github.com/Z-Anatomy/Models-of-human-anatomy
+- Open 3D Model project (Z-Anatomy successor): https://anatomytool.org/node/63904
+- Visible Human Project data access: https://www.nlm.nih.gov/research/visible/getting_data.html
+- Manifold (manifold-3d): https://www.npmjs.com/package/manifold-3d
+- WebGPU MLS-MPM fluids (Codrops): https://tympanus.net/codrops/2025/02/26/webgpu-fluid-simulations-high-performance-real-time-rendering/
+- MLS-MPM with WebGPU and three.js: https://discourse.threejs.org/t/mls-mpm-simulation-with-webgpu-and-threejs/77686
 - MPFB licensing FAQ: https://static.makehumancommunity.org/mpfb/faq/can_i_sell_models.html
 - MakeHuman license: https://static.makehumancommunity.org/about/license.html
 - Daz Interactive License: https://www.daz3d.com/interactive-license-info
