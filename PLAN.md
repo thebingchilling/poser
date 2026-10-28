@@ -3,6 +3,8 @@
 A web app for **realistic, physics-based anatomy reference**. Artists import their own figures (Daz3D, Virt-a-Mate, VRM, generic rigs), clothing, and props. They pose figures with joint handles like VRM Posing Desktop, let real physics settle bodies, soft tissue, and cloth, explore the anatomy underneath layer by layer, cut into it, add realistic fluids, fine-tune expressions and body states, then light, frame, and capture reference images.
 
 > **Status:** planning only. Nothing gets built until the go-ahead.
+>
+> **Primary focus: female figures.** Female anatomy is built first and to the highest standard; male anatomy is fully supported but comes second (section 10).
 
 ---
 
@@ -28,7 +30,8 @@ A web app for **realistic, physics-based anatomy reference**. Artists import the
 1. **Local-first and private.** Files never leave the device. Storage is the browser's private file system (OPFS) plus IndexedDB.
 2. **Bring your own assets.** No third-party content is bundled. Built-in content is original or CC0 only.
 3. **Anatomy first.** Realistic joint limits, proportions, weight, and lighting take priority over game-style features.
-4. **Never block on exotic formats.** Standard formats (glTF/FBX/OBJ/VRM) work from day one; native Daz/VaM reading is added on top.
+4. **Female-first.** Defaults, templates, tests, and quality bars are set on female figures first, then extended to male.
+5. **Never block on exotic formats.** Standard formats (glTF/FBX/OBJ/VRM) work from day one; native Daz/VaM reading is added on top.
 
 ---
 
@@ -173,8 +176,8 @@ This is what lets one pose work on any figure, one ragdoll builder serve all of 
 - **Pins:** lock any effector in world space (e.g. feet planted while moving the hips).
 - **Joint limits:** a per-joint range-of-motion table from clinical data, with presets *Realistic*, *Flexible*, and *Unlimited*. Handles turn orange near a limit and red past it.
 - **Mirror:** copy left ↔ right, or flip the whole pose.
-- **Hands and feet:** presets plus per-joint fine-tuning (section 12).
-- **Face:** full FACS expression system (section 12).
+- **Hands and feet:** presets plus per-joint fine-tuning (section 13).
+- **Face:** full FACS expression system (section 13).
 - **Body shape:** morph sliders for whatever shape morphs the figure has (Daz/VaM/glTF morph targets).
 - **Pose library:** save, load, and thumbnail poses in canonical form, so they work across figures. Import/export BVH/VRMA single frames.
 - **Multi-figure:** several figures in one scene, with contact between them in physics modes.
@@ -256,11 +259,11 @@ The body is modelled from the outside in, not as a hollow skin shell, so cuts, X
 | Tendons and ligaments | Connecting muscles to bones and bones to bones | White, glossy |
 | Skeleton | 206 bones, cartilage, teeth; bones have a cortical shell and trabecular (spongy) interior with marrow | Ivory surface, layered when cut |
 | Organs | Brain, eyes, heart, lungs, digestive tract, liver, kidneys, bladder, reproductive organs (male and female) | Tissue-specific materials |
-| Vessels and nerves | Major arteries, veins, and nerves | Optional; also used to decide how cuts bleed (section 11) |
+| Vessels and nerves | Major arteries, veins, and nerves | Optional; also used to decide how cuts bleed (section 12) |
 
 ### 9.2 Where the anatomy comes from
 - **Template:** Z-Anatomy (CC BY-SA 4.0), built on BodyParts3D (CC BY-SA 2.1 Japan). It is a complete, labelled, open human anatomy model. Both licenses allow bundling with attribution; share-alike applies to our edited anatomy meshes, not to the app's code.
-- **Gaps to fill:** the source data is mostly based on one male body. A female template (pelvis shape, breast tissue with glands and fat, reproductive organs) has to be built or commissioned. Fat layer thickness maps and bone interiors also need to be authored.
+- **Main gap:** this data is mostly based on one male body, so it becomes the **male** template and a reference for muscle names and structure. The **female template is built separately and first** (section 10). Fat layer thickness maps and bone interiors also need to be authored for both.
 - **Cross-section textures:** the NIH Visible Human Project (male and female photographic cross-sections, free to use with acknowledgment of the National Library of Medicine since 2019) is the reference for realistic cut-surface textures.
 
 ### 9.3 Fitting the anatomy to any imported figure
@@ -269,8 +272,8 @@ Imported figures only have a skin surface, so the template anatomy is fitted ins
 2. Fit the template skin to the figure's skin with a non-rigid surface registration (landmarks + iterative closest point).
 3. Carry that deformation into the interior with a smooth volumetric warp, so bones follow the skeleton and muscles and organs fill the space.
 4. Set fat thickness from the gap between the fitted muscles and the real skin: a lean figure gets thin fat, a heavy figure thick fat.
-5. Pick male or female internal anatomy from the figure (detected, user-confirmable).
-6. Bind all layers to the same skeleton, so they move with posing. Muscle bulging comes from section 12.4.
+5. Pick the female or male template from the figure (detected, user-confirmable; female is the default).
+6. Bind all layers to the same skeleton, so they move with posing. Muscle bulging comes from section 13.4.
 
 The fit runs once at import in a worker and is cached. The user can tweak per-region fat and muscle sliders afterwards.
 
@@ -281,15 +284,71 @@ The fit runs once at import in a worker and is cached. The user can tweak per-re
 - Layers load on demand and use level of detail; the full anatomy is millions of triangles and is never all drawn at once.
 
 ### 9.5 Layered flesh physics
-This replaces the generic "tetrahedral flesh" idea. The fat and muscle layers become real simulated volumes (XPBD tetrahedral meshes) attached to the bones. That gives realistic sag, compression against surfaces, wobble, and wound behavior when cut (section 10).
+This replaces the generic "tetrahedral flesh" idea. The fat and muscle layers become real simulated volumes (XPBD tetrahedral meshes) attached to the bones. That gives realistic sag, compression against surfaces, wobble, and wound behavior when cut (section 11).
 
 ---
 
-## 10. Cutting and removing body parts
+## 10. Female anatomy (primary focus)
+
+Female figures are the main use of the app, so the female anatomy template is the most important asset in the project. It is its own workstream, starts at the beginning of the project because of its long lead time, and gets the highest quality bar.
+
+### 10.1 What the female template must cover
+| Area | Detail |
+|---|---|
+| **Skeleton** | Female pelvis (wider and shallower, wider pubic arch, different sacrum angle), thigh-bone angle and resulting knee alignment, elbow carrying angle, ribcage and shoulder proportions, skull and jaw differences |
+| **Breasts** | Full internal structure: glandular lobes and ducts, fat, suspensory (Cooper's) ligaments, nipple and areola, sitting on the pectoral muscles and ribcage. Must support cuts and realistic physics. |
+| **Fat distribution** | Typical female pattern (hips, buttocks, thighs, breasts, lower belly), with thickness maps per region |
+| **Muscles** | All muscles with female proportions, including the pelvic floor |
+| **External genitalia** | Mons pubis, labia majora and minora, clitoral hood and glans, vestibule, urethral and vaginal openings, perineum, with natural-variation sliders (size, shape, symmetry) |
+| **Internal reproductive organs** | The full clitoral structure (body, crura, vestibular bulbs, often missing from anatomy models), vagina, cervix, uterus, fallopian tubes, ovaries, and their ligaments |
+| **Other pelvic organs** | Bladder, urethra, rectum, positioned correctly for a female pelvis |
+| **Skin details** | Optional stretch marks, cellulite, scars (e.g. C-section), body and pubic hair styles, freckles and moles |
+
+### 10.2 Sources for building it
+No openly licensed, complete female anatomy model exists, so the plan combines several sources:
+1. **NIH Visible Human Female** (main source): 0.33 mm photographic cross-sections plus CT and MRI of a real female body, free to use with acknowledgment. Tissues are segmented from these slices into 3D meshes.
+2. **TotalSegmentator** (Apache 2.0 software) automatically segments 104 structures from CT (bones, organs, some muscles), which speeds up the work. Most muscles, breast tissue, and reproductive and pelvic-floor structures still need manual segmentation.
+3. **Z-Anatomy (male)** as the reference for muscle naming and structure, transferred onto the female skeleton and then corrected by hand.
+4. **Medical literature and atlases** for what imaging doesn't resolve well (clitoral anatomy, breast ligaments, pelvic floor).
+5. **Optional purchase:** commercial female anatomy models (e.g. TurboSquid, CGTrader, RenderHub), only if their license allows embedding in an application. Most standard licenses don't, so check each one.
+6. NIH 3D's female pelvis model is CC BY-NC-SA (non-commercial), so it can be a visual reference only, not shipped in a commercial app.
+
+**Who builds it:** a medical 3D artist (contract or hire), reviewed by an anatomist or medical illustrator for accuracy. Budget about 3–6 months of specialist work. It is the longest-lead item in the project.
+
+**Limitation:** the Visible Human Female is one person (a 59-year-old woman), so the template is made parametric (section 10.3) to cover the natural range of adult female bodies.
+
+### 10.3 Variation controls
+- **Breasts:** size, shape, spacing, projection, sag (ptosis grade), areola size and color, nipple shape, and glandular-to-fat ratio (affects how they move).
+- **Body:** height, waist-hip ratio, hip width, fat amount and distribution, muscle mass, bone structure.
+- **Genitalia:** natural variation in labia size and shape, clitoral hood, mons fullness, pubic hair.
+- **Age:** adults only (18+), from young adult to elderly, changing skin, fat distribution, breast tissue, and posture. The app does not allow child body proportions.
+- The controls work on the anatomy layers and on the imported figure's own morphs where available.
+
+### 10.4 Female-specific physics
+- **Breast soft body is a Phase 2 priority,** not a later upgrade: a dedicated volume simulation with different stiffness for glandular tissue and fat, ligament support, and attachment to the chest wall. It must look right standing, lying on the back or side, bent forward, inverted, and pressed against surfaces or other bodies.
+- **Two-way clothing and body interaction:** tight clothing compresses flesh (bra support and shaping, waistband and strap indentation, leggings), and a bra actually supports breast tissue in the simulation.
+- Buttocks, hips, thighs, and belly use the same layered approach.
+
+### 10.5 Female-specific states
+In addition to the general body states (section 13.6):
+- **Pregnancy:** a stage slider (by week) that grows the uterus inside the anatomy and changes the belly, breasts, areolae, fat, and posture. The center of gravity shifts and balance follows. Optional linea nigra and stretch marks.
+- **Postpartum and lactation:** belly and breast changes.
+- **Menstrual cycle:** subtle changes (bloating, breast fullness), plus menstrual blood as a fluid emitter for medical and reference use.
+- **Menopause and aging:** changes to breast tissue, fat distribution, skin, and bone.
+
+### 10.6 Male anatomy (second, fully supported)
+- Template from Z-Anatomy/BodyParts3D, with fat and bone-interior data authored the same way.
+- Full male genital anatomy (internal and external) with the states in section 13.5.
+- Same variation controls where they apply (body, age, genital variation).
+- Built after the female template, reusing the same fitting, cutting, and physics systems.
+
+---
+
+## 11. Cutting and removing body parts
 
 A cut has to show what is really inside at that spot: the skin rim, fat, the muscles crossing that plane, bone with its cortex and marrow, vessels, and organs.
 
-### 10.1 Tools
+### 11.1 Tools
 | Tool | Behavior |
 |---|---|
 | **Section plane** | A movable plane that cuts through the whole body, like a CT/MRI slice or anatomy-atlas cross-section. Non-destructive and instant. |
@@ -298,25 +357,25 @@ A cut has to show what is really inside at that spot: the skin rim, fat, the mus
 | **Saw/remove** | Cut fully through a limb or region; the removed part becomes a separate object that can be moved, deleted, or dropped and simulated. |
 | **Hole/puncture** | A cylindrical cut of chosen diameter and depth. |
 
-### 10.2 How it works
+### 11.2 How it works
 - **Closed volumes:** every anatomical structure is a closed (watertight) mesh. Imported skin often has holes (eyes, mouth, seams), so a watertight version of the skin is generated at import for cutting only.
 - **Booleans:** cuts are computed with **Manifold** (`manifold-3d`, a WASM geometry library with guaranteed-correct mesh booleans), in a worker.
 - **Cut in rest pose:** each cut is transformed into the figure's rest pose before it is applied, so cut geometry keeps its skin weights and still deforms correctly when the figure is re-posed.
 - **Cap surfaces:** each structure's cut face gets its own material: skin, fat lobules, muscle with fibers running in the muscle's direction, tendon, bone (cortical ring, trabecular interior, marrow), organ tissue, vessel lumens. Textures are procedural with Visible Human photos as the reference.
 - **Non-destructive cut stack:** every cut is stored as an editable operation (shape, depth, position on the body). Cuts can be adjusted, reordered, or deleted, and are re-applied automatically after re-posing or changing a figure.
 - **After a cut:** wound edges retract by tissue type (skin pulls back, contracted muscle retracts more), driven by the layered flesh simulation. Removed parts become physics objects with their own colliders, and the ragdoll drops the bones that were removed.
-- **Bleeding:** cuts emit blood based on what they hit (section 11.3).
+- **Bleeding:** cuts emit blood based on what they hit (section 12.3).
 - **Clothing:** cuts can optionally go through garments too, so cloth tears along the same cut.
 
-### 10.3 Performance
+### 11.3 Performance
 - A section plane is a shader-only effect and always real time.
 - Knife and saw cuts take a short background computation (target: under 1 second per cut on a mid-range machine), with a preview first.
 
 ---
 
-## 11. Fluids
+## 12. Fluids
 
-### 11.1 Two simulation methods
+### 12.1 Two simulation methods
 | Method | Used for | How |
 |---|---|---|
 | **Surface flow** | Thin liquids on skin and cloth: tears, sweat, a trickle of blood, drool | Liquid stored as a "wetness and film-thickness" map on the body's texture space. It flows downhill according to the current pose and gravity, beads up, and drips off as particles when thick enough. Cheap and very realistic for thin films. |
@@ -324,7 +383,7 @@ A cut has to show what is really inside at that spot: the skin rim, fat, the mus
 
 Particles that settle on a surface turn into surface flow or a puddle, and surface flow that gets thick drips as particles, so the two work together.
 
-### 11.2 Fluid presets
+### 12.2 Fluid presets
 Each fluid has viscosity, density, color, opacity, surface tension, stickiness, and drying/staining behavior. Presets:
 - **Blood:** thick and slightly non-Newtonian; bright red when fresh, darkening to brown as it dries and clots; leaves stains.
 - **Tears:** water-like, clear, with a slight film on the eye.
@@ -333,13 +392,13 @@ Each fluid has viscosity, density, color, opacity, surface tension, stickiness, 
 - **Urine:** water-like, pale yellow.
 - **Water, oil,** and a **custom fluid editor** for anything else (mucus, vomit, other bodily fluids, paint).
 
-### 11.3 Sources (emitters)
+### 12.3 Sources (emitters)
 - **Wounds:** bleeding rate and pattern come from what a cut hit: oozing from skin and fat; steady flow from veins; pulsing spurts timed to a heart rate when an artery is hit.
 - **Body openings:** tear ducts, mouth, nose, urethra, and others, each placed on the anatomy and following posing.
 - **Skin:** sweat from regions (forehead, chest, armpits, back) at a chosen intensity.
 - **Custom emitters:** placed anywhere, with flow rate, direction, and pressure.
 
-### 11.4 Interactions
+### 12.4 Interactions
 - Fluids collide with the body, clothing, and props.
 - **Cloth absorbs fluid:** wet cloth darkens, gets heavier, and clings (it changes the cloth simulation's mass and friction).
 - **Skin becomes wet:** glossier and slightly darker, with streaks along where fluid ran.
@@ -348,9 +407,9 @@ Each fluid has viscosity, density, color, opacity, surface tension, stickiness, 
 
 ---
 
-## 12. Face, hands, feet, muscles, and body states
+## 13. Face, hands, feet, muscles, and body states
 
-### 12.1 Facial expressions (FACS)
+### 13.1 Facial expressions (FACS)
 - Expressions are built on **FACS** (the Facial Action Coding System used in psychology and film): around 45 action units such as inner brow raise, nose wrinkle, lip corner pull, jaw drop.
 - **Fine-tuning:** every action unit has a slider with separate left and right sides, plus eyes (gaze, lid opening, pupil size), jaw, lips, tongue, teeth, and cheek puff.
 - **Presets** as starting points, all adjustable: neutral, joy, laughter, sadness, crying, anger, fear, surprise, disgust, contempt, pain, exertion, fatigue, concentration, and others; blend several presets together.
@@ -358,19 +417,19 @@ Each fluid has viscosity, density, color, opacity, surface tension, stickiness, 
 - **Wrinkles:** wrinkle maps blended in as action units fire (forehead lines, crow's feet, nasolabial folds, frown lines).
 - **Skin color changes:** blushing and flushing, paleness, red eyes and nose when crying.
 
-### 12.2 Hands
+### 13.2 Hands
 - Sliders for every finger joint (curl, spread, twist), the thumb's opposition, and the wrist.
 - **Fingertip IK:** drag a fingertip to place it on a surface.
 - **Grip:** close the hand around a prop; fingers stop where they touch it.
 - Presets (relaxed, fist, point, pinch, claw, open, grips, gestures), mirroring, saving custom hand poses.
 - Tendons and veins on the back of the hand show more when the hand is tense.
 
-### 12.3 Feet
+### 13.3 Feet
 - Sliders for the ankle, every toe joint (curl, spread), and the big toe separately.
 - Arch height and foot flattening under weight: when a foot bears weight in Settle, the sole flattens and spreads.
 - Presets (relaxed, pointed, flexed, tiptoe, gripping, splayed).
 
-### 12.4 Muscle tension
+### 13.4 Muscle tension
 - **Per muscle group:** a relaxed ↔ flexed slider for each group (biceps, triceps, abdominals, glutes, quadriceps, calves, neck, and so on), plus a global tension control.
 - **What tension changes:**
   - Shape: a tensed muscle shortens and thickens (keeping its volume), pushing the skin out via the anatomy layers.
@@ -379,14 +438,14 @@ Each fluid has viscosity, density, color, opacity, surface tension, stickiness, 
 - **Body sliders:** overall muscle mass, body fat, and fat distribution, which also update the anatomy layers.
 - **Automatic tension** (optional): muscles that are working to hold the pose against gravity tense up automatically after Settle.
 
-### 12.5 Genital and secondary sexual anatomy states
+### 13.5 Genital and secondary sexual anatomy states
 Neutral, clinical controls for anatomy reference:
 - **Male:** penis from flaccid to fully erect (length, girth, angle, curvature), foreskin from covered to retracted, scrotum from relaxed to tight (temperature and arousal).
 - **Female:** labia and clitoral states (relaxed to engorged), vaginal opening, breast changes (fullness, nipple and areola).
 - **Both:** nipple erection (cold or arousal), areola texture.
 - Driven by the anatomy layers (e.g. erectile tissue volume) where possible, and by the figure's own morphs (Daz and VaM genital add-ons usually include them).
 
-### 12.6 Body states
+### 13.6 Body states
 A **State** panel where one slider drives many linked details at once. Each detail can still be fine-tuned separately.
 
 | State | What it drives |
@@ -407,7 +466,7 @@ States are saved with the scene and can be combined.
 
 ---
 
-## 13. Rendering and reference tools
+## 14. Rendering and reference tools
 
 - **Skin:** physically based skin with a subsurface-scattering approximation, detail normals, and translucency for ears and fingers. Daz/VaM texture channels are mapped automatically (diffuse, translucency, specular/roughness, normal, bump).
 - **Eyes, hair, and cloth materials:** dedicated shaders (eye refraction, hair anisotropy, cloth sheen).
@@ -422,7 +481,7 @@ States are saved with the scene and can be combined.
 
 ---
 
-## 14. Data model and storage
+## 15. Data model and storage
 
 ```
 Project
@@ -458,7 +517,7 @@ Asset (in Library)
 
 ---
 
-## 15. Tech stack
+## 16. Tech stack
 
 | Layer | Choice |
 |---|---|
@@ -501,7 +560,7 @@ poser/
 
 ---
 
-## 16. Quality targets
+## 17. Quality targets
 
 | Area | Target |
 |---|---|
@@ -516,14 +575,16 @@ poser/
 
 ### Testing
 - Unit tests for rig mapping, IK, joint limits, importers, and serialization.
-- A **golden test set** of real files (Daz G8 FBX, G9 glTF, VaM `.var`, VRM, Mixamo, MD garment): each must import, map, and pose correctly.
+- A **golden test set** of real files, mostly female (Daz Genesis 8 Female, Genesis 9 with a female shape, VaM female looks, female VRM and Mixamo figures), plus some male figures and MD garments: each must import, map, and pose correctly.
+- A **female body-diversity set** (slim, curvy, heavy, muscular, large and small breasts, young adult to elderly, pregnant) for anatomy fitting and breast physics checks.
+- Accuracy review of the female template by a qualified anatomist or medical illustrator.
 - Screenshot tests for rendering and study modes.
 - Physics regression scenes (sitting in a chair, lying on the floor, a skirt in a seated pose) checked for penetration and stability.
 - Anatomy fitting checks on very different body types (no bones poking through skin, sensible fat thickness), and cut tests comparing cross-sections with reference atlas slices.
 
 ---
 
-## 17. Content policy, safety, and legal
+## 18. Content policy, safety, and legal
 
 - **18+ age gate** on first launch, explaining that the app shows nudity for anatomy reference.
 - Everything stays local: no uploads, accounts, or sharing in v1.
@@ -537,7 +598,7 @@ poser/
 
 ---
 
-## 18. Roadmap
+## 19. Roadmap
 
 Each phase ends with something usable. Week estimates assume one full-time developer.
 
@@ -546,7 +607,8 @@ Each phase ends with something usable. Week estimates assume one full-time devel
 - [ ] three.js WebGPU viewport with WebGL2 fallback, orbit camera, view cube, grid, floor
 - [ ] Scene store, undo/redo, autosave to IndexedDB/OPFS
 - [ ] Age gate, terms screen
-- [ ] Load a bundled CC0 figure
+- [ ] Load a bundled CC0 female figure (a male figure is bundled too)
+- [ ] **Start the female anatomy template workstream:** contract or hire a medical 3D artist; runs in parallel for about 3–6 months
 - **Done when:** the app opens with a figure, the user can orbit it, and the scene saves and reloads.
 
 ### Phase 1: Import and posing MVP (about 5 weeks)
@@ -562,11 +624,13 @@ Each phase ends with something usable. Week estimates assume one full-time devel
 ### Phase 2: Physics and cloth (about 8 weeks)
 - [ ] Jolt worker, automatic ragdoll, muscle motors, Settle and Live modes
 - [ ] Prop colliders (primitives, hulls, V-HACD), physics materials
-- [ ] Spring-bone soft tissue; contact compression
+- [ ] **Breast soft-body simulation** (volume-based, glandular/fat stiffness, ligament support), checked standing, lying, on the side, bent forward, and pressed
+- [ ] Two-way clothing ↔ flesh interaction (bra support, waistband and strap indentation)
+- [ ] Spring-bone fallback for other soft tissue; contact compression
 - [ ] XPBD cloth on WebGPU with CPU fallback: body collision field, friction, pins, fabric presets, drape from rest, simulation proxy
 - [ ] Marvelous Designer OBJ + XML import
 - [ ] Balance overlay (center of gravity)
-- **Done when:** a figure Settles into an imported chair with thighs compressing on the seat, and a shirt and skirt drape realistically in that pose.
+- **Done when:** a female figure Settles into an imported chair with thighs compressing on the seat, her breasts rest correctly when she lies down or leans forward, and a bra, shirt, and skirt fit and drape realistically.
 
 ### Phase 3: Native Daz and VaM (about 6 weeks)
 - [ ] Library folders with indexing and re-scan
@@ -583,16 +647,18 @@ Each phase ends with something usable. Week estimates assume one full-time devel
 - [ ] Muscle tension per group (shape via morphs/normal maps first; full volume bulge comes with Phase 5), body fat and muscle sliders
 - [ ] Genital and secondary sexual anatomy states (morph-driven first)
 - [ ] State panel (cold, hot, exertion, breathing, crying, fear, embarrassment, arousal, fatigue), injury and skin decals
+- [ ] Female states: pregnancy stages, postpartum/lactation, menstrual cycle, menopause and aging (morph-driven first; anatomy-driven once Phase 5 lands)
 - **Done when:** a figure can be set to "crying, cold, tense" with matching face, skin, posture, and anatomy details, all fine-tunable.
 
 ### Phase 5: Anatomical layers (about 10 weeks)
 - [ ] Prepare the Z-Anatomy/BodyParts3D template: clean, close every mesh, bind to the canonical rig, author fat and bone-interior data
-- [ ] Build or commission the female internal anatomy template
+- [ ] Integrate the finished female anatomy template (from the parallel workstream) with full breast, genital, and pelvic anatomy and variation controls
+- [ ] Male template from Z-Anatomy/BodyParts3D
 - [ ] Fitting pipeline: skeleton match, skin registration, volumetric warp, fat thickness, sex detection
 - [ ] Layer viewer: visibility/transparency, presets, peel brush, labels and descriptions
 - [ ] Layered flesh simulation (fat and muscle volumes with XPBD), muscle volume bulge from tension, erectile tissue volume for genital states
 - [ ] Credits screen for anatomy data
-- **Done when:** any imported figure (thin, heavy, muscular, male, female) shows plausible fitted anatomy that moves with posing, with no bones through the skin.
+- **Done when:** every figure in the female body-diversity set, plus male figures, shows plausible fitted anatomy that moves with posing, with no bones through the skin.
 
 ### Phase 6: Cutting (about 8 weeks)
 - [ ] Watertight skin generation at import; Manifold booleans in a worker
@@ -633,7 +699,7 @@ Before Phase 1 is finished, build two throwaway prototypes to prove the risky te
 
 ---
 
-## 19. Risks
+## 20. Risks
 
 | Risk | Mitigation |
 |---|---|
@@ -644,7 +710,9 @@ Before Phase 1 is finished, build two throwaway prototypes to prove the risky te
 | WebGPU missing or buggy on a device | WebGL2 render fallback and CPU cloth at lower resolution |
 | Browser file-access differences (Safari/Firefox lack persistent folder access) | Manual re-scan; drag-and-drop always works; Tauri desktop option later |
 | Anatomy fit looks wrong on unusual body types | Landmark-guided fitting, per-region manual sliders, test set of very different bodies |
-| Anatomy data is male-centric and share-alike licensed | Build or commission the female template; keep anatomy data separate and attributed so share-alike only covers it |
+| No open, complete female anatomy model exists | Dedicated workstream from day one: Visible Human Female segmentation, a medical 3D artist, and an anatomist review. Morph-based female features ship first so the app is useful meanwhile. |
+| The female template comes from one 59-year-old body | Parametric variation controls and a body-diversity test set |
+| Anatomy data is share-alike licensed | Keep anatomy data separate and attributed so share-alike only covers it. A female template built from Visible Human data can be fully ours. |
 | Booleans fail on bad meshes, or cuts are slow | Generate watertight cutting meshes at import, run cuts in a worker with a preview, simplify far-from-cut regions |
 | Memory and GPU load with full anatomy, flesh sim, cloth, and fluids together | Load layers on demand, LODs, quality levels, and a budget that limits simultaneous systems on weaker GPUs |
 | No openly licensed FACS face template | Budget for building or commissioning one |
@@ -653,18 +721,23 @@ Before Phase 1 is finished, build two throwaway prototypes to prove the risky te
 
 ---
 
-## 20. Open decisions for the owner
+## 21. Open decisions for the owner
 1. **App name and branding.** "Poser" is already the name of a commercial product, so a different public name is probably needed.
 2. **Target hardware:** desktop only, or tablets (touch posing) too?
 3. **Business model:** free, one-time purchase, or subscription? This affects the desktop wrapper and licensing work.
 4. **Built-in content:** are CC0 MakeHuman/MPFB starter figures enough, or should we commission original realistic figures?
 5. **Priority order** after the core (Phases 0–2): native Daz/VaM import, face and states, anatomy layers, cutting, or fluids? The plan's order is one option.
-6. **Female anatomy and FACS face templates:** build in-house, or budget to commission them from a medical/3D artist?
-7. **Graphic content:** keep blood and wounds behind a separate setting (recommended), or on by default?
+6. **Female anatomy template budget:** hire or contract a medical 3D artist (about 3–6 months) plus an anatomist reviewer? This is the most important external cost.
+7. **FACS face template:** build in-house or commission (female face first)?
+8. **Graphic content:** keep blood and wounds behind a separate setting (recommended), or on by default?
 
 ---
 
 ## Sources
+- NIH 3D female pelvis (CC BY-NC-SA): https://3d.nih.gov/entries/3DPX-015843
+- TotalSegmentator paper: https://arxiv.org/abs/2208.05868
+- TotalSegmentator package (Apache 2.0): https://mcp.depscope.dev/pkg/pypi/TotalSegmentator
+- Example commercial female anatomy models (licenses vary): https://www.renderhub.com/nonecg/human-female-complete-anatomy and https://www.turbosquid.com/3d-models/3d-female-reproductive-system-anatomical-model-sagittal-section-on-stand-model-2456104
 - Z-Anatomy models and license: https://github.com/Z-Anatomy/Models-of-human-anatomy
 - Open 3D Model project (Z-Anatomy successor): https://anatomytool.org/node/63904
 - Visible Human Project data access: https://www.nlm.nih.gov/research/visible/getting_data.html
