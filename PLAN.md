@@ -731,7 +731,18 @@ Additions that make scenes look and behave like the real thing:
 - **Character mixer:** blend body and face shapes between figures that share the same base (e.g. 60% one Daz character, 40% another, or mix VaM looks), with separate body and face mix sliders.
 - **Simple hair generator:** make basic hairstyles (straight, wavy, ponytail, bun, bob) and pubic and body hair shapes in-app when imported hair is missing or unsuitable; works with hair physics and wetness.
 
-### 17.5 Reference images
+### 17.5 Physics control
+- **Soft-tissue presets per region:** one-click firm, natural, soft, and very soft settings for breasts, buttocks, belly, and thighs (separately), adjusting stiffness, damping, and sag together. Fine-tuning sliders remain.
+- **Time scale:** slow down or speed up Live mode and animation physics (e.g. 0.1× to study jiggle and drape, 2× to settle faster).
+- **Sim pinning brush:** paint areas that stay still while the rest simulates: cloth (keep a top fixed at the shoulders), soft tissue (hold one region steady), or hair. Pins can be soft (gently held) or hard (fixed).
+
+### 17.6 Scene building and output
+- **Simple prop builder:** quick blocking props made in-app (box, cylinder, sphere, platform, steps, ramp, pole, ring, bar) with size in cm, physics material, and anchor points for ropes and restraints.
+- **Time-of-day sun:** sun position from time and compass direction, with matching sky color, light warmth, and shadow length. Works with the lighting presets.
+- **Recolor and material editor:** change color, pattern, shine, and fabric or material type for clothing, latex, ropes, toys, and props. Changing the type (e.g. cotton to latex) also updates its physics.
+- **Posed 3D export:** export the posed figure (with clothing, soft-tissue shape, and fluids frozen as meshes) as glTF, OBJ, or STL for Blender or 3D printing. For personal use only, since Daz/VaM licenses don't allow redistributing their content.
+
+### 17.7 Reference images
 - **Overlay:** show a reference photo semi-transparently over the viewport to match a pose or shape.
 - **Camera match:** load a background photo, line up a few guides (horizon, floor), and the 3D camera matches its perspective, so figures can be placed into the photo with matching lighting and shadows on the floor.
 
@@ -907,6 +918,7 @@ Each phase ends with something usable. Week estimates assume one full-time devel
 - [ ] Canonical rig with Daz G8/G9, VaM-export, Mixamo, CC4, and VRM maps, plus the manual mapping wizard
 - [ ] Joint handles, rotation gizmo, IK effectors, pins, joint limits, mirror, hand presets, morph sliders
 - [ ] Pose library and BVH/VRMA pose import
+- [ ] Simple prop builder; time-of-day sun; recolor and material editor
 - [ ] Body measurements readout; pose blending; random pose and camera; reference image overlay and camera match
 - [ ] Built-in CC0 environments (bedroom, bathroom, studio, dungeon-style room, living room)
 - [ ] Props (visual only), lighting presets, lens/ortho cameras, study modes (clay, silhouette, notan)
@@ -923,6 +935,7 @@ Each phase ends with something usable. Week estimates assume one full-time devel
 - [ ] Collision-aware posing and Resolve intersections; poke, pinch, squeeze, and slap tools
 - [ ] Sheer and open fabrics; high heels adjusting posture
 - [ ] Gravity direction/strength and wind (fan prop)
+- [ ] Soft-tissue presets per region, time scale, sim pinning brush
 - [ ] Figure-to-figure contact: two-way soft-body contact, skin friction, hands gripping flesh, two-figure pose helpers
 - [ ] Attachment and holding system (attachment points on skin, joints, hold and place tools), measure tool
 - [ ] Rigid toys and props, cuffs and chains, soft surfaces (mattresses, cushions)
@@ -1018,6 +1031,7 @@ Each phase ends with something usable. Week estimates assume one full-time devel
 ### Phase 10: Polish and extra reference tools (ongoing)
 - [ ] Path-traced final render mode, camera effects (depth of field, grain, grading), practical lights and haze
 - [ ] Video/GIF capture of Live mode
+- [ ] Posed 3D export (glTF/OBJ/STL)
 - [ ] Involuntary reactions (trembling, arching, toe curl), upside-down face flush
 - [ ] Optional encrypted storage, blurred thumbnails, preset packs
 - [ ] Better skin shading, hair strand/card physics, mirrors, POV camera refinements
