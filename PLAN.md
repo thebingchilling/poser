@@ -708,6 +708,7 @@ Additions that make scenes look and behave like the real thing:
 ### 17.1 Posing helpers
 - **Collision-aware posing:** while dragging joints or IK handles, limbs are stopped by the body, other figures, and props instead of passing through them. A **Resolve intersections** button pushes any overlapping parts apart with the smallest change to the pose.
 - **Poke, pinch, squeeze, and slap tools:** brush-like force tools in Live mode. Flesh deforms and ripples realistically, and slaps or firm squeezes leave redness (section 17.3) that fades on the time slider.
+- **Pose blending:** mix two or more saved poses with sliders (e.g. 70% sitting, 30% leaning), with joint limits and balance respected.
 - **Randomizers:** random pose (within joint limits and balance), random body variation (within chosen ranges), and random camera, each with a lock for what should stay fixed. Useful for gesture drawing and inspiration.
 
 ### 17.2 Clothing
@@ -724,7 +725,13 @@ Additions that make scenes look and behave like the real thing:
   - Wind, including a placeable fan prop, moves hair, cloth, and loose fluids.
   - Buoyancy in water scenes (pool, bath): bodies, breasts, and hair float realistically.
 
-### 17.4 Reference images
+### 17.4 Appearance editing
+- **Skin tone editor:** adjust skin tone overall and by region (nipples, areolae, genitals, lips, palms and soles, knees and elbows), with realistic undertones and blending, on any imported figure's textures.
+- **Skin detail generator:** adds pores, fine veins, freckling, imperfections, and natural redness variation to figures with low-quality or overly smooth textures; adjustable intensity.
+- **Character mixer:** blend body and face shapes between figures that share the same base (e.g. 60% one Daz character, 40% another, or mix VaM looks), with separate body and face mix sliders.
+- **Simple hair generator:** make basic hairstyles (straight, wavy, ponytail, bun, bob) and pubic and body hair shapes in-app when imported hair is missing or unsuitable; works with hair physics and wetness.
+
+### 17.5 Reference images
 - **Overlay:** show a reference photo semi-transparently over the viewport to match a pose or shape.
 - **Camera match:** load a background photo, line up a few guides (horizon, floor), and the 3D camera matches its perspective, so figures can be placed into the photo with matching lighting and shadows on the floor.
 
@@ -900,7 +907,7 @@ Each phase ends with something usable. Week estimates assume one full-time devel
 - [ ] Canonical rig with Daz G8/G9, VaM-export, Mixamo, CC4, and VRM maps, plus the manual mapping wizard
 - [ ] Joint handles, rotation gizmo, IK effectors, pins, joint limits, mirror, hand presets, morph sliders
 - [ ] Pose library and BVH/VRMA pose import
-- [ ] Body measurements readout; random pose and camera; reference image overlay and camera match
+- [ ] Body measurements readout; pose blending; random pose and camera; reference image overlay and camera match
 - [ ] Built-in CC0 environments (bedroom, bathroom, studio, dungeon-style room, living room)
 - [ ] Props (visual only), lighting presets, lens/ortho cameras, study modes (clay, silhouette, notan)
 - [ ] Screenshot capture; Daz export guide
@@ -929,12 +936,14 @@ Each phase ends with something usable. Week estimates assume one full-time devel
 - [ ] Daz `.duf/.dsf` reader: figures, shape morphs, corrective morphs, wardrobe (including dForce settings), hair, materials, poses
 - [ ] VaM `.var` and install-folder reader: looks, morphs, clothing, hair, textures, licenses, dependencies
 - [ ] Garment auto-fit between figures
+- [ ] Character mixer (blend shapes between figures of the same base)
 - [ ] Cloth self-collision, multiple garment layers, cloth on props (a sheet on a bed)
 - **Done when:** a Genesis 9 figure with a dForce dress, and a VaM look with clothing, load straight from the user's folders with no Blender step.
 
 ### Phase 4: Face, hands, feet, muscles, and body states (about 7 weeks)
 - [ ] Pose, hands, and expression from photo or webcam (MediaPipe)
 - [ ] Random body variation
+- [ ] Skin tone editor and skin detail generator; simple hair generator
 - [ ] Tongue posing, teeth, eye look-at and blink
 - [ ] Body hair density, tan lines, scars, freckles and moles
 - [ ] FACS action-unit system with left/right sliders, presets, blending; mapping for Daz G8/G9 and ARKit 52 rigs
