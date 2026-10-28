@@ -128,6 +128,29 @@ File(s) dropped → sniff format → adapter → ImportedAsset
 
 **Performance budget:** a Genesis 9 figure at its HD level is too heavy for real time. Import defaults to the base-resolution mesh (or decimates to roughly 50–80k triangles) and uses normal maps to keep the detail. Textures are capped at 4K and downscaled to 2K on low-memory devices.
 
+### 5.1 Getting models from online sources
+
+The goal is to import models people post online and, where possible, download straight from official libraries. Here is how realistic each source is:
+
+| Source | Content | Official API? | Realistic? | Plan |
+|---|---|---|---|---|
+| **Sketchfab** | Huge mix, including realistic and adult-flagged figures and props | ✅ **Download API**: OAuth login, glTF/GLB/USDZ, per-model license | **Yes** | **In-app browser:** search → pick → download glTF → import. The user signs in with their own Sketchfab account; downloads without a user login need a contract with Sketchfab. Show the license and attribution. Whether adult-flagged models come through the API is unverified, so test this early. |
+| **Poly Haven** | CC0 props, HDRIs, textures | ✅ Public API, no key (per a third-party scraper; check Poly Haven's own docs) | **Yes, easy** | Built-in prop/HDRI browser. CC0, so the assets can even be cached and hosted by us. |
+| **VRoid Hub** | Anime-style VRM avatars | ✅ OAuth API, but **apps need approval**; unapproved apps are restricted and rate-limited | Yes, but low priority | Not realistic-anatomy content. Add later if wanted; honor each creator's usage permissions. |
+| **Daz3D store** | Genesis figures, morphs, clothing | ❌ No public download API. Downloads are tied to the user's account via Daz Install Manager | **Not directly** | **Read the user's local Daz content library** (folder picker via the File System Access API). The user installs content with Daz's own tools, and we read it from disk. This is the realistic "official library" path. |
+| **Virt-a-Mate Hub** | `.var` looks, clothing, morphs | ❌ No documented public API. VaM's in-game browser talks to the Hub, but that interface is undocumented | **Only with permission** | v1: the user downloads `.var` files (or points us at their VaM `AddonPackages` folder). Ask the Hub operators for permission or an API before automating anything; don't scrape. |
+| **CGTrader, TurboSquid, Renderosity, ArtStation, Booth, Patreon, Gumroad, forums** | Paid and free models | ❌ No download APIs | Manual only | The user downloads the file, then drags it in or the app picks it up from a watched folder. |
+| **Any URL** | Direct file links | n/a | **Partly** | Browsers block cross-site downloads (CORS) for most hosts. Support pasting a direct link only for hosts that allow it, such as GitHub raw files. A server proxy that fetches for users is technically possible, but it would make us the downloader and is a legal risk (below). |
+
+**Making manual downloads painless (Phase 1):**
+- Drag and drop files, folders, or zips anywhere in the app. Zips, `.var` files, and Daz-style `.zip` installers are unpacked automatically.
+- **Watched folders:** the user grants access to a folder, such as Downloads, a Daz library, or VaM `AddonPackages`. New models show up in the library automatically (Chromium browsers; other browsers use a re-scan button).
+- **Auto-detection:** recognize what a file is (figure, garment, morph, prop, pose) and which base figure it needs, such as "Genesis 8 Female clothing" or "VaM look that needs the G2F base".
+- **Dependencies:** a `.var` lists its dependencies in `meta.json`, and Daz content references its base figure. Show what's missing and where it usually comes from.
+- **License panel:** record the source, license, and author for every imported asset, and show it in the library.
+
+**Piracy and legal guardrail:** many "free Daz/VaM" sites re-host paid content without permission. The app should not integrate with, link to, or proxy those sites, and in-app browsing only covers sources with explicit licenses (Sketchfab, Poly Haven, VRoid Hub). What a user imports from their own disk is their responsibility under the terms of service. This keeps us clear of DMCA trouble and of the Daz and VaM creators whose work people will want to use.
+
 ---
 
 ## 6. Posing system (the "VRM Posing Desktop" feel)
@@ -223,6 +246,7 @@ Each phase ends with something usable.
 - **Exit:** load a GLB, orbit it, save and reload the scene.
 
 ### Phase 1: Posing MVP (4–5 weeks)
+- Drag-and-drop (files, folders, zips), watched folders, asset library with license/source records.
 - glTF/FBX/OBJ/VRM importers, canonical rig with Daz G8/G9, Mixamo, and VRM maps, plus the manual mapping wizard.
 - FK gizmos, IK effectors, pins, joint limits, mirror, hand presets, pose library.
 - Prop import (static colliders not needed yet), lighting and camera presets, screenshot export.
@@ -232,11 +256,13 @@ Each phase ends with something usable.
 - Jolt worker, auto ragdoll, Settle and Live modes, prop colliders (V-HACD).
 - Spring-bone soft tissue and contact compression.
 - XPBD cloth v1: body SDF collision, pins, fabric presets, drape-from-rest, MD OBJ plus XML import.
+- In-app browsers: Sketchfab (OAuth Download API) and Poly Haven (props/HDRIs).
 - **Exit:** a figure sits in an imported chair via Settle; a shirt and skirt drape correctly in a seated pose.
 
 ### Phase 3: Native asset ecosystems (5–6 weeks)
-- Daz DSF/DUF reader (point at the Daz content library folder), including morph sliders and dForce garments.
-- VaM `.var` reader: clothing, morphs, textures, license display.
+- Daz DSF/DUF reader reading the user's installed Daz content library folder, including morph sliders and dForce garments.
+- VaM `.var` reader: clothing, morphs, textures, license display, dependency check; `AddonPackages` folder support.
+- Contact the VaM Hub operators about an official API or permission; integrate only if granted.
 - Cloth self-collision, multi-layer garments, cloth-on-prop (a sheet on a bed).
 - **Exit:** a Daz G9 figure plus dForce dress imported directly from a content folder, with no Blender.
 
@@ -285,6 +311,11 @@ poser/
 3. Spike two risky pieces in parallel: (a) Jolt ragdoll Settle mode on a canonical rig, and (b) an XPBD cloth prototype on WebGPU with capsule collision.
 
 ## Sources
+- Sketchfab Download API: https://api.sketchfab.com/developers/download-api
+- VRoid Hub API: https://developer.vroid.com/en/api
+- Poly Haven FAQ (CC0): https://docs.polyhaven.com/en/faq
+- Poly Haven API (third-party note): https://apify.com/crawlerbros/polyhaven-scraper
+- Daz re-download policy (forum): https://forum.daz3d.com/forums/discussion/674336/our-daz3d-files
 - Daz Interactive License: https://www.daz3d.com/interactive-license-info
 - Genesis 9 and exporters (Daz forums): https://forum.daz3d.com/forums/discussion/comment/7716386/ and https://forum.daz3d.com/forums/discussion/641041/g9-diffeomorphic-general-help
 - PlayCanvas notes on Ammo alternatives (Rapier/Jolt): https://developer.playcanvas.com/user-manual/physics/ammo-alternatives/
