@@ -1,7 +1,9 @@
 # Poser: app plan
 
-A web app that is a **realistic, physics-based NSFW figure modeller and anatomy study tool**. It leans toward adult/NSFW use, with anatomy study as a strong secondary purpose. Artists import their own figures (Daz3D, Virt-a-Mate, VRM, generic rigs), clothing, and props. They pose figures with joint handles like VRM Posing Desktop, let real physics settle bodies, soft tissue, and cloth, explore the anatomy underneath layer by layer, cut into it, add realistic fluids, fine-tune expressions and body states, then light, frame, and capture images.
+A web app that is a **realistic, physics-based NSFW figure modeller and anatomy study tool**. It leans toward adult/NSFW use, with anatomy study as a strong secondary purpose. Artists import their own figures (Daz3D, Virt-a-Mate, VRM, generic rigs), clothing, and props. They pose figures with joint handles like VRM Posing Desktop, let real physics settle bodies, soft tissue, and cloth, explore the anatomy underneath layer by layer, cut into it, add realistic fluids, fine-tune expressions and body states, use objects such as toys, ropes, restraints, and latex, then light, frame, and capture images.
 
+> **Website only:** the app is a browser app; there is no desktop or mobile app.
+>
 > **Status:** planning only. Nothing gets built until the go-ahead.
 >
 > **Primary focus: female figures.** Female anatomy is built first and to the highest standard; male anatomy is fully supported but comes second (section 10).
@@ -14,6 +16,7 @@ A web app that is a **realistic, physics-based NSFW figure modeller and anatomy 
 - **Self-import only.** Users bring files from their own disk. The app never downloads from the internet, browses stores, or proxies websites.
 - Realistic adult (18+) human figures with fully detailed nude anatomy, for NSFW scenes and anatomy study.
 - Multiple figures interacting physically, including intimate skin-to-skin contact (section 7.5).
+- Physical interaction with objects: sex toys, ropes and bondage restraints, latex and tight materials, furniture, and cut or removed body parts (section 14), plus scenario realism extras such as skin marks, wax, clothing states, and scene snapshots (section 15).
 - Posing with FK rotation handles, IK effectors, pins, joint limits, mirroring, hand presets, and a pose library.
 - Physics: gravity and contact settling (ragdoll), soft tissue, cloth draping, prop collisions.
 - Importing props and environments that figures and cloth interact with.
@@ -205,7 +208,7 @@ This is what lets one pose work on any figure, one ragdoll builder serve all of 
 - Colliders are generated automatically on import: simple shapes (box, sphere, capsule) when they fit, a convex hull, or convex decomposition (V-HACD) for complex objects such as chairs, sofas, and beds.
 - Each prop is static, dynamic (falls and moves), or kinematic (moved by the user only).
 - Material presets set friction and mass (wood, metal, plastic, foam, upholstered).
-- Soft props (mattress, cushion, pillow) come in Phase 4 as Jolt soft bodies.
+- Soft props (mattress, cushion, pillow) come in Phase 2 as soft bodies (section 15.5).
 
 ### 7.4 Soft tissue (staged)
 | Phase | Technique | Result |
@@ -248,7 +251,7 @@ NSFW scenes depend on bodies touching convincingly, so contact between figures i
 - On import: transfer skin weights from the body (fallback when the sim is off), and auto-detect **pin regions** such as waistbands, straps, and cuffs. The user can adjust pins with a paint brush.
 - **Drape from rest:** when a pose is applied, the figure moves smoothly from rest pose into the target pose over a short run while the cloth follows. This avoids the cloth starting inside the body (the same idea as Daz dForce).
 - **Layers:** underwear → shirt → jacket, with collision offsets keeping them in order.
-- **Hair:** rigid or spring-bone hair in v1; card or strand physics in Phase 4.
+- **Hair:** rigid or spring-bone hair in v1; card or strand physics in Phase 9.
 
 ### 8.3 Fabric presets
 Cotton, jersey/T-shirt, silk/satin, denim, leather, spandex/lycra, wool knit, chiffon, and latex. Each preset sets stretch, shear, bend stiffness, weight (g/m²), damping, friction, and thickness. Values from the Marvelous Designer XML are used when present. Advanced sliders allow fine-tuning.
@@ -477,13 +480,121 @@ States are saved with the scene and can be combined.
 
 ---
 
-## 14. Rendering and reference tools
+## 14. Objects, restraints, toys, and latex
+
+Objects need to interact with bodies as physically as bodies interact with each other. Everything here builds on the same physics: the ragdoll (Jolt), layered flesh, cloth (XPBD), and figure contact (section 7.5).
+
+### 14.1 Attachment and holding system (shared by everything below)
+- **Attachment points** can be placed anywhere on a body's surface (they follow the skin as it moves and deforms), on props, or in the world.
+- **Connection types:** rigid (welded), hinge/ball joint, distance (chain-like, slack allowed), spring (elastic), and slider.
+- **Hold tool:** put any object in a hand; fingers close around it and stop on contact (section 13.2). Works for props, toys, rope ends, removed body parts, and other figures' limbs.
+- **Place tool:** drop an object onto or against a body and let Settle find a resting position.
+- All objects use real-world units, so sizes relative to the body are accurate. A **ruler/measure tool** shows lengths, diameters, and distances.
+
+### 14.2 Sex toys and similar props
+| Type | Simulation |
+|---|---|
+| **Rigid** (glass, metal, hard plastic) | Rigid body with accurate weight and friction |
+| **Soft** (silicone, TPE, jelly) | Soft body (XPBD volume) with a firmness slider; bends and squashes on contact |
+| **Flexible with a core** | Soft body around a bendable spine |
+| **Strap-on / harness** | Toy attached to a strap garment (cloth with pins) worn on the body |
+| **Motorized** (vibrating, thrusting/machines) | Vibration as high-frequency motion that ripples nearby soft tissue in Live mode; machines have a motor joint with stroke length and speed |
+
+- **Body openings as deformable channels:** the mouth and throat, vagina, and anus are modelled as soft-body channels that follow the real anatomical path (from the anatomy layers). Inserted objects follow the channel; tissue stretches around them within realistic limits, with depth limited by anatomy. An X-ray/cut view shows the object inside the body.
+- **Friction and lubrication:** dry, wet, and lubricated states change friction for insertion and sliding. Lubricant is a fluid preset (section 12.2) that also adds shine.
+- **Import your own:** any imported mesh can be set as rigid or soft and given a material preset; toy presets set sensible defaults.
+
+### 14.3 Ropes and bondage
+**Rope simulation:**
+- Ropes are simulated as rods (XPBD Cosserat rods on the GPU): stretch, bending, twisting, and thickness.
+- **Rope-body contact with friction** (the capstan effect), so wraps grip the body and hold instead of sliding off.
+- **Rope-on-rope contact** so wraps stack and cross correctly.
+- **Flesh compression:** tight rope presses into the flesh layers, with bulging between wraps.
+- **Rope types:** jute, hemp, cotton, nylon, silk, and synthetic, each with stiffness, friction, stretch, thickness, and texture.
+
+**Tying tools** (tying real knots by hand in 3D isn't practical, so the app helps):
+- **Wrap tool:** click body parts in order (e.g. wrist, wrist, around both) and the rope routes itself around them, then tightens under simulation.
+- **Tie templates:** common ties and harnesses as templates that fit any figure via the canonical rig (single and double column ties, chest harnesses, hip harnesses, hogtie, frog tie, and others). Adjustable after placement.
+- **Knots** are pre-modelled knot shapes placed at tie points, so they look right without simulating the tying.
+- **Anchors:** attach rope ends to hard points (rings, hooks, beams, bed frames, other figures).
+- **Tension control:** tighten or loosen each segment; see the tension as a color overlay.
+
+**Suspension and load:**
+- Ropes and straps can carry the body's weight. The ragdoll hangs from the ropes, and the load is shared realistically between them, with heavier compression where the load is higher.
+- A **load overlay** shows tension in each rope and pressure on the body (useful for realism, and for spotting a setup that couldn't really hold a person's weight).
+
+**Other restraints:**
+- **Cuffs, collars, belts, straps, harnesses:** rigid or semi-rigid parts with buckles, connected by strap cloth or chains.
+- **Chains:** linked rigid bodies.
+- **Gags, blindfolds, hoods:** fitted garments or rigid parts on the head, with the mouth state (section 13.1) adjusted to match.
+- **Tape and wraps:** cloth strips that stick to skin and to themselves.
+- **Restraint furniture:** imported props with anchor points (beds, frames, crosses, benches, stocks).
+
+### 14.4 Latex and tight materials
+- **Latex as a cloth material:** very stretchy but snaps back; high friction on dry skin, very low when lubricated or with dressing aids; thin, so it follows the body closely.
+- **Two-way compression:** tight latex compresses the flesh underneath (corsets, waist cinchers, catsuits, stockings), so the body shape changes realistically.
+- **Shading:** high gloss with clear-coat reflections, adjustable from matte to wet look (polished), and **color thinning where stretched** (latex gets lighter and more translucent under strain), plus fine wrinkles at joints.
+- **Special latex items:** vacuum bed/sheet (latex pulled tight around the body by negative pressure), inflatable items (pressure constraint), hoods and full enclosures.
+- The same system covers other tight materials: PVC, vinyl, spandex, leather, nylon stockings.
+
+### 14.5 Interacting with cuts and removed parts
+- **Removed parts are props:** they can be held, placed, hung, or attached with the systems above, and keep their anatomy layers and bleeding.
+- **Objects in wounds:** an object can be left inside a cut (e.g. a blade), with the wound edges deforming around it and bleeding continuing around it.
+- **Touching wounds:** hands and objects pressing on a wound deform its edges through the layered flesh, and pressure changes bleeding (pressing slows it).
+- **Wound dressings:** bandages and tourniquets as cloth strips and straps that compress and reduce bleeding.
+
+---
+
+## 15. Extra realism for modelling scenarios
+
+Additions that make scenes look and behave like the real thing:
+
+### 15.1 Marks on skin
+- **Pressure marks:** rope marks, strap and waistband lines, clothing seams, latex edges. They appear where pressure was high (from the load overlay) and stay after the object is removed.
+- **Impact marks:** redness from slapping or spanking, handprints, and the bruise color stages from section 13.6.
+- **Other marks:** scratches, bite marks, hickeys, friction redness, wax residue.
+- **Time slider:** marks fade and change color over a chosen time (minutes to days), so "just untied" and "the next day" look different.
+
+### 15.2 Fluids with state changes
+- **Candle wax:** a fluid that cools and solidifies on skin, keeping its drip shape, and can be peeled off.
+- **Lubricant and oil:** glossy, slippery, and changing friction everywhere it spreads.
+- **Water environments:** shower, bath, and pool (particle and surface fluids), making skin and hair wet, darkening clothes, and making cloth cling and turn translucent.
+- **Mud, paint, and other messy substances** via the custom fluid editor.
+
+### 15.3 Clothing states
+- **Partially removed or displaced:** pulled down, pushed aside, lifted up, unbuttoned or unzipped, one strap off. Done by moving pins and letting the cloth re-drape.
+- **Tearing:** cloth tears when stretched past its limit or cut (section 11), with frayed edges.
+- **Wet clothing:** clinging and see-through depending on the fabric.
+
+### 15.4 Hair interaction
+- Hair can be grabbed, held, pulled, and tied (ponytails, braids), using the hold tool and hair physics; the head and neck respond in Live mode.
+- Wet hair clumps and sticks to skin.
+
+### 15.5 Soft surfaces
+- Mattresses, cushions, pillows, and padded furniture as soft bodies (moved up from the old polish phase), so bodies sink in realistically and two figures on a bed affect each other.
+
+### 15.6 Cameras and viewing
+- **POV camera:** attached to a figure's eyes, following its head.
+- **Mirrors and reflective surfaces** in scenes.
+- **Cutaway/X-ray view** of internal interactions (inserted objects, compressed tissue), using the anatomy layers.
+
+### 15.7 Strain and plausibility checks
+- Warnings when a pose or setup goes past joint limits, when a rope or anchor would carry more than a realistic load, or when tissue is stretched past realistic limits. Can be turned off.
+- Balance check (center of gravity) for standing and kneeling poses.
+
+### 15.8 Scenario snapshots (lightweight progression)
+- Save several **snapshots** of one scene (e.g. before, during, after) that share figures and props but differ in pose, ties, clothing state, marks, and fluids. Step through them or capture all at once.
+- This is a lightweight alternative to a full animation timeline, which stays a later option.
+
+---
+
+## 16. Rendering and reference tools
 
 - **Skin:** physically based skin with a subsurface-scattering approximation, detail normals, and translucency for ears and fingers. Daz/VaM texture channels are mapped automatically (diffuse, translucency, specular/roughness, normal, bump).
 - **Eyes, hair, and cloth materials:** dedicated shaders (eye refraction, hair anisotropy, cloth sheen).
 - **Lighting:** presets (Rembrandt, loop, split, butterfly, rim, overcast, harsh sun, studio three-point), movable lights with gizmos, and HDRI environments from user files or a few bundled CC0 ones. Shadows on.
 - **Cameras:** lens presets (24/35/50/85/135 mm), orthographic front/side/top, camera bookmarks, rule-of-thirds and golden-ratio overlays.
-- **Study modes:** clay (no textures), silhouette, 2- and 3-value notan, contour lines, and planes/low-poly simplification (Phase 4).
+- **Study modes:** clay (no textures), silhouette, 2- and 3-value notan, contour lines, and planes/low-poly simplification (Phase 9).
 - **Anatomy overlays:** proportion grid in head units, center of gravity with support area (is the pose balanced?). Full anatomy views come from the layer system (section 9).
 - **Capture:**
   - PNG at any resolution, with a transparent background option.
@@ -492,7 +603,7 @@ States are saved with the scene and can be combined.
 
 ---
 
-## 15. Data model and storage
+## 17. Data model and storage
 
 ```
 Project
@@ -509,13 +620,17 @@ Project
  │       │               garments[] { assetId, fabric, pins, layer } , hair[] }
  │       ├─ props[]    { assetId, transform, physicsType, material }
  │       ├─ fluids     { emitters[], frozenMeshes, wetnessMaps, stains }
+ │       ├─ attachments[] { from (body point | prop | world), to, type, params }
+ │       ├─ ropes[]    { material, path, wraps[], knots[], anchors[], tension }
+ │       ├─ marks[]    { figureId, kind, uv region, intensity, age }
+ │       ├─ snapshots[] (variants of this scene for before/during/after)
  │       ├─ lights[]   { type, transform, color, intensity, shadow }
  │       ├─ cameras[]  { lens | ortho, transform, bookmarkName }
  │       └─ environment { hdriAssetId, floor, background }
  └─ poses[] (saved canonical poses)
 
 Asset (in Library)
- { id, kind: figure|garment|hair|morphs|prop|pose|hdri|texture,
+ { id, kind: figure|garment|hair|morphs|prop|toy|restraint|tieTemplate|pose|hdri|texture,
    baseFigure, name, creator, license, sourcePath, importedAt,
    files: { meshLODs, textures, morphs, rigMap, colliders, simProxy,
             watertightSkin, anatomyFit, facsMap },
@@ -528,7 +643,7 @@ Asset (in Library)
 
 ---
 
-## 16. Tech stack
+## 18. Tech stack
 
 | Layer | Choice |
 |---|---|
@@ -538,13 +653,13 @@ Asset (in Library)
 | Physics | JoltPhysics.js (WASM) in a Web Worker |
 | Cloth and soft tissue | Custom XPBD on WebGPU compute, plus a CPU worker fallback |
 | Cutting | Manifold (`manifold-3d`, WASM) booleans in a worker |
+| Ropes | Custom XPBD rod (Cosserat) solver on WebGPU compute |
 | Fluids | Custom MLS-MPM on WebGPU compute, texture-space surface flow, screen-space fluid rendering |
 | Anatomy data | Z-Anatomy / BodyParts3D (CC BY-SA), fitted per figure; Visible Human as texture reference |
 | Asset processing | meshoptimizer (decimation and compression), KTX2/Basis encoder, fflate (zip/gzip), V-HACD (convex decomposition), all WASM in workers |
 | Storage | OPFS + IndexedDB; File System Access API for library folders |
 | Testing | Vitest (unit), Playwright (end-to-end and screenshot comparison), physics regression scenes |
 | Hosting | Static site on an adult-content-friendly host, with the security headers that enable shared memory. No backend except an age-verification provider where required. |
-| Optional later | Tauri desktop wrapper for very large libraries |
 
 ### Code layout
 ```
@@ -564,6 +679,9 @@ poser/
   packages/fluids/       MPM solver, surface flow, emitters, wetness, stains
   packages/face/         FACS action units, rig mapping, wrinkles, presets
   packages/states/       body states, muscle tension, genital states, decals
+  packages/interaction/  attachments, hold/place, toys, body-opening channels, latex
+  packages/rope/         rope solver, wrap tool, tie templates, knots, load overlay
+  packages/marks/        skin marks, aging over time
   assets/builtin/        CC0 starter figures (MakeHuman/MPFB), props, HDRIs
   assets/anatomy/        fitted-ready anatomy templates (CC BY-SA, with attribution)
   docs/                  import guides, architecture notes
@@ -571,7 +689,7 @@ poser/
 
 ---
 
-## 17. Quality targets
+## 19. Quality targets
 
 | Area | Target |
 |---|---|
@@ -581,6 +699,7 @@ poser/
 | Import | A Genesis 8 FBX with textures imported in under 30 seconds (plus under 60 seconds for anatomy fitting) |
 | Cuts | Knife or saw cut applied in under 1 second, with an instant preview |
 | Fluids | About 100k particles at 30+ fps on WebGPU; surface flow always real time |
+| Ropes | A full harness plus suspension (about 20 rope segments) settles in under 5 seconds |
 | Memory | Warn before going past roughly 2 GB of GPU memory |
 | Browsers | Latest Chrome/Edge (full), Safari and Firefox (full where WebGPU is on; otherwise reduced) |
 
@@ -590,13 +709,14 @@ poser/
 - A **female body-diversity set** (slim, curvy, heavy, muscular, large and small breasts, young adult to elderly, pregnant) for anatomy fitting and breast physics checks.
 - Visual accuracy checks of the female template against the Visible Human scans and photo references.
 - Contact tests: two figures pressing, hand grip on flesh, and genital contact, checked for intersections and stability.
+- Object tests: rope harness and suspension, latex catsuit, soft toy insertion, wax drip, checked for slipping, intersections, and stability.
 - Screenshot tests for rendering and study modes.
 - Physics regression scenes (sitting in a chair, lying on the floor, a skirt in a seated pose) checked for penetration and stability.
 - Anatomy fitting checks on very different body types (no bones poking through skin, sensible fat thickness), and cut tests comparing cross-sections with reference atlas slices.
 
 ---
 
-## 18. Content policy, safety, and legal
+## 20. Content policy, safety, and legal
 
 - **18+ only.** Because the app leans NSFW, a click-through age gate may not be enough. Over two dozen US states (following the Supreme Court's 2025 *Free Speech Coalition v. Paxton* ruling) and the UK Online Safety Act require real age verification for sites where a substantial share of content is sexual. Whether a tool that hosts no content counts depends on what the site itself shows (marketing images, bundled nude figures). Plan for a third-party age-verification provider at sign-up or download, enabled per jurisdiction, and get legal advice.
 - Everything stays local: no uploads, accounts, or sharing in v1.
@@ -607,12 +727,13 @@ poser/
 - **No bundled third-party content.** Built-ins are original or CC0.
 - Licenses recorded from `.var` metadata are shown in the Library.
 - **Payments:** mainstream processors such as Stripe don't accept adult content businesses. Use an adult-content processor (CCBill, Segpay, Epoch, or similar) if the app is sold.
-- **Hosting and distribution:** pick hosting whose terms allow adult content, and expect mainstream app stores to reject it; distribute via the website and the optional desktop app.
+- **Showcased content:** card networks and adult payment processors restrict content that combines sexual material with violence, gore, or non-consent themes. Since users create scenes locally, this mainly affects the app's own marketing images, demos, and any future gallery. Keep those free of such combinations, and check the chosen processor's rules.
+- **Hosting and distribution:** pick hosting whose terms allow adult content, and expect mainstream app stores to reject it; distribute via the website only.
 - Legal review before launch, especially the Daz Interactive License question and the terms of use.
 
 ---
 
-## 19. Roadmap
+## 21. Roadmap
 
 Each phase ends with something usable. Week estimates assume one full-time developer.
 
@@ -642,6 +763,8 @@ Each phase ends with something usable. Week estimates assume one full-time devel
 - [ ] Two-way clothing ↔ flesh interaction (bra support, waistband and strap indentation)
 - [ ] Spring-bone fallback for other soft tissue; contact compression
 - [ ] Figure-to-figure contact: two-way soft-body contact, skin friction, hands gripping flesh, two-figure pose helpers
+- [ ] Attachment and holding system (attachment points on skin, joints, hold and place tools), measure tool
+- [ ] Rigid toys and props, cuffs and chains, soft surfaces (mattresses, cushions)
 - [ ] XPBD cloth on WebGPU with CPU fallback: body collision field, friction, pins, fabric presets, drape from rest, simulation proxy
 - [ ] Marvelous Designer OBJ + XML import
 - [ ] Balance overlay (center of gravity)
@@ -676,46 +799,62 @@ Each phase ends with something usable. Week estimates assume one full-time devel
 - [ ] Credits screen for anatomy data
 - **Done when:** every figure in the female body-diversity set, plus male figures, shows plausible fitted anatomy that moves with posing, with no bones through the skin.
 
-### Phase 6: Cutting (about 8 weeks)
+### Phase 6: Restraints, toys, and latex (about 10 weeks)
+- [ ] Rope simulation (XPBD rods on GPU) with body friction, rope-on-rope contact, and flesh compression
+- [ ] Wrap tool, tie templates fitted via the canonical rig, knot shapes, anchors, tension control
+- [ ] Suspension and load sharing; load and pressure overlay; strain warnings
+- [ ] Straps, collars, harnesses, gags, blindfolds, tape; restraint furniture anchor points
+- [ ] Soft and flexible toys, strap-ons, motorized toys and machines (vibration, stroke motors)
+- [ ] Body-opening channels (mouth/throat, vagina, anus) following the anatomy, with stretch limits and lubrication-dependent friction; X-ray view of insertion
+- [ ] Latex and tight materials: high-stretch cloth, two-way compression, gloss and stretch-thinning shading, vacuum and inflatable items
+- [ ] Skin marks (pressure, impact, scratches) with time slider; clothing states (displaced, unbuttoned, torn)
+- [ ] Hair grabbing, pulling, and tying
+- [ ] Scenario snapshots
+- **Done when:** a female figure in a rope chest harness and suspension hangs realistically with rope pressing into flesh and leaving marks after removal; a latex catsuit compresses and shines correctly; a soft toy deforms and follows the anatomical channel in X-ray view.
+
+### Phase 7: Cutting (about 8 weeks)
 - [ ] Watertight skin generation at import; Manifold booleans in a worker
 - [ ] Section plane (shader-based), knife, scalpel/flap, saw/remove, puncture tools
 - [ ] Cuts in rest pose so they survive re-posing; editable cut stack
 - [ ] Tissue cap materials (skin, fat, muscle fibers, tendon, bone cortex/marrow, organs, vessels)
 - [ ] Wound edge retraction via layered flesh; removed parts become physics objects; ragdoll updates
 - [ ] Optional cutting through clothing
+- [ ] Removed parts as holdable props; objects left in wounds; pressing on wounds; dressings and tourniquets
 - [ ] Graphic-content setting
 - **Done when:** a cut through the thigh shows skin, fat, the correct muscles, femur cortex and marrow, and the femoral vessels in the right places, and stays correct after re-posing.
 
-### Phase 7: Fluids (about 8 weeks)
+### Phase 8: Fluids (about 8 weeks)
 - [ ] Surface flow on skin and cloth (texture-space wetness and film thickness, gravity-driven, dripping)
 - [ ] MLS-MPM particle fluids on WebGPU with surface rendering
 - [ ] Fluid presets (blood, tears, sweat, saliva, urine, water, oil) and custom fluid editor
 - [ ] Emitters: wounds (ooze, venous flow, arterial pulsing from vessels hit), tear ducts, mouth, nose, urethra, sweat regions, custom
 - [ ] Cloth absorption (darker, heavier, clingier), wet skin shading, pooling, stains, drying and blood darkening
 - [ ] Freeze fluids into meshes and stains for capture
+- [ ] Lubricant and oil (friction and shine), candle wax that solidifies, water environments (shower, bath, pool), wet see-through clothing
 - **Done when:** a forearm cut bleeds realistically down the arm, soaks a sleeve, and pools on the floor; a crying figure has tears running down the cheeks.
 
-### Phase 8: Polish and extra reference tools (ongoing)
-- [ ] Soft props (mattress, cushions), better skin shading, hair strand/card physics
+### Phase 9: Polish and extra reference tools (ongoing)
+- [ ] Better skin shading, hair strand/card physics, mirrors, POV camera refinements
 - [ ] Planes study mode, turnaround sheets, gesture-drawing mode
 
-### Phase 9 (optional)
-- [ ] Desktop app (Tauri) for very large libraries
+### Phase 10 (optional)
 - [ ] WebXR: pose figures in VR
 - [ ] Simple timeline for pose-to-pose motion studies
 
-**Total:** roughly 60+ weeks of work for one full-time developer through Phase 7. Phases 4–7 can partly run in parallel with more people, since the face/states, anatomy, and fluids work are mostly independent; cutting depends on anatomy.
+**Total:** roughly 70–75 weeks of work for one full-time developer through Phase 8. Phases 4–8 can partly run in parallel with more people: face/states and fluids are mostly independent, while restraints/toys and cutting depend on the anatomy layers.
 
 ### Prototype the hardest parts first
-Before Phase 1 is finished, build two throwaway prototypes to prove the risky tech:
+Before Phase 1 is finished, build throwaway prototypes to prove the risky tech:
 1. **Ragdoll Settle:** a Jolt ragdoll holding a pose with motors and sitting on a box.
 2. **GPU cloth:** a XPBD skirt on WebGPU colliding with an animated capsule body at 30+ fps.
 3. **Anatomy fit and cut:** fit Z-Anatomy into one imported figure and cut through a limb with Manifold, to measure fit quality and cut speed early.
 4. **Fluids:** MLS-MPM blood colliding with a skinned body, plus a basic surface-flow trickle.
+5. **Rope:** a GPU rope wrapped around a limb, holding by friction and pressing into a soft-body flesh layer.
+6. **Insertion channel:** a soft toy following a soft-body channel with stretch limits, to prove stability early.
 
 ---
 
-## 20. Risks
+## 22. Risks
 
 | Risk | Mitigation |
 |---|---|
@@ -724,24 +863,28 @@ Before Phase 1 is finished, build two throwaway prototypes to prove the risky te
 | Cloth instability (explosions, poke-through) | Small substeps, thick collision fields, drape from rest, velocity clamping, "reset cloth" button |
 | Daz bend/twist rigs deform poorly | Dedicated twist splitting; corrective morphs in Phase 3 |
 | WebGPU missing or buggy on a device | WebGL2 render fallback and CPU cloth at lower resolution |
-| Browser file-access differences (Safari/Firefox lack persistent folder access) | Manual re-scan; drag-and-drop always works; Tauri desktop option later |
+| Browser file-access differences (Safari/Firefox lack persistent folder access) | Manual re-scan; drag-and-drop always works; recommend Chrome/Edge for large libraries |
+| Browser storage limits for big libraries | Request persistent storage, show usage, read library folders in place instead of copying, cache only processed versions |
 | Anatomy fit looks wrong on unusual body types | Landmark-guided fitting, per-region manual sliders, test set of very different bodies |
+| Rope and knot simulation is unstable or slips | Friction-based holding, pre-modelled knots, tie templates, substeps, "pin rope" fallback |
+| Insertion and soft-body channels explode or intersect | Guide-curve channels, stretch limits, small substeps, early prototype |
+| Many simultaneous systems (two figures, ropes, latex, fluids) overload the GPU | Quality levels, freezing finished systems after Settle, budget meter |
 | No open, complete female anatomy model exists | Dedicated workstream from day one: Visible Human Female segmentation plus a 3D character artist. Morph-based female features ship first so the app is useful meanwhile. |
 | The female template comes from one 59-year-old body | Parametric variation controls and a body-diversity test set |
 | Anatomy data is share-alike licensed | Keep anatomy data separate and attributed so share-alike only covers it. A female template built from Visible Human data can be fully ours. |
 | Booleans fail on bad meshes, or cuts are slow | Generate watertight cutting meshes at import, run cuts in a worker with a preview, simplify far-from-cut regions |
 | Memory and GPU load with full anatomy, flesh sim, cloth, and fluids together | Load layers on demand, LODs, quality levels, and a budget that limits simultaneous systems on weaker GPUs |
 | No openly licensed FACS face template | Budget for building or commissioning one |
-| Hosting providers, payment processors, or app stores reject NSFW content | Adult-friendly host, adult payment processor, direct distribution (website and desktop app) |
+| Hosting providers, payment processors, or app stores reject NSFW content | Adult-friendly host, adult payment processor, direct distribution via the website |
 | Age-verification laws apply to the site | Age-verification provider per jurisdiction; legal advice before launch |
 | Legal and hosting issues around NSFW and licensed content | Local-only, nothing bundled, age gate, clear terms, legal review |
 
 ---
 
-## 21. Open decisions for the owner
+## 23. Open decisions for the owner
 1. **App name and branding.** "Poser" is already the name of a commercial product, so a different public name is probably needed.
 2. **Target hardware:** desktop only, or tablets (touch posing) too?
-3. **Business model:** free, one-time purchase, or subscription? This affects the desktop wrapper and licensing work.
+3. **Business model:** free, one-time purchase, or subscription? This affects licensing, payments, and age verification.
 4. **Built-in content:** are CC0 MakeHuman/MPFB starter figures enough, or should we commission original realistic figures?
 5. **Priority order** after the core (Phases 0–2): native Daz/VaM import, face and states, anatomy layers, cutting, or fluids? The plan's order is one option.
 6. **Female anatomy template budget:** hire or contract a 3D character artist (about 2–4 months)? This is the most important external cost.
