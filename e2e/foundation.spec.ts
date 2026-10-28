@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Locator, type Page } from '@playwright/test';
 
 /** Headless Chromium doesn't report itself as Chrome; click through that gate if it shows. */
 async function passBrowserGate(page: Page) {
@@ -11,11 +11,23 @@ async function passBrowserGate(page: Page) {
   if (await cont.isVisible()) await cont.click();
 }
 
+/**
+ * Clicks work even on covered elements (Radix disables pointer events behind
+ * modal dialogs), so check what is actually painted: a screenshot of a
+ * covered element is one flat colour and compresses to almost nothing.
+ */
+async function expectPainted(locator: Locator) {
+  const png = await locator.screenshot();
+  expect(png.length, 'element looks blank or covered').toBeGreaterThan(4000);
+}
+
 /** Get through the startup gates of a fresh profile. */
 async function start(page: Page) {
   await page.goto('/');
   await passBrowserGate(page);
+  await expectPainted(page.getByRole('dialog', { name: 'Adults only' }));
   await page.getByRole('button', { name: 'I am 18 or older' }).click();
+  await expectPainted(page.getByRole('dialog', { name: 'Set an app lock?' }));
   await page.getByRole('button', { name: 'Skip for now' }).click();
   await expect(page.getByLabel('3D viewport')).toBeVisible();
 }
@@ -90,6 +102,7 @@ test('Safe Mode after a crash mid-load', async ({ page }) => {
   await page.reload();
   await passBrowserGate(page);
   await expect(page.getByRole('heading', { name: 'Safe Mode' })).toBeVisible();
+  await expectPainted(page.getByRole('dialog', { name: 'Safe Mode' }));
   await page.getByRole('button', { name: 'Open at low quality' }).click();
   await expect(page.getByText('Safe Mode: lowest quality after a crash.')).toBeVisible();
 });
@@ -106,6 +119,7 @@ test('app lock', async ({ page }) => {
   await page.reload();
   await passBrowserGate(page);
   await expect(page.getByRole('heading', { name: 'Locked' })).toBeVisible();
+  await expectPainted(page.locator('form.gate__card'));
   await page.getByLabel('PIN or passphrase').fill('0000');
   await page.getByRole('button', { name: 'Unlock' }).click();
   await expect(page.getByText('Wrong PIN or passphrase')).toBeVisible();

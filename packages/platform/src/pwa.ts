@@ -1,4 +1,4 @@
-/** PWA install and service-worker registration (PLAN.md section 3.5). */
+/** PWA install (PLAN.md section 3.5). */
 
 interface BeforeInstallPromptEvent extends Event {
   prompt(): Promise<void>;
@@ -45,11 +45,21 @@ export function isInstalled(): boolean {
   );
 }
 
-export async function registerServiceWorker(url = '/sw.js'): Promise<ServiceWorkerRegistration | null> {
-  if (!('serviceWorker' in navigator)) return null;
+/**
+ * The app isn't cached for offline use (owner's decision), so no service
+ * worker is registered. Devices that installed the earlier caching worker
+ * get it removed here, along with its caches.
+ */
+export async function removeServiceWorkers(): Promise<void> {
+  if (!('serviceWorker' in navigator)) return;
   try {
-    return await navigator.serviceWorker.register(url, { scope: '/' });
+    const registrations = await navigator.serviceWorker.getRegistrations();
+    await Promise.all(registrations.map((r) => r.unregister()));
+    if ('caches' in self) {
+      const keys = await caches.keys();
+      await Promise.all(keys.filter((k) => k.startsWith('poser-')).map((k) => caches.delete(k)));
+    }
   } catch {
-    return null;
+    // Best effort; nothing depends on it.
   }
 }

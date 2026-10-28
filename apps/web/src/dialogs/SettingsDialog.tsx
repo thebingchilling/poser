@@ -256,7 +256,7 @@ function InstallTab() {
   if (isInstalled()) return <p>Poser is installed on this device.</p>;
   return (
     <>
-      <p>Installing Poser gives it its own window, works offline, and stops the browser from clearing its storage.</p>
+      <p>Installing Poser gives it its own window and icon, and stops the browser from clearing its storage. It still needs an internet connection to open.</p>
       {canPromptInstall() ? (
         <Button icon="install_desktop" onClick={() => void promptInstall()}>Install Poser</Button>
       ) : browser.isIOS ? (

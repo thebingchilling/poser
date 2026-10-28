@@ -12,7 +12,7 @@ Claude's build environment has no real GPU, so WebGPU, performance, and feel are
 | Add/remove figures, undo/redo, reload keeps the scene | | | | | |
 | Body › anatomy layers and skin opacity look right | | | | | |
 | Screenshot capture saves a PNG | | | | | |
-| Install as an app; opens offline (airplane mode) | | | | | |
+| Install as an app; opens in its own window | | | | | |
 | Backup folder writes `.poser` files (desktop only) | | | | | |
 | Layout fits (phone: nav bar, bottom sheet, buttons not covered) | | | | | |
 

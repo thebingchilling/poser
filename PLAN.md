@@ -71,7 +71,7 @@ The whole interface follows **Material Design 3 (MD3)**: its components, color s
 - Every button, tab, navigation item, menu item, chip, and toolbar action shows an **icon plus a text label**.
 - An icon may appear alone **only when its meaning is universally obvious**: close (×), back arrow, search (magnifier), play/pause, and the overflow menu (⋮). Even then it gets a tooltip and an accessible name.
 - When space is tight (phones, narrow panels), labels get shorter or move below the icon (as in MD3 navigation bars), but they are never removed. Extra actions go into an overflow menu with labelled items rather than becoming bare icons.
-- Icons: **Material Symbols** (Google's official MD3 icon set, Apache 2.0), self-hosted so the app works offline. A few custom icons in the same style cover app-specific tools (IK pin, rope wrap, cut, settle).
+- Icons: **Material Symbols** (Google's official MD3 icon set, Apache 2.0), self-hosted (no requests to Google's servers). A few custom icons in the same style cover app-specific tools (IK pin, rope wrap, cut, settle).
 
 **How MD3 maps onto the app:**
 | MD3 component | Used for |
@@ -859,7 +859,7 @@ Asset (in Library)
 | Anatomy data | In-house procedural female and male anatomy (Blender scripts plus in-app fitting), no medical scan data |
 | Asset processing | meshoptimizer (decimation and compression), KTX2/Basis encoder, fflate (zip/gzip), V-HACD (convex decomposition), all WASM in workers |
 | Storage | OPFS + IndexedDB; File System Access API for library folders (desktop Chrome/Edge) |
-| App shell | PWA: fully offline after the first visit (app code, built-in assets, and WebAssembly modules cached by a service worker); internet only needed for updates |
+| App shell | Installable PWA (manifest and icons) **without offline caching** (owner's decision): no service worker, so every launch loads the latest version from the site and needs an internet connection. User data still stays on the device. |
 | Testing | Vitest (unit), Playwright (end-to-end and screenshot comparison), physics regression scenes |
 | Hosting and access | Static site on **Cloudflare Pages**, deployed from Git. No login gate in front of it (owner's decision: no Cloudflare Access); the address is shared only with invited users. Security headers that enable shared memory. Search engines blocked. No backend. |
 | Photo/webcam posing | MediaPipe pose, hand, and face landmarkers (in-browser) |
@@ -1133,7 +1133,7 @@ These run **in parallel with Phase 0** (the owner's choice), as throwaway tests 
 ---
 
 ## 26. Open decisions for the owner
-Already decided: Chrome required; private use; fully offline PWA; balanced visual quality; free MakeHuman starter figures; 1–2 figures per scene; simple animation; graphic content on by default; no real medical scan data; all import sources (Daz, VaM, generic, VRM) supported; anatomy and FACS face built in-house (procedurally); Claude writes the code; sharing by sending files by hand (no server); metric units (cm/m/kg); building starts with Phase 0 and the risky prototypes in parallel; all feature areas (toys/ropes/latex, face/states, anatomy/cutting, fluids) are in scope, in the roadmap order below.
+Already decided: Chrome required; private use; installable PWA without offline caching; balanced visual quality; free MakeHuman starter figures; 1–2 figures per scene; simple animation; graphic content on by default; no real medical scan data; all import sources (Daz, VaM, generic, VRM) supported; anatomy and FACS face built in-house (procedurally); Claude writes the code; sharing by sending files by hand (no server); metric units (cm/m/kg); building starts with Phase 0 and the risky prototypes in parallel; all feature areas (toys/ropes/latex, face/states, anatomy/cutting, fluids) are in scope, in the roadmap order below.
 
 No open decisions remain. New questions will be added here as they come up during building.
 

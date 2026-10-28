@@ -88,7 +88,8 @@
 .error-log { max-height: 240px; overflow: auto; padding: 8px; border-radius: var(--md-sys-shape-corner-small); background: var(--md-sys-color-surface-container-highest); font: 12px/1.4 ui-monospace, monospace; white-space: pre-wrap; }
 
 /* ---------- Startup gates ---------- */
-.gate { position: fixed; inset: 0; z-index: 100; display: grid; place-items: center; padding: 16px; background: var(--md-sys-color-surface); }
+/* z-index sits below dialogs (40–41) so dialogs opened on a gate stay visible, but above the app. */
+.gate { position: fixed; inset: 0; z-index: 30; display: grid; place-items: center; padding: 16px; background: var(--md-sys-color-surface); }
 .gate__card { width: min(440px, 100%); padding: 24px; border-radius: var(--md-sys-shape-corner-extra-large); background: var(--md-sys-color-surface-container-high); }
 .gate__title { margin: 0 0 16px; font: var(--md-sys-typescale-headline-small); }
 .gate__card p { color: var(--md-sys-color-on-surface-variant); }

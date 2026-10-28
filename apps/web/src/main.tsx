@@ -1,6 +1,6 @@
 import '@poser/ui/styles.css';
 import './app.css';
-import { initInstallPrompt, installGlobalErrorLogging, registerServiceWorker, setNeutralTab } from '@poser/platform';
+import { initInstallPrompt, installGlobalErrorLogging, removeServiceWorkers, setNeutralTab } from '@poser/platform';
 import { applyTheme } from '@poser/ui';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
@@ -19,9 +19,8 @@ if (settings.neutralTab) setNeutralTab(true);
 
 const crash = crashGuard.check();
 
-if (import.meta.env.PROD) {
-  void registerServiceWorker('/sw.js');
-}
+// No offline caching; clear out the caching worker earlier versions installed.
+void removeServiceWorkers();
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

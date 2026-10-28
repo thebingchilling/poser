@@ -23,7 +23,7 @@ Open the `*.pages.dev` address in Chrome, then open **Settings › Diagnostics**
 
 ## 3. Install on each device
 
-Open the site in Chrome, then install it (Settings › Install in the app, or Chrome's menu). On iPhone and iPad, use Share › Add to Home Screen. After the first visit the app works offline, and new versions install in the background.
+Open the site in Chrome, then install it (Settings › Install in the app, or Chrome's menu). On iPhone and iPad, use Share › Add to Home Screen. The app isn't cached for offline use, so it needs an internet connection to open and always loads the latest deployed version. Your projects are still stored on the device.
 
 ## If the page is blank or stuck on "Loading Poser…"
 
