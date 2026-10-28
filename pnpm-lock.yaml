@@ -56,6 +56,9 @@ importers:
       '@poser/cutting':
         specifier: workspace:*
         version: link:../../packages/cutting
+      '@poser/fluids':
+        specifier: workspace:*
+        version: link:../../packages/fluids
       '@poser/physics':
         specifier: workspace:*
         version: link:../../packages/physics
@@ -123,6 +126,12 @@ importers:
       manifold-3d:
         specifier: ^3.3.2
         version: 3.5.4(@gltf-transform/core@4.5.1)(@gltf-transform/extensions@4.5.1)(@gltf-transform/functions@4.5.1(@types/node@22.20.5))(esbuild-wasm@0.27.7)
+    devDependencies:
+      '@poser/xpbd':
+        specifier: workspace:*
+        version: link:../xpbd
+
+  packages/fluids:
     devDependencies:
       '@poser/xpbd':
         specifier: workspace:*

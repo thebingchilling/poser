@@ -12,6 +12,7 @@
     "@poser/cloth": "workspace:*",
     "@poser/core": "workspace:*",
     "@poser/cutting": "workspace:*",
+    "@poser/fluids": "workspace:*",
     "@poser/physics": "workspace:*",
     "@poser/platform": "workspace:*",
     "@poser/render": "workspace:*",

@@ -27,6 +27,7 @@ export default defineConfig({
         ragdoll: fileURLToPath(new URL('prototypes/ragdoll.html', import.meta.url)),
         cloth: fileURLToPath(new URL('prototypes/cloth.html', import.meta.url)),
         cut: fileURLToPath(new URL('prototypes/cut.html', import.meta.url)),
+        fluids: fileURLToPath(new URL('prototypes/fluids.html', import.meta.url)),
       },
     },
   },
