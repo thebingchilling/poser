@@ -102,18 +102,24 @@ function Main({ crash }: { crash: CrashCheck }) {
   const [browserOverride, setBrowserOverride] = useState(false);
   const [lock, setLock] = useState<LockRecord | null | undefined>(undefined);
   const [offerLock, setOfferLock] = useState(false);
+  const [storageError, setStorageError] = useState<string | null>(null);
   const browser = currentBrowser();
   useAppearance();
   useAutoLock(lock ?? null);
   usePersistence(stage === 'ready');
 
   useEffect(() => {
-    kvGet<LockRecord>(LOCK_KEY).then(
+    // If browser storage never answers, say so instead of waiting on a blank page.
+    const timeout = new Promise<never>((_, reject) => setTimeout(() => reject(new Error('Browser storage did not respond')), 8000));
+    Promise.race([kvGet<LockRecord>(LOCK_KEY), timeout]).then(
       (r) => {
         setLock(r ?? null);
         if (r) useUi.getState().set({ locked: true });
       },
-      () => setLock(null),
+      (err: unknown) => {
+        logError(err, 'startup storage');
+        setStorageError(err instanceof Error ? err.message : String(err));
+      },
     );
     detectGpu().then((gpu) => useUi.getState().set({ gpu }));
   }, []);
@@ -164,7 +170,22 @@ function Main({ crash }: { crash: CrashCheck }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stage]);
 
-  if (stage === 'browser') return lock === undefined ? null : <UnsupportedBrowser browser={browser} onContinue={() => setBrowserOverride(true)} />;
+  if (storageError) {
+    return (
+      <main className="gate">
+        <div className="gate__card">
+          <h1 className="gate__title">Can't open browser storage</h1>
+          <p>{storageError}. Poser keeps everything in this browser's storage. Close other Poser tabs, make sure you're not in a mode that blocks site data, then reload.</p>
+          <div className="gate__actions">
+            <button type="button" className="md-button md-button--filled md-state" onClick={() => location.reload()}>
+              <span className="md-button__label">Reload</span>
+            </button>
+          </div>
+        </div>
+      </main>
+    );
+  }
+  if (stage === 'browser') return lock === undefined ? <div className="splash" aria-busy="true">Loading…</div> : <UnsupportedBrowser browser={browser} onContinue={() => setBrowserOverride(true)} />;
   if (stage === 'adults') return <AdultsNotice onConfirm={() => settings.set({ adultsConfirmed: true })} />;
   const lockScreen = locked && lock ? <LockScreen record={lock} onUnlock={() => useUi.getState().set({ locked: false })} /> : null;
   if (lockScreen && stage !== 'ready') return lockScreen;

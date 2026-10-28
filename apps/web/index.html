@@ -10,10 +10,11 @@
     <link rel="icon" href="/icons/icon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="/icons/icon-192.png" />
     <link rel="manifest" href="/manifest.webmanifest" />
+    <script src="/boot-check.js"></script>
   </head>
   <body style="background: #1d1b1e">
     <!-- Replaced when the app starts. If this text stays, the app's code didn't load (see docs/hosting.md). -->
-    <div id="root"><p style="font: 16px system-ui, sans-serif; color: #ccc; text-align: center; margin-top: 40vh">Loading Poser…</p></div>
+    <div id="root"><p data-boot-loading style="font: 16px system-ui, sans-serif; color: #ccc; text-align: center; margin-top: 40vh">Loading Poser…</p></div>
     <noscript>Poser needs JavaScript.</noscript>
     <script type="module" src="/src/main.tsx"></script>
   </body>

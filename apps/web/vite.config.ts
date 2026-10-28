@@ -22,7 +22,7 @@ function serviceWorker(): Plugin {
     apply: 'build',
     generateBundle(_options, bundle) {
       const files = Object.keys(bundle).filter((f) => !f.endsWith('.map'));
-      const publicFiles = ['manifest.webmanifest', 'icons/icon.svg', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/maskable-512.png'];
+      const publicFiles = ['boot-check.js', 'manifest.webmanifest', 'icons/icon.svg', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/maskable-512.png'];
       const precache = ['./', ...files, ...publicFiles].sort();
       const version = createHash('sha256').update(precache.join('\n')).digest('hex').slice(0, 12);
       this.emitFile({ type: 'asset', fileName: 'sw.js', source: swSource(version, precache) });

@@ -5,6 +5,7 @@ import { applyTheme } from '@poser/ui';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { App } from './App';
+import { ErrorBoundary } from './ErrorBoundary';
 import { crashGuard } from './platformServices';
 import { useSettings } from './state/settings';
 
@@ -24,6 +25,8 @@ if (import.meta.env.PROD) {
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <App crash={crash} />
+    <ErrorBoundary>
+      <App crash={crash} />
+    </ErrorBoundary>
   </StrictMode>,
 );
