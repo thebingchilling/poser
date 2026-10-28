@@ -14,7 +14,7 @@
     "skipLibCheck": true,
     "resolveJsonModule": true,
     "noEmit": true,
-    "types": ["vite/client", "@webgpu/types"]
+    "types": ["vite/client", "@webgpu/types", "node"]
   },
-  "include": ["apps/*/src", "packages/*/src", "vitest.config.ts"]
+  "include": ["apps/*/src", "packages/*/src", "vitest.config.ts", "e2e", "playwright.config.ts"]
 }

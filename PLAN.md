@@ -4,7 +4,7 @@ A web app that is a **realistic, physics-based NSFW figure modeller and anatomy 
 
 > **Website only, private use:** a browser app for personal use and a few invited users. Not published publicly and not paid. Requires **Chrome**. Runs on Windows, macOS, Android, and iPhone/iPad through one installable website (PWA): full quality on PCs and laptops, reduced by default on mobile, with GPU auto-detection and crash fallbacks (section 3.5).
 >
-> **Status:** planning only. Nothing gets built until the go-ahead.
+> **Status:** building. Phase 0 (Foundation) is in place and waiting for device testing (docs/device-testing.md); the risky prototypes and Phase 1 are next.
 >
 > **Primary focus: female figures.** Female anatomy is built first and to the highest standard; male anatomy is fully supported but comes second (section 10).
 
@@ -940,18 +940,18 @@ Because the app is private (personal use plus a few invited users, not public, n
 Each phase ends with something usable. Week estimates assume one full-time developer.
 
 ### Phase 0: Foundation (about 2 weeks)
-- [ ] Monorepo, Vite, React shell
-- [ ] MD3 design system: tokens, dark/light themes from a seed color, core components (app bar, navigation rail/bar, sheets, segmented buttons, FAB, sliders, chips, cards, tabs, menus, dialogs, snackbars, tooltips), Material Symbols icons with labels, layouts for compact/medium/expanded windows
-- [ ] three.js WebGPU viewport, orbit camera, view cube, grid, floor
-- [ ] Scene store, undo/redo, autosave to IndexedDB/OPFS
-- [ ] Private access via Cloudflare Access, adults-only notice
-- [ ] App lock, neutral tab option; automatic backup folder
-- [ ] Chrome check, PWA install, responsive touch-first layouts (desktop, tablet, phone)
-- [ ] Quality levels, GPU auto-detection and benchmark, adaptive quality, memory manager
-- [ ] Crash handling: GPU device-lost recovery, Safe Mode after a crash, WebGL2 compatibility mode
+- [x] Monorepo, Vite, React shell
+- [x] MD3 design system: tokens, dark/light themes from a seed color, core components (app bar, navigation rail/bar, sheets, segmented buttons, FAB, sliders, chips, cards, tabs, menus, dialogs, snackbars, tooltips), Material Symbols icons with labels, layouts for compact/medium/expanded windows
+- [x] three.js WebGPU viewport, orbit camera, view cube, grid, floor
+- [x] Scene store, undo/redo, autosave to IndexedDB/OPFS
+- [x] Private access via Cloudflare Access (setup guide in docs/hosting.md; the owner turns it on), adults-only notice
+- [x] App lock, neutral tab option; automatic backup folder
+- [x] Chrome check, PWA install, responsive touch-first layouts (desktop, tablet, phone)
+- [x] Quality levels, GPU auto-detection and benchmark, adaptive quality, memory manager (benchmark thresholds to be tuned on real devices)
+- [x] Crash handling: GPU device-lost recovery, Safe Mode after a crash, WebGL2 compatibility mode (also used automatically when WebGPU exists but fails a startup self-test)
 - [ ] **Verify WebGPU in Chrome on iOS** on a real device
-- [ ] Load a bundled CC0 female figure (a male figure is bundled too)
-- [ ] Rough placeholder anatomy (simple skeleton, muscle, and fat volumes) for the early prototypes
+- [ ] Load a bundled CC0 female figure (a male figure is bundled too). *Partly done:* procedural female and male mannequins on the canonical rig stand in until MakeHuman/MPFB exports are added to `assets/builtin/` (needs Blender with MPFB, which isn't available in Claude's environment)
+- [x] Rough placeholder anatomy (simple skeleton, muscle, and fat volumes) for the early prototypes
 - **Done when:** the app opens with a figure, the user can orbit it, and the scene saves and reloads.
 
 ### Phase 1: Import and posing MVP (about 5 weeks)
@@ -1097,7 +1097,7 @@ These run **in parallel with Phase 0** (the owner's choice), as throwaway tests 
 
 ## 24. How we'll work
 
-- **Claude writes the code**, phase by phase, on this repository's development branch, with tests and commits per milestone.
+- **Claude writes the code**, phase by phase, committing and pushing directly to `main` (the owner's rule: only ever push to `main`), with tests and commits per milestone.
 - **The owner tests on real devices** (Windows/macOS PCs, phones, tablets) after each milestone and reports what works, what looks wrong, and performance. This matters because Claude's environment has no real GPU or phone to test WebGPU, physics feel, or visuals.
 - Each phase starts with a short check-in on its scope and ends with a demo build and a list of known issues.
 - **Test assets:** the owner supplies Daz Genesis 8/9 exports, VaM `.var` packages, generic FBX/glTF figures and props, and a VRM avatar. They're used locally for testing and never committed to the repository.

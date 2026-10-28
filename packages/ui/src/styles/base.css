@@ -1,0 +1,57 @@
+*, *::before, *::after { box-sizing: border-box; }
+
+html, body, #root {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+}
+
+body {
+  font: var(--md-sys-typescale-body-medium);
+  background: var(--md-sys-color-surface);
+  color: var(--md-sys-color-on-surface);
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior: none;
+}
+
+button, input, select, textarea { font: inherit; color: inherit; }
+
+:focus-visible {
+  outline: 3px solid var(--md-sys-color-secondary);
+  outline-offset: 2px;
+}
+
+.md-visually-hidden {
+  position: absolute !important;
+  width: 1px; height: 1px;
+  overflow: hidden; clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* Shared state layer: an overlay tinted with the content color. */
+.md-state {
+  position: relative;
+  isolation: isolate;
+  cursor: pointer;
+}
+.md-state::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: currentColor;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--md-sys-motion-duration-short2) linear;
+  z-index: -1;
+}
+.md-state:hover::before { opacity: var(--md-sys-state-hover); }
+.md-state:focus-visible::before { opacity: var(--md-sys-state-focus); }
+.md-state:active::before { opacity: var(--md-sys-state-pressed); }
+.md-state:disabled, .md-state[data-disabled] { cursor: default; }
+.md-state:disabled::before, .md-state[data-disabled]::before { opacity: 0; }
+
+.md-icon { flex: none; fill: currentColor; display: block; }
+
+.md-scroll { overflow: auto; scrollbar-width: thin; scrollbar-color: var(--md-sys-color-outline-variant) transparent; }

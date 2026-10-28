@@ -1,0 +1,29 @@
+import '@poser/ui/styles.css';
+import './app.css';
+import { initInstallPrompt, installGlobalErrorLogging, registerServiceWorker, setNeutralTab } from '@poser/platform';
+import { applyTheme } from '@poser/ui';
+import { StrictMode } from 'react';
+import { createRoot } from 'react-dom/client';
+import { App } from './App';
+import { crashGuard } from './platformServices';
+import { useSettings } from './state/settings';
+
+installGlobalErrorLogging();
+initInstallPrompt();
+
+// Apply appearance before the first paint.
+const settings = useSettings.getState();
+applyTheme({ seed: settings.seedColor, mode: settings.themeMode });
+if (settings.neutralTab) setNeutralTab(true);
+
+const crash = crashGuard.check();
+
+if (import.meta.env.PROD) {
+  void registerServiceWorker('/sw.js');
+}
+
+createRoot(document.getElementById('root')!).render(
+  <StrictMode>
+    <App crash={crash} />
+  </StrictMode>,
+);

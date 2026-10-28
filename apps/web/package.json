@@ -1,0 +1,24 @@
+{
+  "name": "@poser/web",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@poser/core": "workspace:*",
+    "@poser/platform": "workspace:*",
+    "@poser/render": "workspace:*",
+    "@poser/rig": "workspace:*",
+    "@poser/ui": "workspace:*",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "zustand": "^5.0.8"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^6.0.1"
+  }
+}
