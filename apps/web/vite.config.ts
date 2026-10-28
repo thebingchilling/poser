@@ -28,6 +28,8 @@ export default defineConfig({
         cloth: fileURLToPath(new URL('prototypes/cloth.html', import.meta.url)),
         cut: fileURLToPath(new URL('prototypes/cut.html', import.meta.url)),
         fluids: fileURLToPath(new URL('prototypes/fluids.html', import.meta.url)),
+        rope: fileURLToPath(new URL('prototypes/rope.html', import.meta.url)),
+        channel: fileURLToPath(new URL('prototypes/channel.html', import.meta.url)),
       },
     },
   },

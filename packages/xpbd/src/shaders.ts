@@ -7,7 +7,7 @@ export const COMMON = /* wgsl */ `
 struct Params {
   gravity: vec3f, h: f32,
   damping: f32, n: u32, numColliders: u32, floorY: f32,
-  useFloor: u32, floorFriction: f32, relaxation: f32, _pad: f32,
+  useFloor: u32, floorFriction: f32, relaxation: f32, candidates: u32,
 };
 struct Color { start: u32, count: u32, _a: u32, _b: u32 };
 struct Constraint { i: u32, j: u32, rest: f32, compliance: f32, kind: u32, _a: u32, _b: u32, _c: u32 };
@@ -105,7 +105,9 @@ fn particleContacts(@builtin(global_invocation_id) id: vec3u) {
   let ri = prev[i].w;
   var acc = vec3f(0.0);
   var count = 0.0;
-  for (var j = 0u; j < P.n; j++) {
+  // Particles past the candidate set only look at the candidates.
+  let end = select(P.n, P.candidates, i >= P.candidates);
+  for (var j = 0u; j < end; j++) {
     if (j == i) { continue; }
     let fj = flags[j];
     if (((fi >> 16u) & (fj & 0xffffu)) == 0u) { continue; }

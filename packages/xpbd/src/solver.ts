@@ -19,6 +19,8 @@ export interface Particle {
   /** Collision layer bits (what it is) and mask bits (what it collides with). */
   layer?: number;
   mask?: number;
+  /** Soft attachment to the starting position (compliance, m/N): flesh held by the body. */
+  tether?: number;
 }
 
 export interface DistanceConstraint {
@@ -46,6 +48,12 @@ export interface SolverOptions {
   /** Jacobi relaxation for particle contacts. */
   relaxation?: number;
   maxColliders?: number;
+  /**
+   * Only the first `contactCandidates` particles are checked as contact
+   * partners by the others (put e.g. the rope first and the flesh after).
+   * Defaults to all particles. A spatial grid replaces this in the real build.
+   */
+  contactCandidates?: number;
 }
 
 /** Greedy graph colouring: no two constraints in a colour share a particle. */
@@ -101,6 +109,7 @@ export class XpbdSolver {
       floor: options.floor === undefined ? { y: 0, friction: 0.6 } : options.floor,
       relaxation: options.relaxation ?? 1,
       maxColliders: options.maxColliders ?? 32,
+      contactCandidates: options.contactCandidates ?? particles.length,
     };
     this.substeps = this.opts.substeps;
     this.maxColliders = this.opts.maxColliders;
@@ -116,7 +125,7 @@ export class XpbdSolver {
       pos.set([...p.position, p.invMass], i * 4);
       prev.set([...p.position, p.radius], i * 4);
       vel.set([0, 0, 0, p.friction ?? 0.3], i * 4);
-      target.set([...p.position, p.invMass === 0 ? 0 : -1], i * 4);
+      target.set([...p.position, p.invMass === 0 ? 0 : (p.tether ?? -1)], i * 4);
       flags[i] = ((p.layer ?? 1) & 0xffff) | (((p.mask ?? 0) & 0xffff) << 16);
     });
 
@@ -234,6 +243,7 @@ export class XpbdSolver {
     u[8] = floor ? 1 : 0;
     f[9] = floor?.friction ?? 0;
     f[10] = relaxation;
+    u[11] = this.opts.contactCandidates;
     this.device.queue.writeBuffer(this.buffers.params, 0, params);
 
     if (this.colliders.length) this.writeColliders();
