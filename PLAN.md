@@ -549,7 +549,7 @@ Objects need to interact with bodies as physically as bodies interact with each 
 - **Connection types:** rigid (welded), hinge/ball joint, distance (chain-like, slack allowed), spring (elastic), and slider.
 - **Hold tool:** put any object in a hand; fingers close around it and stop on contact (section 13.2). Works for props, toys, rope ends, removed body parts, and other figures' limbs.
 - **Place tool:** drop an object onto or against a body and let Settle find a resting position.
-- All objects use real-world units, so sizes relative to the body are accurate. A **ruler/measure tool** shows lengths, diameters, and distances.
+- All objects use real-world units, shown in **metric** (cm, m, kg), so sizes relative to the body are accurate. A **ruler/measure tool** shows lengths, diameters, and distances.
 
 ### 14.2 Sex toys and similar props
 | Type | Simulation |
@@ -985,7 +985,7 @@ Each phase ends with something usable. Week estimates assume one full-time devel
 **Total:** roughly 90–95 weeks of work (including mobile and tablet support) for one full-time developer through Phase 9. Phases 4–8 can partly run in parallel with more people: face/states and fluids are mostly independent, while restraints/toys and cutting depend on the anatomy layers.
 
 ### Prototype the hardest parts first
-Before Phase 1 is finished, build throwaway prototypes to prove the risky tech:
+These run **in parallel with Phase 0** (the owner's choice), as throwaway tests that prove the risky tech before it's built for real:
 1. **Ragdoll Settle:** a Jolt ragdoll holding a pose with motors and sitting on a box.
 2. **GPU cloth:** a XPBD skirt on WebGPU colliding with an animated capsule body at 30+ fps.
 3. **Anatomy fit and cut:** fit a rough placeholder anatomy (simple sculpted skeleton, muscle, and fat volumes) into one imported figure and cut through a limb with Manifold, to measure fit quality and cut speed early.
@@ -1000,7 +1000,7 @@ Before Phase 1 is finished, build throwaway prototypes to prove the risky tech:
 - **Claude writes the code**, phase by phase, on this repository's development branch, with tests and commits per milestone.
 - **The owner tests on real devices** (Windows/macOS PCs, phones, tablets) after each milestone and reports what works, what looks wrong, and performance. This matters because Claude's environment has no real GPU or phone to test WebGPU, physics feel, or visuals.
 - Each phase starts with a short check-in on its scope and ends with a demo build and a list of known issues.
-- **Test assets:** the owner supplies a few real files (Daz Genesis 8/9 exports, VaM looks, generic and VRM figures). They're used locally for testing and never committed to the repository.
+- **Test assets:** the owner supplies Daz Genesis 8/9 exports, VaM `.var` packages, generic FBX/glTF figures and props, and a VRM avatar. They're used locally for testing and never committed to the repository.
 - **Hosting:** a static build deployed behind Cloudflare Access (set up by the owner, with Claude's instructions).
 - Week estimates in the roadmap are for a single full-time human developer; with Claude writing the code, the real pace depends mostly on how fast each milestone can be tested and refined.
 
@@ -1033,9 +1033,9 @@ Before Phase 1 is finished, build throwaway prototypes to prove the risky tech:
 ---
 
 ## 25. Open decisions for the owner
-Already decided: Chrome required; private use; fully offline PWA; balanced visual quality; free MakeHuman starter figures; 1–2 figures per scene; simple animation; graphic content on by default; no real medical scan data; all import sources (Daz, VaM, generic, VRM) supported; anatomy and FACS face built in-house (procedurally); Claude writes the code; all feature areas (toys/ropes/latex, face/states, anatomy/cutting, fluids) are in scope, in the roadmap order below.
+Already decided: Chrome required; private use; fully offline PWA; balanced visual quality; free MakeHuman starter figures; 1–2 figures per scene; simple animation; graphic content on by default; no real medical scan data; all import sources (Daz, VaM, generic, VRM) supported; anatomy and FACS face built in-house (procedurally); Claude writes the code; sharing by sending files by hand (no server); metric units (cm/m/kg); building starts with Phase 0 and the risky prototypes in parallel; all feature areas (toys/ropes/latex, face/states, anatomy/cutting, fluids) are in scope, in the roadmap order below.
 
-1. **Sharing:** are `.poser` files and preset packs passed around by hand enough for the group, or is a small private shared library worth adding later?
+No open decisions remain. New questions will be added here as they come up during building.
 
 ---
 
