@@ -78,7 +78,7 @@ The whole interface follows **Material Design 3 (MD3)**: its components, color s
 |---|---|
 | Top app bar | Project name and menu, undo/redo (labelled), capture, settings |
 | Navigation rail (desktop/tablet) and navigation bar (phone) | Main workspaces: Library, Scene, Pose, Body, Physics, Objects, Render, Animate, each with icon and label |
-| Segmented buttons | Mode switch (Pose / Settle / Live), quality level, units-free toggles |
+| Segmented buttons | Mode switch (Pose / Settle / Live), quality level, view options |
 | Extended FAB (icon + label) | The main action of each workspace (e.g. "Settle", "Capture", "Import") |
 | Side sheets (desktop) and bottom sheets (phone) | Inspector panels, tool options, presets |
 | Sliders | Morphs, expressions, muscle tension, states, physics settings (with value labels and number entry) |
