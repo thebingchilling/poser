@@ -2,7 +2,7 @@
 
 A web app that is a **realistic, physics-based NSFW figure modeller and anatomy study tool**. It leans toward adult/NSFW use, with anatomy study as a strong secondary purpose. Artists import their own figures (Daz3D, Virt-a-Mate, VRM, generic rigs), clothing, and props. They pose figures with joint handles like VRM Posing Desktop, let real physics settle bodies, soft tissue, and cloth, explore the anatomy underneath layer by layer, cut into it, add realistic fluids, fine-tune expressions and body states, use objects such as toys, ropes, restraints, and latex, then light, frame, and capture images.
 
-> **Website only, private use:** a browser app for personal use and a few invited users. Not published publicly and not paid. Requires **Chrome**. Runs on Windows, macOS, Android, and iPhone/iPad through one installable website (PWA): full quality on PCs and laptops, reduced by default on mobile, with GPU auto-detection and crash fallbacks (section 3.4).
+> **Website only, private use:** a browser app for personal use and a few invited users. Not published publicly and not paid. Requires **Chrome**. Runs on Windows, macOS, Android, and iPhone/iPad through one installable website (PWA): full quality on PCs and laptops, reduced by default on mobile, with GPU auto-detection and crash fallbacks (section 3.5).
 >
 > **Status:** planning only. Nothing gets built until the go-ahead.
 >
@@ -64,32 +64,73 @@ A web app that is a **realistic, physics-based NSFW figure modeller and anatomy 
 
 ## 3. User experience
 
-### 3.1 Screen layout
+### 3.1 Design system: Material Design 3
+The whole interface follows **Material Design 3 (MD3)**: its components, color system, typography, shape, elevation, motion, and layout guidance.
+
+**Icons always come with labels.**
+- Every button, tab, navigation item, menu item, chip, and toolbar action shows an **icon plus a text label**.
+- An icon may appear alone **only when its meaning is universally obvious**: close (×), back arrow, search (magnifier), play/pause, and the overflow menu (⋮). Even then it gets a tooltip and an accessible name.
+- When space is tight (phones, narrow panels), labels get shorter or move below the icon (as in MD3 navigation bars), but they are never removed. Extra actions go into an overflow menu with labelled items rather than becoming bare icons.
+- Icons: **Material Symbols** (Google's official MD3 icon set, Apache 2.0), self-hosted so the app works offline. A few custom icons in the same style cover app-specific tools (IK pin, rope wrap, cut, settle).
+
+**How MD3 maps onto the app:**
+| MD3 component | Used for |
+|---|---|
+| Top app bar | Project name and menu, undo/redo (labelled), capture, settings |
+| Navigation rail (desktop/tablet) and navigation bar (phone) | Main workspaces: Library, Scene, Pose, Body, Physics, Objects, Render, Animate, each with icon and label |
+| Segmented buttons | Mode switch (Pose / Settle / Live), quality level, units-free toggles |
+| Extended FAB (icon + label) | The main action of each workspace (e.g. "Settle", "Capture", "Import") |
+| Side sheets (desktop) and bottom sheets (phone) | Inspector panels, tool options, presets |
+| Sliders | Morphs, expressions, muscle tension, states, physics settings (with value labels and number entry) |
+| Filter and assist chips | Library filters, quick presets, favorites |
+| Cards | Library assets, poses, presets, snapshots |
+| Tabs | Inspector sections (Transform, Pose, Body, Physics, Cloth, Material) |
+| Menus, dialogs, snackbars, tooltips | Context menus, confirmations, "Undo" snackbars, explanations |
+| Progress indicators | Imports, anatomy fitting, baking, path-traced renders |
+
+**Theme and color:**
+- Color schemes are generated with Google's **material-color-utilities** (MD3's dynamic color algorithm) from a seed color; the user can pick their own.
+- **Dark theme by default** (better for judging a lit 3D scene), with light theme available.
+- The 3D viewport background and overlays stay neutral grey so the theme color never tints how skin and lighting look.
+- MD3 typography (Roboto Flex, self-hosted) and shape scale.
+
+**Layout and density:**
+- MD3 window size classes: **compact** (phones), **medium** (tablets, small windows), **expanded/large** (desktop).
+- Desktop uses a slightly denser variant of the MD3 components (smaller paddings, same structure), since there are many controls; touch devices keep the full 48 dp touch targets.
+- Accessibility: keyboard navigation, focus rings, screen-reader names, and MD3 contrast levels.
+
+**Implementation:** Google's official MD3 web components (`@material/web`) are in maintenance mode with no new features planned, so the app uses its **own React component set built to the MD3 spec**, on Radix UI primitives for behavior and accessibility, with MD3 design tokens (color, type, shape, elevation, motion) as CSS variables.
+
+### 3.2 Screen layout (desktop, expanded)
 
 ```
-┌───────────────────────────────────────────────────────────────────────────┐
-│ Top bar: Project ▾ | Undo Redo | Mode: [Pose][Settle][Live] | ▶ Sim | 📷 │
-├──────────────┬────────────────────────────────────────────┬───────────────┤
-│ LEFT PANEL   │                                            │ RIGHT PANEL   │
-│ ┌──────────┐ │                                            │ Inspector     │
-│ │ Library  │ │              3D VIEWPORT                   │ tabs:         │
-│ │ (assets) │ │                                            │  Transform    │
-│ ├──────────┤ │   joint handles · IK effectors · gizmos    │  Pose         │
-│ │ Outliner │ │   view cube · camera bookmarks             │  Body/Morphs  │
-│ │ (scene)  │ │                                            │  Physics      │
-│ └──────────┘ │                                            │  Cloth        │
-│              │                                            │  Material     │
-├──────────────┴────────────────────────────────────────────┴───────────────┤
-│ Bottom strip: Pose library thumbnails · Hand presets · Lighting presets   │
-└───────────────────────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ Top app bar: [☰ Project] Scene name   [↶ Undo] [↷ Redo]   [📷 Capture] [⚙ Settings] │
+├────────┬────────────────┬────────────────────────────────┬───────────────────┤
+│ Nav    │ Workspace sheet│                                │ Inspector sheet   │
+│ rail   │ (e.g. Library: │          3D VIEWPORT           │ Tabs: Transform · │
+│ 📚 Library│ filter chips, │  joint handles · IK effectors │ Pose · Body ·     │
+│ 🧍 Scene │  asset cards) │  gizmos · view cube           │ Physics · Cloth · │
+│ 🤸 Pose  │               │                                │ Material          │
+│ 💪 Body  │               │  [Pose | Settle | Live]        │ (sliders, fields) │
+│ ⚛ Physics│               │                 [▶ Settle FAB] │                   │
+│ 🪢 Objects│              │                                │                   │
+│ 💡 Render│               │                                │                   │
+│ 🎞 Animate│              │                                │                   │
+├────────┴────────────────┴────────────────────────────────┴───────────────────┤
+│ Quick bar (chips with icon + label): Poses · Hands · Expressions · Lighting  │
+└──────────────────────────────────────────────────────────────────────────────┘
 ```
+(Icons shown as emoji only for this sketch; the app uses Material Symbols, always with labels.)
 
-- **Library** lists everything imported, with filters (Figures, Clothing, Hair, Morphs, Props, Poses, Environments), thumbnails, search, and tags. Drag an item into the viewport to add it; drop clothing onto a figure to dress it.
-- **Outliner** shows the scene tree (figures → worn garments/hair, props, lights, cameras) with visibility and lock toggles.
+- **Tablet (medium):** navigation rail plus one sheet at a time over the viewport.
+- **Phone (compact):** full-screen viewport, a navigation bar with labels at the bottom, tools and inspector in bottom sheets.
+- **Library** lists everything imported, with filter chips (Figures, Clothing, Hair, Morphs, Props, Poses, Environments), asset cards with thumbnails, search, and tags. Drag an item into the viewport to add it; drop clothing onto a figure to dress it.
+- **Scene** shows the scene tree (figures → worn garments/hair, props, lights, cameras) with labelled visibility and lock toggles.
 - **Inspector** shows properties for the selection.
-- Panels collapse for a full-screen viewport. Light and dark themes.
+- Sheets collapse for a full-screen viewport.
 
-### 3.2 Main user flows
+### 3.3 Main user flows
 1. **First run:** sign in through the invite gate → set an app lock → short tour → a scene with a built-in CC0 figure, so posing can be tried immediately.
 2. **Import:** drag in files, folders, or zips (or add a library folder) → import wizard → asset appears in the Library.
 3. **Pose:** click a joint → rotate it, or drag a hand/foot effector → IK follows. Pin feet, mirror, apply a hand preset.
@@ -99,13 +140,13 @@ A web app that is a **realistic, physics-based NSFW figure modeller and anatomy 
 7. **Capture:** screenshot, turnaround sheet, or gesture-drawing timer session.
 8. **Save:** projects autosave locally; export/import a `.poser` project file for backup or moving between computers.
 
-### 3.3 Viewport controls
+### 3.4 Viewport controls
 - Orbit/pan/zoom (mouse, trackpad, touch) and a view cube for front/side/top/ortho views.
 - Click a body part to select its nearest joint; Alt-click selects the mesh.
 - Shortcuts: `W/E/R` move/rotate/scale gizmo, `Q` toggle IK/FK, `P` pin, `M` mirror, `F` frame selection, `Space` toggle simulation, `Ctrl+Z/Y` undo/redo, `1–9` camera bookmarks.
 - **Touch:** one finger orbits or drags handles, two fingers pan/zoom/rotate, long-press opens context menus, and handles and gizmo rings are enlarged for fingers.
 
-### 3.4 Platforms, Chrome requirement, and quality
+### 3.5 Platforms, Chrome requirement, and quality
 **Chrome is required** on every platform. The site checks the browser on load and shows a "please open in Chrome" page otherwise.
 - Windows, macOS, Android: Chrome with WebGPU.
 - iPhone/iPad: Chrome works, but Apple requires all iOS browsers to use Safari's engine underneath, so on iOS, Chrome behaves like Safari 26. WebGPU inside Chrome on iOS needs to be verified early. If it isn't available there, iOS users fall back to the compatibility mode below.
@@ -808,7 +849,7 @@ Asset (in Library)
 | Layer | Choice |
 |---|---|
 | Language and build | TypeScript, Vite, pnpm workspaces (monorepo) |
-| UI | React, Zustand (state), Radix UI (accessible components) |
+| UI | React and Zustand (state); **Material Design 3** via our own component set built to the MD3 spec on Radix UI primitives; MD3 tokens as CSS variables; `material-color-utilities` for color schemes; Material Symbols icons and Roboto Flex, self-hosted |
 | 3D | three.js with WebGPU renderer (WebGPU required on all platforms), TSL node materials; GLTF/FBX/OBJ loaders, `@pixiv/three-vrm` |
 | Physics | JoltPhysics.js (WASM) in a Web Worker |
 | Cloth and soft tissue | Custom XPBD on WebGPU compute |
@@ -899,7 +940,8 @@ Because the app is private (personal use plus a few invited users, not public, n
 Each phase ends with something usable. Week estimates assume one full-time developer.
 
 ### Phase 0: Foundation (about 2 weeks)
-- [ ] Monorepo, Vite, React shell, panel layout, themes
+- [ ] Monorepo, Vite, React shell
+- [ ] MD3 design system: tokens, dark/light themes from a seed color, core components (app bar, navigation rail/bar, sheets, segmented buttons, FAB, sliders, chips, cards, tabs, menus, dialogs, snackbars, tooltips), Material Symbols icons with labels, layouts for compact/medium/expanded windows
 - [ ] three.js WebGPU viewport, orbit camera, view cube, grid, floor
 - [ ] Scene store, undo/redo, autosave to IndexedDB/OPFS
 - [ ] Private access via Cloudflare Access, adults-only notice
@@ -1098,6 +1140,8 @@ No open decisions remain. New questions will be added here as they come up durin
 ---
 
 ## Sources
+- Material Web maintenance mode: https://github.com/material-components/material-web/discussions/5642
+- Material Web site: https://material-web.dev
 - WebGPU in iOS 26: https://appdevelopermagazine.com/webgpu-in-ios-26/
 - WebGPU supported in major browsers (web.dev): https://web.dev/blog/webgpu-supported-major-browsers
 - WebKit bug: memory-pressure reload loop: https://bugs.webkit.org/show_bug.cgi?id=300782
