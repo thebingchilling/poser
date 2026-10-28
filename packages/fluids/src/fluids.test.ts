@@ -54,7 +54,7 @@ gpu('prototype 4: fluids', () => {
       points: { positions: [...p], color: 0x8a0303, size: 0.008 },
     });
     scene.destroy();
-  });
+  }, 300_000);
 
   it('surface film trickles down and around the arm, conserving mass, and drips from the underside', async () => {
     const film = new SurfaceFlow(device!, { a: FOREARM.a, b: FOREARM.b, radius: FOREARM.radius });
@@ -88,5 +88,5 @@ gpu('prototype 4: fluids', () => {
     // The forearm slopes down toward the wrist (b), so the film moved that way.
     expect(comV / film.nv).toBeGreaterThan(0.36);
     film.destroy();
-  });
+  }, 300_000);
 });

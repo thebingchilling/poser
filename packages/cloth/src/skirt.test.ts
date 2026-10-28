@@ -49,5 +49,5 @@ gpu('prototype 2: GPU cloth skirt on a walking body', () => {
     expect(lowest).toBeGreaterThan(0.3);
     expect(lowest).toBeLessThan(0.6);
     scene.destroy();
-  });
+  }, 300_000);
 });

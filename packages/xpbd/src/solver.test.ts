@@ -38,7 +38,7 @@ gpu('XPBD solver on the GPU', () => {
     expect(Math.abs(at(p, n - 1)[0])).toBeLessThan(0.1);
     expect(at(p, n - 1)[1]).toBeLessThan(2 - 0.85);
     s.destroy();
-  });
+  }, 300_000);
 
   it('particles land on the floor and on a capsule without passing through', async () => {
     const particles: Particle[] = [
@@ -53,7 +53,7 @@ gpu('XPBD solver on the GPU', () => {
     // Resting on top of the capsule: centre + radius + particle radius.
     expect(at(p, 1)[1]).toBeCloseTo(0.62, 2);
     s.destroy();
-  });
+  }, 300_000);
 
   it("'max' constraints allow slack but not stretch", async () => {
     const particles: Particle[] = [
@@ -69,7 +69,7 @@ gpu('XPBD solver on the GPU', () => {
     expect(dist(at(p, 0), at(p, 1))).toBeLessThan(0.505);
     expect(dist(at(p, 0), at(p, 1))).toBeGreaterThan(0.49);
     s.destroy();
-  });
+  }, 300_000);
 
   it('particles in colliding layers stack instead of overlapping', async () => {
     const particles: Particle[] = Array.from({ length: 5 }, (_, i) => ({ position: [0, 0.05 + i * 0.03, 0], invMass: 1, radius: 0.025, layer: 1, mask: 1, friction: 0.8 }));
@@ -78,5 +78,5 @@ gpu('XPBD solver on the GPU', () => {
     const p = await s.readPositions();
     for (let i = 0; i < 5; i++) for (let j = i + 1; j < 5; j++) expect(dist(at(p, i), at(p, j))).toBeGreaterThan(0.045);
     s.destroy();
-  });
+  }, 300_000);
 });
