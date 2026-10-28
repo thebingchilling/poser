@@ -29,7 +29,7 @@ A web app that is a **realistic, physics-based NSFW figure modeller and anatomy 
 ### Out of scope for v1
 - Any online model sources, cloud sync, or server-side sharing (users share files directly, section 16.7).
 - Public release, payments, and browsers other than Chrome.
-- Animation timelines (single poses only; a timeline may come later).
+- Full animation tools (curve editors, complex multi-track animation). A **simple keyframe animation** system is in scope (section 15.9).
 - Tattoos, piercings, jewelry, nails, and makeup.
 
 ### Principles
@@ -238,7 +238,7 @@ This is what lets one pose work on any figure, one ragdoll builder serve all of 
 - **Face:** full FACS expression system (section 13).
 - **Body shape:** morph sliders for whatever shape morphs the figure has (Daz/VaM/glTF morph targets).
 - **Pose library:** save, load, and thumbnail poses in canonical form, so they work across figures. Import/export BVH/VRMA single frames.
-- **Multi-figure:** several figures in one scene, with contact between them in physics modes.
+- **Multi-figure:** scenes are designed and tuned for **1–2 figures** with full physics and contact. More figures are allowed, but extra figures run with simplified physics.
 - **Undo/redo** for every change.
 
 ---
@@ -637,7 +637,18 @@ Additions that make scenes look and behave like the real thing:
 
 ### 15.8 Scenario snapshots (lightweight progression)
 - Save several **snapshots** of one scene (e.g. before, during, after) that share figures and props but differ in pose, ties, clothing state, marks, and fluids. Step through them or capture all at once.
-- This is a lightweight alternative to a full animation timeline, which stays a later option.
+- Snapshots can also be used as keyframes for the simple animation system below.
+
+### 15.9 Simple animation
+- **Timeline with keyframes:** set a few poses (plus expressions, states, muscle tension, clothing state, object positions) at points in time; the app blends between them with ease-in/ease-out.
+- **Physics fills in the motion:** soft tissue, cloth, hair, ropes, and fluids are simulated through the motion, so jiggle, drape, swing, and drips happen naturally between keyframes.
+- **Bake and scrub:** the simulation is recorded ("baked") frame by frame, so the timeline can be scrubbed and replayed exactly; change a keyframe and re-bake.
+- **Loops:** seamless looping clips (the last keyframe blends back into the first).
+- **Rhythmic motion helpers:** repeat a movement between two poses at a set speed and intensity (also drives motorized toys and machines).
+- **Breathing and idle motion** can be layered on automatically.
+- **Camera keyframes:** the camera can move along its own keyframes.
+- **Export:** video (MP4/WebM via the browser's video encoder) and GIF, at a chosen resolution and frame rate; frame-by-frame rendering so exports are smooth even if live playback isn't.
+- Not included: curve editors, animation layers, motion capture import beyond single poses, or long multi-shot sequences.
 
 ---
 
@@ -794,6 +805,7 @@ poser/
 | Area | Target |
 |---|---|
 | Posing frame rate | 60 fps with 2 figures on a mid-range GPU (e.g. RTX 3060 / M1) |
+| Animation | Bake a 10-second clip with 2 figures, cloth, and soft tissue in under 2 minutes at High; export at 1080p 30 fps |
 | Cloth | About 20k simulated vertices at 30+ fps on WebGPU |
 | Settle | Finishes in 3 seconds or less for one figure with clothing |
 | Import | A Genesis 8 FBX with textures imported in under 30 seconds (plus under 60 seconds for anatomy fitting) |
@@ -821,7 +833,7 @@ poser/
 Because the app is private (personal use plus a few invited users, not public, not paid), most commercial adult-site rules don't apply: no payment processor, no public age-verification system, no app stores. What still matters:
 - **Private access:** the site sits behind Cloudflare Access with an invite list, and search engines are blocked. Only invite adults (18+).
 - **Everything stays local:** user content never touches the server; the site only serves the app's code and built-in CC0/CC BY-SA assets.
-- **Separate graphic-content setting:** blood, open wounds, removed body parts, and bodily fluids can be switched on or off separately from nudity (per-user preference).
+- **Graphic-content setting:** blood, open wounds, removed body parts, and bodily fluids are **on by default** and can be switched off per user, separately from nudity.
 - **Adult figures only:** the app has no child body proportions, and depicting minors sexually is illegal. Keep this as a hard rule for anyone invited.
 - **Real people:** sexual images of real people without consent (including digital fakes) are illegal in many places, especially if shared, so the group should avoid it.
 - **Licensing:** personal use of your own Daz/VaM files is the normal use case; don't pass purchased Daz/VaM content between users unless its license allows it (`.var` licenses are shown in the Library). Anatomy data is credited on an About screen as its licenses require.
@@ -945,7 +957,13 @@ Each phase ends with something usable. Week estimates assume one full-time devel
 - [ ] Desktop-prepared asset packs with mobile-sized versions
 - [ ] Touch interaction for gizmos, IK, rope wrap tool, cut tools, and brushes
 
-### Phase 9: Polish and extra reference tools (ongoing)
+### Phase 9: Simple animation (about 6 weeks)
+- [ ] Timeline, keyframes (pose, face, states, clothing, objects, camera), easing, loops
+- [ ] Physics baking and scrubbing; rhythmic motion helper; breathing and idle layers
+- [ ] Video and GIF export (frame-by-frame)
+- **Done when:** a looping 5-second clip of a female figure shifting her weight, with breast and cloth motion and a moving camera, exports smoothly as MP4.
+
+### Phase 10: Polish and extra reference tools (ongoing)
 - [ ] Path-traced final render mode, camera effects (depth of field, grain, grading), practical lights and haze
 - [ ] Video/GIF capture of Live mode
 - [ ] Involuntary reactions (trembling, arching, toe curl), upside-down face flush
@@ -953,11 +971,10 @@ Each phase ends with something usable. Week estimates assume one full-time devel
 - [ ] Better skin shading, hair strand/card physics, mirrors, POV camera refinements
 - [ ] Planes study mode, turnaround sheets, gesture-drawing mode
 
-### Phase 10 (optional)
+### Phase 11 (optional)
 - [ ] WebXR: pose figures in VR
-- [ ] Simple timeline for pose-to-pose motion studies
 
-**Total:** roughly 85–90 weeks of work (including mobile and tablet support) for one full-time developer through Phase 8. Phases 4–8 can partly run in parallel with more people: face/states and fluids are mostly independent, while restraints/toys and cutting depend on the anatomy layers.
+**Total:** roughly 90–95 weeks of work (including mobile and tablet support) for one full-time developer through Phase 9. Phases 4–8 can partly run in parallel with more people: face/states and fluids are mostly independent, while restraints/toys and cutting depend on the anatomy layers.
 
 ### Prototype the hardest parts first
 Before Phase 1 is finished, build throwaway prototypes to prove the risky tech:
@@ -999,12 +1016,12 @@ Before Phase 1 is finished, build throwaway prototypes to prove the risky tech:
 ---
 
 ## 24. Open decisions for the owner
-1. **Built-in content:** are CC0 MakeHuman/MPFB starter figures enough, or should we commission original realistic figures?
-2. **Priority order** after the core (Phases 0–2): native Daz/VaM import, face and states, anatomy layers, cutting, or fluids? The plan's order is one option.
-3. **Female anatomy template budget:** hire or contract a 3D character artist (about 2–4 months)? This is the most important external cost.
-4. **FACS face template:** build in-house or commission (female face first)?
-5. **Graphic content:** a per-user on/off setting (recommended), or always on?
-6. **Sharing:** are `.poser` files and preset packs passed around by hand enough for the group, or is a small private shared library worth adding later?
+Already decided: Chrome required; private use; free MakeHuman starter figures; 1–2 figures per scene; simple animation; graphic content on by default.
+
+1. **Priority order** after the core (Phases 0–2): native Daz/VaM import, face and states, anatomy layers, cutting, or fluids? The plan's order is one option.
+2. **Female anatomy template budget:** hire or contract a 3D character artist (about 2–4 months)? This is the most important external cost.
+3. **FACS face template:** build in-house or commission (female face first)?
+4. **Sharing:** are `.poser` files and preset packs passed around by hand enough for the group, or is a small private shared library worth adding later?
 
 ---
 
