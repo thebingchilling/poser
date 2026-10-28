@@ -131,7 +131,7 @@ The whole interface follows **Material Design 3 (MD3)**: its components, color s
 - Sheets collapse for a full-screen viewport.
 
 ### 3.3 Main user flows
-1. **First run:** sign in through the invite gate → set an app lock → short tour → a scene with a built-in CC0 figure, so posing can be tried immediately.
+1. **First run:** confirm the adults-only notice → set an app lock → short tour → a scene with a built-in CC0 figure, so posing can be tried immediately.
 2. **Import:** drag in files, folders, or zips (or add a library folder) → import wizard → asset appears in the Library.
 3. **Pose:** click a joint → rotate it, or drag a hand/foot effector → IK follows. Pin feet, mirror, apply a hand preset.
 4. **Make it physical:** press **Settle** → the body drops under gravity onto the floor or props, soft tissue rests, clothes drape → the result freezes for editing.
@@ -861,7 +861,7 @@ Asset (in Library)
 | Storage | OPFS + IndexedDB; File System Access API for library folders (desktop Chrome/Edge) |
 | App shell | PWA: fully offline after the first visit (app code, built-in assets, and WebAssembly modules cached by a service worker); internet only needed for updates |
 | Testing | Vitest (unit), Playwright (end-to-end and screenshot comparison), physics regression scenes |
-| Hosting and access | Static site (e.g. Cloudflare Pages) behind **Cloudflare Access** (free for teams under 50 users): only invited email addresses can open it. Security headers that enable shared memory. Search engines blocked. No backend. |
+| Hosting and access | Static site on **Cloudflare Pages**, deployed from Git. No login gate in front of it (owner's decision: no Cloudflare Access); the address is shared only with invited users. Security headers that enable shared memory. Search engines blocked. No backend. |
 | Photo/webcam posing | MediaPipe pose, hand, and face landmarkers (in-browser) |
 | Final render | three-gpu-pathtracer (MIT) on a separate WebGL2 renderer, used only for still images |
 
@@ -925,7 +925,7 @@ poser/
 ## 22. Content policy, safety, and legal
 
 Because the app is private (personal use plus a few invited users, not public, not paid), most commercial adult-site rules don't apply: no payment processor, no public age-verification system, no app stores. What still matters:
-- **Private access:** the site sits behind Cloudflare Access with an invite list, and search engines are blocked. Only invite adults (18+).
+- **Private access:** the site has no login gate; it stays private by sharing the address only with invited adults (18+), blocking search engines, and keeping all user content on each device. The adults-only notice and the app lock are the in-app gates.
 - **Everything stays local:** user content never touches the server; the site only serves the app's code and built-in CC0 and original assets.
 - **Graphic-content setting:** blood, open wounds, removed body parts, and bodily fluids are **on by default** and can be switched off per user, separately from nudity.
 - **Adult figures only:** the app has no child body proportions, and depicting minors sexually is illegal. Keep this as a hard rule for anyone invited.
@@ -944,7 +944,7 @@ Each phase ends with something usable. Week estimates assume one full-time devel
 - [x] MD3 design system: tokens, dark/light themes from a seed color, core components (app bar, navigation rail/bar, sheets, segmented buttons, FAB, sliders, chips, cards, tabs, menus, dialogs, snackbars, tooltips), Material Symbols icons with labels, layouts for compact/medium/expanded windows
 - [x] three.js WebGPU viewport, orbit camera, view cube, grid, floor
 - [x] Scene store, undo/redo, autosave to IndexedDB/OPFS
-- [x] Private access via Cloudflare Access (setup guide in docs/hosting.md; the owner turns it on), adults-only notice
+- [x] Private hosting on Cloudflare Pages (no login gate, search engines blocked; setup guide in docs/hosting.md), adults-only notice
 - [x] App lock, neutral tab option; automatic backup folder
 - [x] Chrome check, PWA install, responsive touch-first layouts (desktop, tablet, phone)
 - [x] Quality levels, GPU auto-detection and benchmark, adaptive quality, memory manager (benchmark thresholds to be tuned on real devices)
@@ -1101,7 +1101,7 @@ These run **in parallel with Phase 0** (the owner's choice), as throwaway tests 
 - **The owner tests on real devices** (Windows/macOS PCs, phones, tablets) after each milestone and reports what works, what looks wrong, and performance. This matters because Claude's environment has no real GPU or phone to test WebGPU, physics feel, or visuals.
 - Each phase starts with a short check-in on its scope and ends with a demo build and a list of known issues.
 - **Test assets:** the owner supplies Daz Genesis 8/9 exports, VaM `.var` packages, generic FBX/glTF figures and props, and a VRM avatar. They're used locally for testing and never committed to the repository.
-- **Hosting:** a static build deployed behind Cloudflare Access (set up by the owner, with Claude's instructions).
+- **Hosting:** a static build on Cloudflare Pages, deployed from `main` (set up by the owner, with Claude's instructions in docs/hosting.md).
 - Week estimates in the roadmap are for a single full-time human developer; with Claude writing the code, the real pace depends mostly on how fast each milestone can be tested and refined.
 
 ---
@@ -1146,7 +1146,6 @@ No open decisions remain. New questions will be added here as they come up durin
 - WebGPU supported in major browsers (web.dev): https://web.dev/blog/webgpu-supported-major-browsers
 - WebKit bug: memory-pressure reload loop: https://bugs.webkit.org/show_bug.cgi?id=300782
 - Opening a directory (browser support): https://web.dev/articles/files/open-a-directory
-- Cloudflare Access (free plan under 50 users): https://www.cloudflare.com/en-au/products/cloudflare-access
 - MediaPipe Face Landmarker (52 blendshapes): https://developers.google.com/edge/mediapipe/solutions/vision/face_landmarker
 - three-gpu-pathtracer: https://github.com/gkjohnson/three-gpu-pathtracer
 - US state age-verification laws: https://avpassociation.com/us-state-age-verification-laws-for-adult-content/

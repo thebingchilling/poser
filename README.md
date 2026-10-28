@@ -40,4 +40,4 @@ Useful while testing on a device:
 
 ## Deploying
 
-See [docs/hosting.md](docs/hosting.md) for Cloudflare Pages behind Cloudflare Access.
+See [docs/hosting.md](docs/hosting.md) for deploying to Cloudflare Pages.

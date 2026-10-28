@@ -1,33 +1,32 @@
-# Hosting behind Cloudflare Access
+# Hosting on Cloudflare Pages
 
-Poser is a static site with no backend (PLAN.md section 20). It is hosted on Cloudflare Pages and protected by Cloudflare Access, so only invited email addresses can open it. Both are free for fewer than 50 users.
+Poser is a static site with no backend (PLAN.md section 20). It is hosted on Cloudflare Pages, built from the `main` branch. There is no login gate in front of it: it stays private by sharing the address only with invited adults, and search engines are blocked.
 
 ## 1. Create the Pages project
 
 1. In the Cloudflare dashboard, go to **Workers & Pages › Create › Pages › Connect to Git** and pick this repository.
 2. Build settings:
    - Production branch: `main`
-   - Build command: `corepack enable && pnpm install --frozen-lockfile && pnpm build`
+   - Framework preset: None
+   - Build command: `pnpm install --frozen-lockfile && pnpm build`
    - Build output directory: `apps/web/dist`
    - Environment variable: `NODE_VERSION` = `22`
-3. Deploy. `apps/web/public/_headers` sets the security headers (cross-origin isolation, no indexing, a strict content security policy), and `robots.txt` blocks search engines.
+3. Save and deploy. Every push to `main` deploys again.
 
-## 2. Put it behind Cloudflare Access
+`apps/web/public/_headers` sets the security headers (cross-origin isolation for the simulation workers, no indexing, a strict content security policy), and `robots.txt` blocks search engines.
 
-1. Go to **Zero Trust › Access › Applications › Add an application › Self-hosted**.
-2. Application domain: your Pages domain (for example `poser-xyz.pages.dev`), and also add `*.poser-xyz.pages.dev` so preview deployments are protected too.
-3. Session duration: 1 month is convenient for a PWA (it avoids frequent logins).
-4. Add a policy: **Action: Allow**, **Include: Emails** and list each invited adult's email address.
-5. Login method: **One-time PIN** (emailed code) works without any other setup.
+## 2. Check the deployment
 
-Check it: open the site in a private window. You should see the Cloudflare Access login, and only listed emails should get a code.
+Open the `*.pages.dev` address in Chrome, then open **Settings › Diagnostics** in the app:
+- **Cross-origin isolated** should say **Yes** (the headers are being applied).
+- **Renderer** should say **WebGPU** on devices that support it.
 
 ## 3. Install on each device
 
-Open the site in Chrome, sign in, then install it (Settings › Install in the app, or Chrome's menu). On iPhone and iPad, use Share › Add to Home Screen. After the first visit the app works offline.
+Open the site in Chrome, then install it (Settings › Install in the app, or Chrome's menu). On iPhone and iPad, use Share › Add to Home Screen. After the first visit the app works offline, and new versions install in the background.
 
-## Notes
+## Keeping it private
 
-- Everything users import and create stays in their own browser storage; the server only serves the app's code.
-- If the Access session expires while offline, the installed app keeps working from its cache; updates resume after signing in again.
-- Only invite adults (PLAN.md section 22).
+- Share the address only with invited adults (PLAN.md section 22). Anyone with the address can load the app itself, but there is nothing on the server to see: everything users import and create stays in their own browser storage.
+- Search engines are told not to index the site (`robots.txt` and the `X-Robots-Tag` header).
+- The adults-only notice and the app lock (Settings › Privacy) are the in-app gates.
