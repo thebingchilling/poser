@@ -371,16 +371,22 @@ Female figures are the main use of the app, so the female anatomy template is th
 | **Other pelvic organs** | Bladder, urethra, rectum, positioned correctly for a female pelvis |
 | **Skin details** | Optional stretch marks, cellulite, scars (e.g. C-section), body and pubic hair styles, freckles and moles |
 
-### 10.2 How it's built
-No real medical scans or scan-derived models are used (section 9.2). The female template is original 3D work:
-1. **Skeleton first:** sculpted from illustrated anatomy atlases and artistic anatomy references, with female pelvis and proportion differences, then rigged to the canonical skeleton.
-2. **Muscles:** built on the skeleton from origin/insertion points in illustrated references, so each muscle is named and has a fiber direction.
-3. **Breasts, fat, and skin:** shaped from photo and video references of living adults (including how they move and deform), with the internal structure (glands, ducts, ligaments, fat) built from illustrations.
-4. **External and internal genitalia:** sculpted from illustrated anatomy and photo references of living adults, with natural variation built in as sliders.
-5. **Organs:** simpler, illustration-based shapes; detailed enough that cuts and X-ray views look right.
-6. **Optional purchase:** a commercial anatomy model only if its license allows use inside an app **and** it is confirmed artist-made, not derived from medical scans. Many are scan-based, so provenance must be checked.
+### 10.2 How it's built (in-house, mostly procedural)
+No real medical scans or scan-derived models are used (section 9.2), and no outside artist is hired. The anatomy is built **in-house, mostly by code**, which suits an AI-written project: anatomy is generated from rules and measurements rather than hand-sculpted, then refined by hand in Blender where needed.
 
-**Who builds it:** to be decided: a hired 3D character artist experienced with realistic anatomy and NSFW figures, or built in-house. Accuracy is checked internally against the references; no formal medical review. Priority goes to what is visible and drives physics: skeleton, breasts, fat, surface muscles, and external and internal genitalia. Budget about 3–5 months for an experienced artist (a little longer than a scan-based approach, since everything is sculpted). It is the longest-lead item in the project.
+1. **Use the figure's own outside.** The skin, breasts, and external genitalia already come from the imported figure (Daz, VaM, MakeHuman), so the template only needs to fill the inside.
+2. **Parametric skeleton:** bones built from measured proportions in illustrated anatomy references (lengths, widths, landmark points) as smooth parametric shapes, with female and male variants (pelvis, ribcage, skull, limb angles). Placed on the canonical rig.
+3. **Procedural muscles:** each named muscle is generated from its origin and insertion points on the skeleton and a cross-section profile, lofted into a volume with a fiber direction. Then it is fitted under the skin so muscles fill the space the figure's shape implies.
+4. **Fat from the skin inward:** the fat layer is the volume between the skin and the muscles, with per-region thickness maps (female pattern: hips, buttocks, thighs, breasts, lower belly).
+5. **Breast internals generated:** glandular lobes, ducts, ligaments, and fat filled procedurally inside each breast's shape, with the gland-to-fat ratio as a slider.
+6. **Internal genital and pelvic anatomy:** clitoral structure, vagina, cervix, uterus, ovaries, bladder, urethra, and rectum built as parametric shapes along anatomical guide curves inside the pelvis. These are also the body-opening channels used for contact (section 14.2), with natural variation as sliders.
+7. **Organs:** simple procedural or hand-modelled shapes, good enough for cuts and X-ray views.
+8. **Hand refinement:** Blender scripts generate everything reproducibly; the owner (or anyone in the group) can refine shapes by hand in Blender, and the pipeline keeps those edits.
+9. **References:** drawn anatomy atlases, artistic anatomy books, and photos/video of living adults. No scans.
+
+**Honest limits:** procedurally generated anatomy will look more schematic than an expert sculpt, especially muscles and organs up close. It is good enough for posing, physics, X-ray views, and cuts, and can be improved over time. Breasts, skin, and external genitalia, which matter most visually, come from the imported figures and stay fully realistic.
+
+**Development order:** a rough placeholder anatomy early (for the Phase 0–2 prototypes), the full female version in Phase 5, then the male version.
 
 **Variation:** the template is parametric from the start (section 10.3), so one base covers the natural range of adult female bodies.
 
@@ -480,7 +486,7 @@ Each fluid has viscosity, density, color, opacity, surface tension, stickiness, 
 - Expressions are built on **FACS** (the Facial Action Coding System used in psychology and film): around 45 action units such as inner brow raise, nose wrinkle, lip corner pull, jaw drop.
 - **Fine-tuning:** every action unit has a slider with separate left and right sides, plus eyes (gaze, lid opening, pupil size), jaw, lips, tongue, teeth, and cheek puff.
 - **Presets** as starting points, all adjustable: neutral, joy, laughter, sadness, crying, anger, fear, surprise, disgust, contempt, pain, exertion, fatigue, concentration, and others; blend several presets together.
-- **Figures' own face rigs:** Daz Genesis 8/9 faces and ARKit's 52-shape standard map onto the action units. Figures without facial morphs get action units transferred from a template face. This template needs to be built or commissioned, since no suitable openly licensed FACS face was found.
+- **Figures' own face rigs:** Daz Genesis 8/9 faces and ARKit's 52-shape standard map onto the action units. Figures without facial morphs get action units transferred from **our own template face** (female first), built in-house: action units are generated as procedural deformations driven by facial muscle positions, then refined by hand. MakeHuman's free (CC0) face expression controls may be a useful starting point; check this when building it.
 - **Wrinkles:** wrinkle maps blended in as action units fire (forehead lines, crow's feet, nasolabial folds, frown lines).
 - **Skin color changes:** blushing and flushing, paleness, red eyes and nose when crying.
 
@@ -764,7 +770,7 @@ Asset (in Library)
 | Cutting | Manifold (`manifold-3d`, WASM) booleans in a worker |
 | Ropes | Custom XPBD rod (Cosserat) solver on WebGPU compute |
 | Fluids | Custom MLS-MPM on WebGPU compute, texture-space surface flow, screen-space fluid rendering |
-| Anatomy data | Original artist-made female and male templates (no medical scan data), fitted per figure |
+| Anatomy data | In-house procedural female and male anatomy (Blender scripts plus in-app fitting), no medical scan data |
 | Asset processing | meshoptimizer (decimation and compression), KTX2/Basis encoder, fflate (zip/gzip), V-HACD (convex decomposition), all WASM in workers |
 | Storage | OPFS + IndexedDB; File System Access API for library folders (desktop Chrome/Edge) |
 | App shell | PWA: fully offline after the first visit (app code, built-in assets, and WebAssembly modules cached by a service worker); internet only needed for updates |
@@ -795,7 +801,8 @@ poser/
   packages/rope/         rope solver, wrap tool, tie templates, knots, load overlay
   packages/marks/        skin marks, aging over time
   assets/builtin/        CC0 starter figures (MakeHuman/MPFB), props, HDRIs
-  assets/anatomy/        original female and male anatomy templates
+  assets/anatomy/        generated female and male anatomy templates
+  tools/blender/         anatomy and FACS generation scripts
   docs/                  import guides, architecture notes
 ```
 
@@ -857,7 +864,7 @@ Each phase ends with something usable. Week estimates assume one full-time devel
 - [ ] Crash handling: GPU device-lost recovery, Safe Mode after a crash, WebGL2 compatibility mode
 - [ ] **Verify WebGPU in Chrome on iOS** on a real device
 - [ ] Load a bundled CC0 female figure (a male figure is bundled too)
-- [ ] **Start the female anatomy template workstream:** hire a 3D character artist or build in-house, sculpting from illustrated and photo references (no scan data); runs in parallel for about 3–5 months
+- [ ] Rough placeholder anatomy (simple skeleton, muscle, and fat volumes) for the early prototypes
 - **Done when:** the app opens with a figure, the user can orbit it, and the scene saves and reloads.
 
 ### Phase 1: Import and posing MVP (about 5 weeks)
@@ -898,7 +905,7 @@ Each phase ends with something usable. Week estimates assume one full-time devel
 - [ ] Tongue posing, teeth, eye look-at and blink
 - [ ] Body hair density, tan lines, scars, freckles and moles
 - [ ] FACS action-unit system with left/right sliders, presets, blending; mapping for Daz G8/G9 and ARKit 52 rigs
-- [ ] Build or commission the FACS template face; transfer action units to figures without face rigs
+- [ ] Build our own FACS template face (procedural action units, female first); transfer action units to figures without face rigs
 - [ ] Wrinkle maps, blush/flush/pallor skin color maps, eyes (pupil, lids, tear film)
 - [ ] Per-joint hand and foot fine-tuning, fingertip IK, grip-to-prop, foot flattening under weight
 - [ ] Muscle tension per group (shape via morphs/normal maps first; full volume bulge comes with Phase 5), body fat and muscle sliders
@@ -909,8 +916,8 @@ Each phase ends with something usable. Week estimates assume one full-time devel
 
 ### Phase 5: Anatomical layers (about 10 weeks)
 - [ ] Close every mesh, bind to the canonical rig, author fat and bone-interior data
-- [ ] Integrate the finished female anatomy template (from the parallel workstream) with full breast, genital, and pelvic anatomy and variation controls
-- [ ] Original male template (artist-made)
+- [ ] Procedural anatomy generator (Blender scripts plus in-app fitting): parametric skeleton, procedural muscles, fat from skin, breast internals, internal genital and pelvic anatomy, organs; female first, with variation controls
+- [ ] Male version of the anatomy generator
 - [ ] Genital soft bodies with deformable openings for figure-to-figure and figure-to-prop contact (section 7.5)
 - [ ] Fitting pipeline: skeleton match, skin registration, volumetric warp, fat thickness, sex detection
 - [ ] Layer viewer: visibility/transparency, presets, peel brush, labels and descriptions
@@ -988,7 +995,18 @@ Before Phase 1 is finished, build throwaway prototypes to prove the risky tech:
 
 ---
 
-## 23. Risks
+## 23. How we'll work
+
+- **Claude writes the code**, phase by phase, on this repository's development branch, with tests and commits per milestone.
+- **The owner tests on real devices** (Windows/macOS PCs, phones, tablets) after each milestone and reports what works, what looks wrong, and performance. This matters because Claude's environment has no real GPU or phone to test WebGPU, physics feel, or visuals.
+- Each phase starts with a short check-in on its scope and ends with a demo build and a list of known issues.
+- **Test assets:** the owner supplies a few real files (Daz Genesis 8/9 exports, VaM looks, generic and VRM figures). They're used locally for testing and never committed to the repository.
+- **Hosting:** a static build deployed behind Cloudflare Access (set up by the owner, with Claude's instructions).
+- Week estimates in the roadmap are for a single full-time human developer; with Claude writing the code, the real pace depends mostly on how fast each milestone can be tested and refined.
+
+---
+
+## 24. Risks
 
 | Risk | Mitigation |
 |---|---|
@@ -1005,22 +1023,19 @@ Before Phase 1 is finished, build throwaway prototypes to prove the risky tech:
 | Rope and knot simulation is unstable or slips | Friction-based holding, pre-modelled knots, tie templates, substeps, "pin rope" fallback |
 | Insertion and soft-body channels explode or intersect | Guide-curve channels, stretch limits, small substeps, early prototype |
 | Many simultaneous systems (two figures, ropes, latex, fluids) overload the GPU | Quality levels, freezing finished systems after Settle, budget meter |
-| No suitable female anatomy model exists, and scan data is ruled out | Dedicated artist workstream from day one, sculpting from illustrated and photo references; placeholder anatomy for development. Morph-based female features ship first so the app is useful meanwhile. |
+| No suitable female anatomy model exists, scan data is ruled out, and no artist is hired | Procedural anatomy generator using the imported figure's own outside shape; hand refinement in Blender over time; placeholder anatomy for development. Morph-based female features ship first so the app is useful meanwhile. |
 | Booleans fail on bad meshes, or cuts are slow | Generate watertight cutting meshes at import, run cuts in a worker with a preview, simplify far-from-cut regions |
 | Memory and GPU load with full anatomy, flesh sim, cloth, and fluids together | Load layers on demand, LODs, quality levels, and a budget that limits simultaneous systems on weaker GPUs |
-| No openly licensed FACS face template | Budget for building or commissioning one |
+| No openly licensed FACS face template | Build our own procedurally (section 13.1) |
 | Data loss from browser storage being cleared | Automatic backups to a user folder, persistent storage request |
 | Private content exposed on a shared device | App lock, optional encryption, blurred thumbnails |
 
 ---
 
-## 24. Open decisions for the owner
-Already decided: Chrome required; private use; fully offline PWA; balanced visual quality; free MakeHuman starter figures; 1–2 figures per scene; simple animation; graphic content on by default; no real medical scan data; all import sources (Daz, VaM, generic, VRM) supported.
+## 25. Open decisions for the owner
+Already decided: Chrome required; private use; fully offline PWA; balanced visual quality; free MakeHuman starter figures; 1–2 figures per scene; simple animation; graphic content on by default; no real medical scan data; all import sources (Daz, VaM, generic, VRM) supported; anatomy and FACS face built in-house (procedurally); Claude writes the code; all feature areas (toys/ropes/latex, face/states, anatomy/cutting, fluids) are in scope, in the roadmap order below.
 
-1. **Priority order** after the core (Phases 0–2): native Daz/VaM import, face and states, anatomy layers, cutting, or fluids? The plan's order is one option.
-2. **Who sculpts the anatomy templates:** hire a 3D character artist (about 3–5 months for the female template) or build in-house? No medical scan data either way.
-3. **FACS face template:** build in-house or commission (female face first)?
-4. **Sharing:** are `.poser` files and preset packs passed around by hand enough for the group, or is a small private shared library worth adding later?
+1. **Sharing:** are `.poser` files and preset packs passed around by hand enough for the group, or is a small private shared library worth adding later?
 
 ---
 
