@@ -16,3 +16,5 @@ body { font: 14px/1.4 system-ui, sans-serif; color: #eee; }
 .proto-panel dt { color: #aaa; }
 .proto-panel dd { margin: 0; text-align: right; font-variant-numeric: tabular-nums; }
 @media (max-width: 599px) { .proto-panel { top: auto; bottom: 12px; } }
+.proto-controls { display: flex; flex-direction: column; gap: 8px; }
+.proto-panel label > input[type='range'] { grid-column: 1 / -1; }

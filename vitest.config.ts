@@ -4,6 +4,8 @@ export default defineConfig({
   test: {
     include: ['packages/*/src/**/*.test.ts', 'apps/*/src/**/*.test.ts'],
     environment: 'node',
+    // GPU tests run on a software GPU (SwiftShader) here, which is slow.
+    testTimeout: 60_000,
     server: {
       deps: {
         // Ships ESM with extensionless imports that Node can't resolve on its own.
