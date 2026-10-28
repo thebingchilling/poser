@@ -2,7 +2,7 @@
 
 A web app that is a **realistic, physics-based NSFW figure modeller and anatomy study tool**. It leans toward adult/NSFW use, with anatomy study as a strong secondary purpose. Artists import their own figures (Daz3D, Virt-a-Mate, VRM, generic rigs), clothing, and props. They pose figures with joint handles like VRM Posing Desktop, let real physics settle bodies, soft tissue, and cloth, explore the anatomy underneath layer by layer, cut into it, add realistic fluids, fine-tune expressions and body states, use objects such as toys, ropes, restraints, and latex, then light, frame, and capture images.
 
-> **Website only, private use:** a browser app for personal use and a few invited users. Not published publicly and not paid. Runs on Windows, macOS, iPad/iPhone, and Android through one installable website (PWA), with quality scaled to each device (section 3.4).
+> **Website only, private use:** a browser app for personal use and a few invited users. Not published publicly and not paid. Requires **Chrome**. Runs on Windows, macOS, Android, and iPhone/iPad through one installable website (PWA): full quality on PCs and laptops, reduced by default on mobile, with GPU auto-detection and crash fallbacks (section 3.4).
 >
 > **Status:** planning only. Nothing gets built until the go-ahead.
 >
@@ -28,7 +28,7 @@ A web app that is a **realistic, physics-based NSFW figure modeller and anatomy 
 
 ### Out of scope for v1
 - Any online model sources, cloud sync, or server-side sharing (users share files directly, section 16.7).
-- Public release, payments, and browsers without WebGPU (e.g. Firefox on Android).
+- Public release, payments, and browsers other than Chrome.
 - Animation timelines (single poses only; a timeline may come later).
 - Tattoos, piercings, jewelry, nails, and makeup.
 
@@ -50,7 +50,7 @@ A web app that is a **realistic, physics-based NSFW figure modeller and anatomy 
 | **Virt-a-Mate** | `.var` packages are zip files with a `meta.json` (license, dependencies), plus morphs, clothing, and textures. VaM 1.x figures use a Daz Genesis 2 base mesh that **isn't inside the packages**. | Read `.var` zips and the VaM install folder. Apply morphs and clothing onto the base mesh from the user's own VaM install. |
 | **Physics engine** | Jolt (WASM) has rigid bodies, ragdolls with motors, constraints, and soft bodies. Rapier has no soft bodies. | Use Jolt for bodies and props. |
 | **Cloth** | There is no mature, reusable browser cloth library; only demos (XPBD on WebGPU, mass-spring papers). | Write our own XPBD cloth solver on WebGPU compute. |
-| **WebGPU** | Available in Chrome, Edge, Safari 17.4+, and Firefox (default since late 2025). | Require WebGPU everywhere and skip WebGL2 and CPU fallbacks. Safari 26 (macOS, iOS, iPadOS) and Chrome on Android (since version 121) now ship WebGPU, so this still covers all four platforms. |
+| **WebGPU** | Available in Chrome, Edge, Safari 17.4+, and Firefox (default since late 2025). | Require Chrome with WebGPU (desktop and Android). On iOS, Chrome uses Safari's engine, and Safari 26 ships WebGPU. If WebGPU is missing or fails, use three.js's built-in WebGL2 backend as a compatibility mode without GPU simulations. |
 | **Mobile limits** | iOS kills browser tabs that use too much memory; mobile GPUs are several times weaker and throttle when hot; folder access (`showDirectoryPicker`) is desktop Chrome/Edge only; Safari can clear site data for sites not installed to the Home Screen. | Device quality tiers, aggressive memory budgets, file-picker imports on mobile, install as a PWA, desktop-prepared asset packs. |
 | **Marvelous Designer** | OBJ export with an optional XML sidecar holding physical properties. Units default to millimetres. | Import MD garments with auto-scaling and fabric mapping. |
 | **Anatomy data** | Z-Anatomy (CC BY-SA 4.0), built on BodyParts3D (CC BY-SA 2.1 JP), is a complete labelled 3D anatomy, mostly from one male body. The NIH Visible Human cross-sections are free to use with acknowledgment since 2019. | Bundle a fitted version of Z-Anatomy with attribution; build or commission a female template; use Visible Human as the cut-surface reference. |
@@ -104,11 +104,44 @@ A web app that is a **realistic, physics-based NSFW figure modeller and anatomy 
 - Shortcuts: `W/E/R` move/rotate/scale gizmo, `Q` toggle IK/FK, `P` pin, `M` mirror, `F` frame selection, `Space` toggle simulation, `Ctrl+Z/Y` undo/redo, `1–9` camera bookmarks.
 - **Touch:** one finger orbits or drags handles, two fingers pan/zoom/rotate, long-press opens context menus, and handles and gizmo rings are enlarged for fingers.
 
-### 3.4 Platforms and quality tiers
-One installable website (PWA) on every platform, with a **responsive, touch-first UI** designed from the start (not retrofitted).
+### 3.4 Platforms, Chrome requirement, and quality
+**Chrome is required** on every platform. The site checks the browser on load and shows a "please open in Chrome" page otherwise.
+- Windows, macOS, Android: Chrome with WebGPU.
+- iPhone/iPad: Chrome works, but Apple requires all iOS browsers to use Safari's engine underneath, so on iOS, Chrome behaves like Safari 26. WebGPU inside Chrome on iOS needs to be verified early. If it isn't available there, iOS users fall back to the compatibility mode below.
+- One installable website (PWA) with a **responsive, touch-first UI** designed from the start (desktop three-panel layout, tablet collapsible panels, phone full-screen viewport with bottom sheets).
 
-| Tier | Devices | What runs |
+**Quality levels:** Low, Medium, High, Full.
+
+| Device | Default | User can |
 |---|---|---|
+| PCs and laptops (Windows, macOS) | **Full**, unless auto-detection finds a weak GPU | Lower it at any time |
+| Phones and tablets | **Reduced** (Low or Medium) | Raise it, up to Full |
+
+**Auto-detection of GPU capacity:**
+1. On first run, read what the browser reports about the GPU (WebGPU adapter limits and features, device memory, screen size).
+2. Run a short benchmark (a few seconds) of cloth, soft-body, and particle workloads and measure frame times.
+3. Pick the highest level that keeps a smooth frame rate, and suggest raising mobile above "Reduced" if the device can handle more.
+4. **Adaptive quality while running:** if frame times stay too high (or the device heats up and slows down), simulation detail and render resolution step down automatically, and step back up when there's headroom. It can be turned off.
+5. The result is stored per device and can be re-run from Settings.
+
+**Memory manager:** tracks GPU and texture memory against a per-level budget, unloads hidden anatomy layers and unused assets, and warns before the browser would kill the tab (a real risk on iPhone/iPad).
+
+**Crash and load-failure fallbacks:**
+| Problem | What happens |
+|---|---|
+| **GPU device lost** (driver reset, out of GPU memory) | The app catches it, recreates the GPU device, drops one quality level, and reloads the scene from memory or the last autosave. |
+| **Out-of-memory errors** while loading an asset | Load a smaller version of that asset (lower LOD and texture size) and tell the user. |
+| **Tab crashed or was killed** (e.g. iOS memory limit) | A "loading started" flag is saved before heavy work and cleared when it finishes. If the next launch finds the flag still set, the app starts in **Safe Mode**: lowest quality, simulations off, heavy assets not loaded, with options to open the last autosave, open it at lower quality, or start empty. |
+| **Scene keeps crashing** | Safe Mode offers loading the scene piece by piece (figures without clothing, without anatomy layers, without fluids) to find what's too heavy. |
+| **WebGPU not available or failing at startup** | **Compatibility mode** using three.js's built-in WebGL2 backend: viewing, posing, expressions, lighting, and capture work; GPU simulations (cloth, fluids, ropes, soft bodies) are off. Little extra work, since three.js's WebGPU renderer already includes this backend. |
+| Anything else | Frequent autosaves plus the automatic backup folder mean nothing is lost; a local error log helps debugging. |
+
+**Other mobile details:**
+- **Prepare on desktop, use anywhere:** heavy work (Daz/VaM processing, anatomy fitting, optimization) runs on a computer and is exported as ready-to-use **asset packs** with mobile-sized versions. Phones and tablets import those packs without redoing the work.
+- **Imports on mobile** use the file picker (single files or zips); library-folder access is desktop-only.
+- **Install to Home Screen** on iPhone/iPad, so the app's stored data isn't cleared, plus regular backups.
+
+---|---|---|
 | **Full** | Windows and macOS desktops with strong GPUs | Everything at full detail |
 | **Medium** | Laptops, Apple Silicon Macs | Everything, with lower simulation resolution and fewer particles |
 | **Tablet** | iPad (M-series best), high-end Android tablets | Posing, physics, cloth, ropes, fluids at reduced detail; anatomy layers loaded per region; no path-traced render |
@@ -768,7 +801,7 @@ poser/
 | Fluids | About 100k particles at 30+ fps on WebGPU; surface flow always real time |
 | Ropes | A full harness plus suspension (about 20 rope segments) settles in under 5 seconds |
 | Memory | Warn before going past roughly 2 GB of GPU memory |
-| Browsers | Windows/macOS: Chrome, Edge, Safari 26. iPhone/iPad: Safari 26 (installed as PWA). Android: Chrome. All need WebGPU. |
+| Browsers | Chrome only, on Windows, macOS, Android, and iPhone/iPad (installed as a PWA). WebGPU for full features; WebGL2 compatibility mode otherwise. |
 
 ### Testing
 - Unit tests for rig mapping, IK, joint limits, importers, and serialization.
@@ -802,11 +835,14 @@ Each phase ends with something usable. Week estimates assume one full-time devel
 
 ### Phase 0: Foundation (about 2 weeks)
 - [ ] Monorepo, Vite, React shell, panel layout, themes
-- [ ] three.js WebGPU viewport (WebGPU required, with a clear message otherwise), orbit camera, view cube, grid, floor
+- [ ] three.js WebGPU viewport, orbit camera, view cube, grid, floor
 - [ ] Scene store, undo/redo, autosave to IndexedDB/OPFS
 - [ ] Private access via Cloudflare Access, adults-only notice
 - [ ] App lock, neutral tab option; automatic backup folder
-- [ ] PWA install, responsive touch-first layouts (desktop, tablet, phone), device tier detection, memory manager
+- [ ] Chrome check, PWA install, responsive touch-first layouts (desktop, tablet, phone)
+- [ ] Quality levels, GPU auto-detection and benchmark, adaptive quality, memory manager
+- [ ] Crash handling: GPU device-lost recovery, Safe Mode after a crash, WebGL2 compatibility mode
+- [ ] **Verify WebGPU in Chrome on iOS** on a real device
 - [ ] Load a bundled CC0 female figure (a male figure is bundled too)
 - [ ] **Start the female anatomy template workstream:** contract or hire a 3D character artist; runs in parallel for about 2–4 months
 - **Done when:** the app opens with a figure, the user can orbit it, and the scene saves and reloads.
@@ -942,7 +978,9 @@ Before Phase 1 is finished, build throwaway prototypes to prove the risky tech:
 | Heavy meshes and textures exhaust browser memory | Decimation, KTX2, LODs, morph pruning, memory warnings, quality levels |
 | Cloth instability (explosions, poke-through) | Small substeps, thick collision fields, drape from rest, velocity clamping, "reset cloth" button |
 | Daz bend/twist rigs deform poorly | Dedicated twist splitting; corrective morphs in Phase 3 |
-| A user's machine lacks WebGPU or a strong enough GPU | Known small user group: check hardware up front; quality levels for weaker GPUs |
+| A device lacks WebGPU or a strong enough GPU | GPU auto-detection, quality levels, adaptive quality, WebGL2 compatibility mode |
+| Crashes or tabs killed on heavy scenes (especially iOS) | Device-lost recovery, Safe Mode after a crash, piece-by-piece loading, autosaves and backups |
+| WebGPU may not be available inside Chrome on iOS | Verify in Phase 0; fall back to compatibility mode on iOS, or allow Safari there as an exception |
 | Browser file-access differences (only desktop Chrome/Edge have folder access) | Manual re-scan; drag-and-drop always works; recommend Chrome/Edge for large libraries |
 | Browser storage limits for big libraries | Request persistent storage, show usage, read library folders in place instead of copying, cache only processed versions |
 | Anatomy fit looks wrong on unusual body types | Landmark-guided fitting, per-region manual sliders, test set of very different bodies |
@@ -961,13 +999,12 @@ Before Phase 1 is finished, build throwaway prototypes to prove the risky tech:
 ---
 
 ## 24. Open decisions for the owner
-1. **Users' devices:** which devices will the group actually use most? That decides how much effort goes into the tablet and phone tiers.
-2. **Built-in content:** are CC0 MakeHuman/MPFB starter figures enough, or should we commission original realistic figures?
-3. **Priority order** after the core (Phases 0–2): native Daz/VaM import, face and states, anatomy layers, cutting, or fluids? The plan's order is one option.
-4. **Female anatomy template budget:** hire or contract a 3D character artist (about 2–4 months)? This is the most important external cost.
-5. **FACS face template:** build in-house or commission (female face first)?
-6. **Graphic content:** a per-user on/off setting (recommended), or always on?
-7. **Sharing:** are `.poser` files and preset packs passed around by hand enough for the group, or is a small private shared library worth adding later?
+1. **Built-in content:** are CC0 MakeHuman/MPFB starter figures enough, or should we commission original realistic figures?
+2. **Priority order** after the core (Phases 0–2): native Daz/VaM import, face and states, anatomy layers, cutting, or fluids? The plan's order is one option.
+3. **Female anatomy template budget:** hire or contract a 3D character artist (about 2–4 months)? This is the most important external cost.
+4. **FACS face template:** build in-house or commission (female face first)?
+5. **Graphic content:** a per-user on/off setting (recommended), or always on?
+6. **Sharing:** are `.poser` files and preset packs passed around by hand enough for the group, or is a small private shared library worth adding later?
 
 ---
 
