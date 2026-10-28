@@ -19,7 +19,13 @@ export interface PrototypePage {
   start(frame: (dt: number) => void | Promise<void>): void;
 }
 
-export async function createPrototypePage(title: string, description: string, target: [number, number, number], cameraPos: [number, number, number]): Promise<PrototypePage> {
+export async function createPrototypePage(
+  title: string,
+  description: string,
+  target: [number, number, number],
+  cameraPos: [number, number, number],
+  { needsGpu = true } = {},
+): Promise<PrototypePage> {
   document.title = title;
   const root = document.getElementById('root')!;
   root.innerHTML = `<canvas class="proto-canvas"></canvas><div class="proto-panel"><h1></h1><p></p><div class="proto-controls"></div><dl></dl></div>`;
@@ -69,7 +75,7 @@ export async function createPrototypePage(title: string, description: string, ta
     dd.textContent = value;
   };
   stat('Renderer', test.ok ? 'WebGPU' : 'WebGL2 (compatibility)');
-  if (!test.ok) stat('Simulation', `Needs WebGPU (${test.reason})`);
+  if (!test.ok && needsGpu) stat('Simulation', `Needs WebGPU (${test.reason})`);
 
   const resize = () => {
     renderer.setSize(canvas.clientWidth, canvas.clientHeight, false);

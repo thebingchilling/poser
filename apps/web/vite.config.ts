@@ -26,6 +26,7 @@ export default defineConfig({
         // Throwaway prototypes (PLAN.md section 23), served at /prototypes/*.html.
         ragdoll: fileURLToPath(new URL('prototypes/ragdoll.html', import.meta.url)),
         cloth: fileURLToPath(new URL('prototypes/cloth.html', import.meta.url)),
+        cut: fileURLToPath(new URL('prototypes/cut.html', import.meta.url)),
       },
     },
   },
