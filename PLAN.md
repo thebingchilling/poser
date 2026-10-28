@@ -1,6 +1,6 @@
 # Poser: app plan
 
-A web app for **realistic, physics-based anatomy reference**. Artists import their own figures (Daz3D, Virt-a-Mate, VRM, generic rigs), clothing, and props. They pose figures with joint handles like VRM Posing Desktop, let real physics settle bodies, soft tissue, and cloth, explore the anatomy underneath layer by layer, cut into it, add realistic fluids, fine-tune expressions and body states, then light, frame, and capture reference images.
+A web app that is a **realistic, physics-based NSFW figure modeller and anatomy study tool**. It leans toward adult/NSFW use, with anatomy study as a strong secondary purpose. Artists import their own figures (Daz3D, Virt-a-Mate, VRM, generic rigs), clothing, and props. They pose figures with joint handles like VRM Posing Desktop, let real physics settle bodies, soft tissue, and cloth, explore the anatomy underneath layer by layer, cut into it, add realistic fluids, fine-tune expressions and body states, then light, frame, and capture images.
 
 > **Status:** planning only. Nothing gets built until the go-ahead.
 >
@@ -12,7 +12,8 @@ A web app for **realistic, physics-based anatomy reference**. Artists import the
 
 ### In scope
 - **Self-import only.** Users bring files from their own disk. The app never downloads from the internet, browses stores, or proxies websites.
-- Realistic human figures, including anatomically complete nude figures, for art reference (18+).
+- Realistic adult (18+) human figures with fully detailed nude anatomy, for NSFW scenes and anatomy study.
+- Multiple figures interacting physically, including intimate skin-to-skin contact (section 7.5).
 - Posing with FK rotation handles, IK effectors, pins, joint limits, mirroring, hand presets, and a pose library.
 - Physics: gravity and contact settling (ragdoll), soft tissue, cloth draping, prop collisions.
 - Importing props and environments that figures and cloth interact with.
@@ -29,7 +30,7 @@ A web app for **realistic, physics-based anatomy reference**. Artists import the
 ### Principles
 1. **Local-first and private.** Files never leave the device. Storage is the browser's private file system (OPFS) plus IndexedDB.
 2. **Bring your own assets.** No third-party content is bundled. Built-in content is original or CC0 only.
-3. **Anatomy first.** Realistic joint limits, proportions, weight, and lighting take priority over game-style features.
+3. **Realism first.** Realistic bodies, skin, soft tissue, contact, and fluids take priority over game-style features. Anatomy accuracy matters where it's visible or felt (shape, flesh behavior, genitals, cut surfaces); deep internal detail is lower priority.
 4. **Female-first.** Defaults, templates, tests, and quality bars are set on female figures first, then extended to male.
 5. **Never block on exotic formats.** Standard formats (glTF/FBX/OBJ/VRM) work from day one; native Daz/VaM reading is added on top.
 
@@ -213,7 +214,16 @@ This is what lets one pose work on any figure, one ragdoll builder serve all of 
 | 2 | Contact compression: skin vertices pushed out of touching surfaces, with the displacement spread to neighbours as a bulge (GPU pass) | Thighs flatten on a seat, cheek squashes on a hand, body presses into a figure it leans on |
 | 5 | Layered flesh: the fat and muscle volumes from the anatomy layers simulated with XPBD (section 9.5), driving the visible skin | True sag, compression, wobble, and realistic wound behavior |
 
-### 7.5 Simulation step (each frame)
+### 7.5 Figure-to-figure contact
+NSFW scenes depend on bodies touching convincingly, so contact between figures is a core feature, not an extra:
+- **Two-way soft-body contact:** flesh on both bodies deforms where they press together (hands squeezing, bodies lying on each other, thighs and buttocks pressing).
+- **Skin friction and sliding:** skin grips or slides depending on pressure and wetness (fluids and oils reduce friction).
+- **Hands on bodies:** grip-to-body works like grip-to-prop (section 13.2), with fingers sinking into soft tissue instead of passing through.
+- **Genital soft bodies:** genitals are their own soft-body regions with deformable openings, so contact and insertion between figures or with props deform the tissue realistically instead of intersecting.
+- **Pose helpers:** two-figure pose library, snap/attach points (e.g. hand to hip, figure to figure), and IK targets on the other figure's body.
+- Runs in Settle and Live modes like everything else.
+
+### 7.6 Simulation step (each frame)
 1. Pose/IK produces target joint rotations.
 2. The physics worker (Jolt) steps the ragdoll and props → bone transforms, shared with the main thread through shared memory.
 3. The GPU skins the body; spring bones and soft tissue update.
@@ -309,11 +319,11 @@ No openly licensed, complete female anatomy model exists, so the plan combines s
 1. **NIH Visible Human Female** (main source): 0.33 mm photographic cross-sections plus CT and MRI of a real female body, free to use with acknowledgment. Tissues are segmented from these slices into 3D meshes.
 2. **TotalSegmentator** (Apache 2.0 software) automatically segments 104 structures from CT (bones, organs, some muscles), which speeds up the work. Most muscles, breast tissue, and reproductive and pelvic-floor structures still need manual segmentation.
 3. **Z-Anatomy (male)** as the reference for muscle naming and structure, transferred onto the female skeleton and then corrected by hand.
-4. **Medical literature and atlases** for what imaging doesn't resolve well (clitoral anatomy, breast ligaments, pelvic floor).
+4. **Anatomy references** (atlases, photo references) for what imaging doesn't resolve well (clitoral anatomy, breast ligaments, pelvic floor, external genital variation).
 5. **Optional purchase:** commercial female anatomy models (e.g. TurboSquid, CGTrader, RenderHub), only if their license allows embedding in an application. Most standard licenses don't, so check each one.
 6. NIH 3D's female pelvis model is CC BY-NC-SA (non-commercial), so it can be a visual reference only, not shipped in a commercial app.
 
-**Who builds it:** a medical 3D artist (contract or hire), reviewed by an anatomist or medical illustrator for accuracy. Budget about 3–6 months of specialist work. It is the longest-lead item in the project.
+**Who builds it:** a 3D character artist experienced with realistic anatomy and NSFW figures (contract or hire). Accuracy is checked internally against the scan data and photo references; no formal medical review. Priority goes to what is visible and drives physics: skeleton, breasts, fat, muscles near the surface, and external and internal genitalia. Deep organs (liver, intestines, lungs) can be simpler, mainly so cuts look right. Budget about 2–4 months. It is still the longest-lead item in the project.
 
 **Limitation:** the Visible Human Female is one person (a 59-year-old woman), so the template is made parametric (section 10.3) to cover the natural range of adult female bodies.
 
@@ -333,7 +343,7 @@ No openly licensed, complete female anatomy model exists, so the plan combines s
 In addition to the general body states (section 13.6):
 - **Pregnancy:** a stage slider (by week) that grows the uterus inside the anatomy and changes the belly, breasts, areolae, fat, and posture. The center of gravity shifts and balance follows. Optional linea nigra and stretch marks.
 - **Postpartum and lactation:** belly and breast changes.
-- **Menstrual cycle:** subtle changes (bloating, breast fullness), plus menstrual blood as a fluid emitter for medical and reference use.
+- **Menstrual cycle:** subtle changes (bloating, breast fullness), plus menstrual blood as a fluid emitter.
 - **Menopause and aging:** changes to breast tissue, fat distribution, skin, and bone.
 
 ### 10.6 Male anatomy (second, fully supported)
@@ -439,10 +449,11 @@ Each fluid has viscosity, density, color, opacity, surface tension, stickiness, 
 - **Automatic tension** (optional): muscles that are working to hold the pose against gravity tense up automatically after Settle.
 
 ### 13.5 Genital and secondary sexual anatomy states
-Neutral, clinical controls for anatomy reference:
+Detailed controls, a core NSFW feature:
 - **Male:** penis from flaccid to fully erect (length, girth, angle, curvature), foreskin from covered to retracted, scrotum from relaxed to tight (temperature and arousal).
 - **Female:** labia and clitoral states (relaxed to engorged), vaginal opening, breast changes (fullness, nipple and areola).
-- **Both:** nipple erection (cold or arousal), areola texture.
+- **Both:** nipple erection (cold or arousal), areola texture, pubic and body hair.
+- **Arousal-linked changes** can be driven together from the Arousal state (section 13.6) or set individually.
 - Driven by the anatomy layers (e.g. erectile tissue volume) where possible, and by the figure's own morphs (Daz and VaM genital add-ons usually include them).
 
 ### 13.6 Body states
@@ -532,7 +543,7 @@ Asset (in Library)
 | Asset processing | meshoptimizer (decimation and compression), KTX2/Basis encoder, fflate (zip/gzip), V-HACD (convex decomposition), all WASM in workers |
 | Storage | OPFS + IndexedDB; File System Access API for library folders |
 | Testing | Vitest (unit), Playwright (end-to-end and screenshot comparison), physics regression scenes |
-| Hosting | Static site (Cloudflare Pages or Netlify) with the security headers that enable shared memory. No backend needed. |
+| Hosting | Static site on an adult-content-friendly host, with the security headers that enable shared memory. No backend except an age-verification provider where required. |
 | Optional later | Tauri desktop wrapper for very large libraries |
 
 ### Code layout
@@ -577,7 +588,8 @@ poser/
 - Unit tests for rig mapping, IK, joint limits, importers, and serialization.
 - A **golden test set** of real files, mostly female (Daz Genesis 8 Female, Genesis 9 with a female shape, VaM female looks, female VRM and Mixamo figures), plus some male figures and MD garments: each must import, map, and pose correctly.
 - A **female body-diversity set** (slim, curvy, heavy, muscular, large and small breasts, young adult to elderly, pregnant) for anatomy fitting and breast physics checks.
-- Accuracy review of the female template by a qualified anatomist or medical illustrator.
+- Visual accuracy checks of the female template against the Visible Human scans and photo references.
+- Contact tests: two figures pressing, hand grip on flesh, and genital contact, checked for intersections and stability.
 - Screenshot tests for rendering and study modes.
 - Physics regression scenes (sitting in a chair, lying on the floor, a skirt in a seated pose) checked for penetration and stability.
 - Anatomy fitting checks on very different body types (no bones poking through skin, sensible fat thickness), and cut tests comparing cross-sections with reference atlas slices.
@@ -586,14 +598,16 @@ poser/
 
 ## 18. Content policy, safety, and legal
 
-- **18+ age gate** on first launch, explaining that the app shows nudity for anatomy reference.
+- **18+ only.** Because the app leans NSFW, a click-through age gate may not be enough. Over two dozen US states (following the Supreme Court's 2025 *Free Speech Coalition v. Paxton* ruling) and the UK Online Safety Act require real age verification for sites where a substantial share of content is sexual. Whether a tool that hosts no content counts depends on what the site itself shows (marketing images, bundled nude figures). Plan for a third-party age-verification provider at sign-up or download, enabled per jurisdiction, and get legal advice.
 - Everything stays local: no uploads, accounts, or sharing in v1.
 - **Separate graphic-content setting:** blood, open wounds, removed body parts, and bodily fluids are off by default and turned on separately from nudity, with a warning. Anatomy layers (muscles, skeleton) are always available.
 - Anatomy data is credited (BodyParts3D, Z-Anatomy, NLM Visible Human) on an About/credits screen, as their licenses require.
-- **Terms of use:** adult figures only; sexualized depictions of minors are prohibited. Users are responsible for having the right to use the files they import.
+- **Terms of use:** adult figures only; any sexual depiction of minors or child-like figures is prohibited, and the app has no child body proportions. Users are responsible for having the right to use the files they import.
+- **Real people:** prohibit making sexual content of real people without consent (many places now outlaw non-consensual intimate imagery, including digital fakes). Users import their own models, so this is enforced through the terms rather than technically.
 - **No bundled third-party content.** Built-ins are original or CC0.
 - Licenses recorded from `.var` metadata are shown in the Library.
-- Professional art-reference framing throughout.
+- **Payments:** mainstream processors such as Stripe don't accept adult content businesses. Use an adult-content processor (CCBill, Segpay, Epoch, or similar) if the app is sold.
+- **Hosting and distribution:** pick hosting whose terms allow adult content, and expect mainstream app stores to reject it; distribute via the website and the optional desktop app.
 - Legal review before launch, especially the Daz Interactive License question and the terms of use.
 
 ---
@@ -608,7 +622,7 @@ Each phase ends with something usable. Week estimates assume one full-time devel
 - [ ] Scene store, undo/redo, autosave to IndexedDB/OPFS
 - [ ] Age gate, terms screen
 - [ ] Load a bundled CC0 female figure (a male figure is bundled too)
-- [ ] **Start the female anatomy template workstream:** contract or hire a medical 3D artist; runs in parallel for about 3–6 months
+- [ ] **Start the female anatomy template workstream:** contract or hire a 3D character artist; runs in parallel for about 2–4 months
 - **Done when:** the app opens with a figure, the user can orbit it, and the scene saves and reloads.
 
 ### Phase 1: Import and posing MVP (about 5 weeks)
@@ -627,6 +641,7 @@ Each phase ends with something usable. Week estimates assume one full-time devel
 - [ ] **Breast soft-body simulation** (volume-based, glandular/fat stiffness, ligament support), checked standing, lying, on the side, bent forward, and pressed
 - [ ] Two-way clothing ↔ flesh interaction (bra support, waistband and strap indentation)
 - [ ] Spring-bone fallback for other soft tissue; contact compression
+- [ ] Figure-to-figure contact: two-way soft-body contact, skin friction, hands gripping flesh, two-figure pose helpers
 - [ ] XPBD cloth on WebGPU with CPU fallback: body collision field, friction, pins, fabric presets, drape from rest, simulation proxy
 - [ ] Marvelous Designer OBJ + XML import
 - [ ] Balance overlay (center of gravity)
@@ -654,6 +669,7 @@ Each phase ends with something usable. Week estimates assume one full-time devel
 - [ ] Prepare the Z-Anatomy/BodyParts3D template: clean, close every mesh, bind to the canonical rig, author fat and bone-interior data
 - [ ] Integrate the finished female anatomy template (from the parallel workstream) with full breast, genital, and pelvic anatomy and variation controls
 - [ ] Male template from Z-Anatomy/BodyParts3D
+- [ ] Genital soft bodies with deformable openings for figure-to-figure and figure-to-prop contact (section 7.5)
 - [ ] Fitting pipeline: skeleton match, skin registration, volumetric warp, fat thickness, sex detection
 - [ ] Layer viewer: visibility/transparency, presets, peel brush, labels and descriptions
 - [ ] Layered flesh simulation (fat and muscle volumes with XPBD), muscle volume bulge from tension, erectile tissue volume for genital states
@@ -710,13 +726,14 @@ Before Phase 1 is finished, build two throwaway prototypes to prove the risky te
 | WebGPU missing or buggy on a device | WebGL2 render fallback and CPU cloth at lower resolution |
 | Browser file-access differences (Safari/Firefox lack persistent folder access) | Manual re-scan; drag-and-drop always works; Tauri desktop option later |
 | Anatomy fit looks wrong on unusual body types | Landmark-guided fitting, per-region manual sliders, test set of very different bodies |
-| No open, complete female anatomy model exists | Dedicated workstream from day one: Visible Human Female segmentation, a medical 3D artist, and an anatomist review. Morph-based female features ship first so the app is useful meanwhile. |
+| No open, complete female anatomy model exists | Dedicated workstream from day one: Visible Human Female segmentation plus a 3D character artist. Morph-based female features ship first so the app is useful meanwhile. |
 | The female template comes from one 59-year-old body | Parametric variation controls and a body-diversity test set |
 | Anatomy data is share-alike licensed | Keep anatomy data separate and attributed so share-alike only covers it. A female template built from Visible Human data can be fully ours. |
 | Booleans fail on bad meshes, or cuts are slow | Generate watertight cutting meshes at import, run cuts in a worker with a preview, simplify far-from-cut regions |
 | Memory and GPU load with full anatomy, flesh sim, cloth, and fluids together | Load layers on demand, LODs, quality levels, and a budget that limits simultaneous systems on weaker GPUs |
 | No openly licensed FACS face template | Budget for building or commissioning one |
-| Hosting providers or app stores reject gore plus nudity | Graphic content off by default, clinical framing, Tauri desktop as a fallback distribution |
+| Hosting providers, payment processors, or app stores reject NSFW content | Adult-friendly host, adult payment processor, direct distribution (website and desktop app) |
+| Age-verification laws apply to the site | Age-verification provider per jurisdiction; legal advice before launch |
 | Legal and hosting issues around NSFW and licensed content | Local-only, nothing bundled, age gate, clear terms, legal review |
 
 ---
@@ -727,13 +744,17 @@ Before Phase 1 is finished, build two throwaway prototypes to prove the risky te
 3. **Business model:** free, one-time purchase, or subscription? This affects the desktop wrapper and licensing work.
 4. **Built-in content:** are CC0 MakeHuman/MPFB starter figures enough, or should we commission original realistic figures?
 5. **Priority order** after the core (Phases 0–2): native Daz/VaM import, face and states, anatomy layers, cutting, or fluids? The plan's order is one option.
-6. **Female anatomy template budget:** hire or contract a medical 3D artist (about 3–6 months) plus an anatomist reviewer? This is the most important external cost.
+6. **Female anatomy template budget:** hire or contract a 3D character artist (about 2–4 months)? This is the most important external cost.
 7. **FACS face template:** build in-house or commission (female face first)?
 8. **Graphic content:** keep blood and wounds behind a separate setting (recommended), or on by default?
 
 ---
 
 ## Sources
+- US state age-verification laws: https://avpassociation.com/us-state-age-verification-laws-for-adult-content/
+- Age verification law overview 2026: https://www.jumio.com/age-verification-laws/
+- Missouri age-verification law (2026): https://www.stlpr.org/government-politics-issues/2026-08-28/age-verification-law-for-porn-sites-now-in-effect-in-missouri
+- Stripe prohibited businesses: https://support.stripe.com/questions/prohibited-and-restricted-businesses-faqs
 - NIH 3D female pelvis (CC BY-NC-SA): https://3d.nih.gov/entries/3DPX-015843
 - TotalSegmentator paper: https://arxiv.org/abs/2208.05868
 - TotalSegmentator package (Apache 2.0): https://mcp.depscope.dev/pkg/pypi/TotalSegmentator
