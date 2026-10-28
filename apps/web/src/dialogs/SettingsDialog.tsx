@@ -300,6 +300,13 @@ function DiagnosticsTab() {
       <Row label="Installed as app">{isInstalled() ? 'Yes' : 'No'}</Row>
       <Row label="Cross-origin isolated">{self.crossOriginIsolated ? 'Yes' : 'No'}</Row>
       <Row label="Safe Mode">{ui.safeMode ? 'On' : 'Off'}</Row>
+      <ListSubheader>Prototypes</ListSubheader>
+      <p className="hint">Throwaway tests of the riskiest technology (PLAN.md section 23). Try them on each device.</p>
+      <div className="button-wrap">
+        <Button variant="tonal" icon="science" onClick={() => window.open('/prototypes/ragdoll.html', '_blank')}>
+          1 · Ragdoll Settle
+        </Button>
+      </div>
       <ListSubheader>Error log</ListSubheader>
       {log.length === 0 ? (
         <p className="hint">No errors recorded.</p>

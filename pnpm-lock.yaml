@@ -47,6 +47,9 @@ importers:
       '@poser/core':
         specifier: workspace:*
         version: link:../../packages/core
+      '@poser/physics':
+        specifier: workspace:*
+        version: link:../../packages/physics
       '@poser/platform':
         specifier: workspace:*
         version: link:../../packages/platform
@@ -65,10 +68,16 @@ importers:
       react-dom:
         specifier: ^19.2.0
         version: 19.3.1(react@19.3.1)
+      three:
+        specifier: ^0.186.1
+        version: 0.186.1
       zustand:
         specifier: ^5.0.8
         version: 5.0.16(@types/react@19.3.0)(immer@11.2.9)(react@19.3.1)
     devDependencies:
+      '@types/three':
+        specifier: ^0.186.0
+        version: 0.186.0
       '@vitejs/plugin-react':
         specifier: ^6.0.1
         version: 6.1.2(vite@8.3.5(@types/node@22.20.5))
@@ -84,6 +93,15 @@ importers:
       zustand:
         specifier: ^5.0.8
         version: 5.0.16(@types/react@19.3.0)(immer@11.2.9)(react@19.3.1)
+
+  packages/physics:
+    dependencies:
+      '@poser/rig':
+        specifier: workspace:*
+        version: link:../rig
+      jolt-physics:
+        specifier: ^1.1.1
+        version: 1.1.1
 
   packages/platform:
     dependencies:
@@ -808,6 +826,9 @@ packages:
 
   immer@11.2.9:
     resolution: {integrity: sha512-IQ4UEtXjZjyefyWjtLEDXUSrF6T2hwjKPi6BIJl3bY/2XXW24d6cNGdXJSBOA/+KNnuiXkZY6DR0C3efolhitA==}
+
+  jolt-physics@1.1.1:
+    resolution: {integrity: sha512-kMCQu/b4wbHwy7EgZWaSbUyDthIKZUvAGGqta4pBF4Pdq+ljWaNvQoa5hPr/PkVCUVsqcoLwXITUm6975mQhiQ==}
 
   lightningcss-android-arm64@1.33.0:
     resolution: {integrity: sha512-gEpRTalKdosp4Bb8qWtc2iOgE5SeIHlpS1up9bFq2wAyYhl1UdTObYiHe98zEM9SQvSoqQZ1IQD0JNpg3Ml5pg==}
@@ -1715,6 +1736,8 @@ snapshots:
   idb@8.0.4: {}
 
   immer@11.2.9: {}
+
+  jolt-physics@1.1.1: {}
 
   lightningcss-android-arm64@1.33.0:
     optional: true

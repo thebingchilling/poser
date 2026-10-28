@@ -1086,7 +1086,7 @@ Each phase ends with something usable. Week estimates assume one full-time devel
 
 ### Prototype the hardest parts first
 These run **in parallel with Phase 0** (the owner's choice), as throwaway tests that prove the risky tech before it's built for real:
-1. **Ragdoll Settle:** a Jolt ragdoll holding a pose with motors and sitting on a box.
+1. **Ragdoll Settle:** a Jolt ragdoll holding a pose with motors and sitting on a box. **Done** (`packages/physics`, page at `/prototypes/ragdoll.html`, linked from Settings › Diagnostics). Results in Node: female and male figures settle onto a 42 cm seat in 0.6–1.1 s (target 3 s), hold the sitting pose to within 1°, stay stable when dropped from 40 cm, and joint limits refuse impossible poses (a knee bent backwards). Each step costs 0.1–0.5 ms on the main thread. Lessons for the real build: motors need explicit stiffness (N·m/rad) sized to the load each joint carries, because Jolt's frequency-based springs only count the two bodies at a joint and let the torso fold; and body parts that overlap at rest (waist and thighs) must not collide with each other.
 2. **GPU cloth:** a XPBD skirt on WebGPU colliding with an animated capsule body at 30+ fps.
 3. **Anatomy fit and cut:** fit a rough placeholder anatomy (simple sculpted skeleton, muscle, and fat volumes) into one imported figure and cut through a limb with Manifold, to measure fit quality and cut speed early.
 4. **Fluids:** MLS-MPM blood colliding with a skinned body, plus a basic surface-flow trickle.

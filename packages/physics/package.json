@@ -1,0 +1,11 @@
+{
+  "name": "@poser/physics",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": { ".": "./src/index.ts" },
+  "dependencies": {
+    "@poser/rig": "workspace:*",
+    "jolt-physics": "^1.1.1"
+  }
+}

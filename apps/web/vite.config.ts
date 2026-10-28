@@ -1,4 +1,5 @@
 import react from '@vitejs/plugin-react';
+import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'vite';
 
 /**
@@ -18,7 +19,14 @@ export default defineConfig({
   build: {
     target: 'es2022',
     sourcemap: true,
-    chunkSizeWarningLimit: 2000,
+    chunkSizeWarningLimit: 4000,
+    rollupOptions: {
+      input: {
+        main: fileURLToPath(new URL('index.html', import.meta.url)),
+        // Throwaway prototypes (PLAN.md section 23), served at /prototypes/*.html.
+        ragdoll: fileURLToPath(new URL('prototypes/ragdoll.html', import.meta.url)),
+      },
+    },
   },
   worker: { format: 'es' },
 });
