@@ -308,7 +308,7 @@ NSFW scenes depend on bodies touching convincingly, so contact between figures i
 - **Hair:** rigid or spring-bone hair in v1; card or strand physics in Phase 9.
 
 ### 8.3 Fabric presets
-Cotton, jersey/T-shirt, silk/satin, denim, leather, spandex/lycra, wool knit, chiffon, and latex. Each preset sets stretch, shear, bend stiffness, weight (g/m²), damping, friction, and thickness. Values from the Marvelous Designer XML are used when present. Advanced sliders allow fine-tuning.
+Cotton, jersey/T-shirt, silk/satin, denim, leather, spandex/lycra, wool knit, chiffon, latex, and sheer/open fabrics (lace, mesh, fishnet, sheer nylon; section 17.2). Each preset sets stretch, shear, bend stiffness, weight (g/m²), damping, friction, and thickness. Values from the Marvelous Designer XML are used when present. Advanced sliders allow fine-tuning.
 
 ---
 
@@ -703,7 +703,34 @@ Additions that make scenes look and behave like the real thing:
 
 ---
 
-## 17. Rendering and reference tools
+## 17. Additional tools
+
+### 17.1 Posing helpers
+- **Collision-aware posing:** while dragging joints or IK handles, limbs are stopped by the body, other figures, and props instead of passing through them. A **Resolve intersections** button pushes any overlapping parts apart with the smallest change to the pose.
+- **Poke, pinch, squeeze, and slap tools:** brush-like force tools in Live mode. Flesh deforms and ripples realistically, and slaps or firm squeezes leave redness (section 17.3) that fades on the time slider.
+- **Randomizers:** random pose (within joint limits and balance), random body variation (within chosen ranges), and random camera, each with a lock for what should stay fixed. Useful for gesture drawing and inspiration.
+
+### 17.2 Clothing
+- **Garment auto-fit:** fit clothing made for one figure onto another (e.g. a Genesis 8 outfit onto Genesis 9, a VaM figure, or a MakeHuman figure). The garment is wrapped onto the new body by surface matching, skin weights are transferred, then a short cloth simulation settles it.
+- **Sheer and open fabrics:** lace, mesh, fishnet, sheer nylon, and other see-through fabrics, with transparency that depends on stretch and viewing angle, and physics tuned for each (fishnet stretches into diamonds, sheer nylon clings).
+- **High heels affect posture:** heel height is detected from the shoe, and the foot angle, ankle, knees, pelvis tilt, and balance adjust automatically, as in real life.
+
+### 17.3 Body and physics details
+- **Body measurements:** live readout of height, bust/underbust/waist/hips, bra size, estimated weight (from body volume), and limb lengths, in metric. Updates with body shape changes.
+- **Pressure skin response:** skin blanches (turns pale) where pressed hard and flushes red when released. Impact force from slaps, falls, and collisions drives bruise intensity, which then ages on the time slider.
+- **Wound healing over time:** cuts, scratches, and marks progress through healing stages (fresh, scabbed, pink new skin, scar) on the time slider.
+- **Gravity, wind, and buoyancy:**
+  - Change gravity strength and direction (including zero gravity) for unusual scenes.
+  - Wind, including a placeable fan prop, moves hair, cloth, and loose fluids.
+  - Buoyancy in water scenes (pool, bath): bodies, breasts, and hair float realistically.
+
+### 17.4 Reference images
+- **Overlay:** show a reference photo semi-transparently over the viewport to match a pose or shape.
+- **Camera match:** load a background photo, line up a few guides (horizon, floor), and the 3D camera matches its perspective, so figures can be placed into the photo with matching lighting and shadows on the floor.
+
+---
+
+## 18. Rendering and reference tools
 
 - **Skin:** physically based skin with a subsurface-scattering approximation, detail normals, and translucency for ears and fingers. Daz/VaM texture channels are mapped automatically (diffuse, translucency, specular/roughness, normal, bump).
 - **Eyes, hair, and cloth materials:** dedicated shaders (eye refraction, hair anisotropy, cloth sheen).
@@ -718,7 +745,7 @@ Additions that make scenes look and behave like the real thing:
 
 ---
 
-## 18. Data model and storage
+## 19. Data model and storage
 
 ```
 Project
@@ -758,7 +785,7 @@ Asset (in Library)
 
 ---
 
-## 19. Tech stack
+## 20. Tech stack
 
 | Layer | Choice |
 |---|---|
@@ -808,7 +835,7 @@ poser/
 
 ---
 
-## 20. Quality targets
+## 21. Quality targets
 
 | Area | Target |
 |---|---|
@@ -836,7 +863,7 @@ poser/
 
 ---
 
-## 21. Content policy, safety, and legal
+## 22. Content policy, safety, and legal
 
 Because the app is private (personal use plus a few invited users, not public, not paid), most commercial adult-site rules don't apply: no payment processor, no public age-verification system, no app stores. What still matters:
 - **Private access:** the site sits behind Cloudflare Access with an invite list, and search engines are blocked. Only invite adults (18+).
@@ -849,7 +876,7 @@ Because the app is private (personal use plus a few invited users, not public, n
 
 ---
 
-## 22. Roadmap
+## 23. Roadmap
 
 Each phase ends with something usable. Week estimates assume one full-time developer.
 
@@ -873,6 +900,7 @@ Each phase ends with something usable. Week estimates assume one full-time devel
 - [ ] Canonical rig with Daz G8/G9, VaM-export, Mixamo, CC4, and VRM maps, plus the manual mapping wizard
 - [ ] Joint handles, rotation gizmo, IK effectors, pins, joint limits, mirror, hand presets, morph sliders
 - [ ] Pose library and BVH/VRMA pose import
+- [ ] Body measurements readout; random pose and camera; reference image overlay and camera match
 - [ ] Built-in CC0 environments (bedroom, bathroom, studio, dungeon-style room, living room)
 - [ ] Props (visual only), lighting presets, lens/ortho cameras, study modes (clay, silhouette, notan)
 - [ ] Screenshot capture; Daz export guide
@@ -885,6 +913,9 @@ Each phase ends with something usable. Week estimates assume one full-time devel
 - [ ] **Breast soft-body simulation** (volume-based, glandular/fat stiffness, ligament support), checked standing, lying, on the side, bent forward, and pressed
 - [ ] Two-way clothing ↔ flesh interaction (bra support, waistband and strap indentation)
 - [ ] Spring-bone fallback for other soft tissue; contact compression
+- [ ] Collision-aware posing and Resolve intersections; poke, pinch, squeeze, and slap tools
+- [ ] Sheer and open fabrics; high heels adjusting posture
+- [ ] Gravity direction/strength and wind (fan prop)
 - [ ] Figure-to-figure contact: two-way soft-body contact, skin friction, hands gripping flesh, two-figure pose helpers
 - [ ] Attachment and holding system (attachment points on skin, joints, hold and place tools), measure tool
 - [ ] Rigid toys and props, cuffs and chains, soft surfaces (mattresses, cushions)
@@ -897,11 +928,13 @@ Each phase ends with something usable. Week estimates assume one full-time devel
 - [ ] Library folders with indexing and re-scan
 - [ ] Daz `.duf/.dsf` reader: figures, shape morphs, corrective morphs, wardrobe (including dForce settings), hair, materials, poses
 - [ ] VaM `.var` and install-folder reader: looks, morphs, clothing, hair, textures, licenses, dependencies
+- [ ] Garment auto-fit between figures
 - [ ] Cloth self-collision, multiple garment layers, cloth on props (a sheet on a bed)
 - **Done when:** a Genesis 9 figure with a dForce dress, and a VaM look with clothing, load straight from the user's folders with no Blender step.
 
 ### Phase 4: Face, hands, feet, muscles, and body states (about 7 weeks)
 - [ ] Pose, hands, and expression from photo or webcam (MediaPipe)
+- [ ] Random body variation
 - [ ] Tongue posing, teeth, eye look-at and blink
 - [ ] Body hair density, tan lines, scars, freckles and moles
 - [ ] FACS action-unit system with left/right sliders, presets, blending; mapping for Daz G8/G9 and ARKit 52 rigs
@@ -934,6 +967,7 @@ Each phase ends with something usable. Week estimates assume one full-time devel
 - [ ] Soft and flexible toys, strap-ons, motorized toys and machines (vibration, stroke motors)
 - [ ] Body-opening channels (mouth/throat, vagina, anus) following the anatomy, with stretch limits and lubrication-dependent friction; X-ray view of insertion
 - [ ] Latex and tight materials: high-stretch cloth, two-way compression, gloss and stretch-thinning shading, vacuum and inflatable items
+- [ ] Pressure skin response (blanching, flushing, force-driven bruising)
 - [ ] Skin marks (pressure, impact, scratches) with time slider; clothing states (displaced, unbuttoned, torn)
 - [ ] Hair grabbing, pulling, and tying
 - [ ] Scenario snapshots
@@ -946,6 +980,7 @@ Each phase ends with something usable. Week estimates assume one full-time devel
 - [ ] Tissue cap materials (skin, fat, muscle fibers, tendon, bone cortex/marrow, organs, vessels)
 - [ ] Wound edge retraction via layered flesh; removed parts become physics objects; ragdoll updates
 - [ ] Optional cutting through clothing
+- [ ] Wound healing stages over time
 - [ ] Removed parts as holdable props; objects left in wounds; pressing on wounds; dressings and tourniquets
 - [ ] Graphic-content setting
 - **Done when:** a cut through the thigh shows skin, fat, the correct muscles, femur cortex and marrow, and the femoral vessels in the right places, and stays correct after re-posing.
@@ -957,7 +992,7 @@ Each phase ends with something usable. Week estimates assume one full-time devel
 - [ ] Emitters: wounds (ooze, venous flow, arterial pulsing from vessels hit), tear ducts, mouth, nose, urethra, sweat regions, custom
 - [ ] Cloth absorption (darker, heavier, clingier), wet skin shading, pooling, stains, drying and blood darkening
 - [ ] Freeze fluids into meshes and stains for capture
-- [ ] Lubricant and oil (friction and shine), candle wax that solidifies, water environments (shower, bath, pool), wet see-through clothing
+- [ ] Lubricant and oil (friction and shine), candle wax that solidifies, water environments (shower, bath, pool) with buoyancy, wet see-through clothing
 - **Done when:** a forearm cut bleeds realistically down the arm, soaks a sleeve, and pools on the floor; a crying figure has tears running down the cheeks.
 
 ### Mobile and tablet tuning (alongside each phase, about 8–12 weeks in total)
@@ -982,7 +1017,7 @@ Each phase ends with something usable. Week estimates assume one full-time devel
 ### Phase 11 (optional)
 - [ ] WebXR: pose figures in VR
 
-**Total:** roughly 90–95 weeks of work (including mobile and tablet support) for one full-time developer through Phase 9. Phases 4–8 can partly run in parallel with more people: face/states and fluids are mostly independent, while restraints/toys and cutting depend on the anatomy layers.
+**Total:** roughly 95–100 weeks of work (including mobile and tablet support) for one full-time developer through Phase 9. Phases 4–8 can partly run in parallel with more people: face/states and fluids are mostly independent, while restraints/toys and cutting depend on the anatomy layers.
 
 ### Prototype the hardest parts first
 These run **in parallel with Phase 0** (the owner's choice), as throwaway tests that prove the risky tech before it's built for real:
@@ -995,7 +1030,7 @@ These run **in parallel with Phase 0** (the owner's choice), as throwaway tests 
 
 ---
 
-## 23. How we'll work
+## 24. How we'll work
 
 - **Claude writes the code**, phase by phase, on this repository's development branch, with tests and commits per milestone.
 - **The owner tests on real devices** (Windows/macOS PCs, phones, tablets) after each milestone and reports what works, what looks wrong, and performance. This matters because Claude's environment has no real GPU or phone to test WebGPU, physics feel, or visuals.
@@ -1006,7 +1041,7 @@ These run **in parallel with Phase 0** (the owner's choice), as throwaway tests 
 
 ---
 
-## 24. Risks
+## 25. Risks
 
 | Risk | Mitigation |
 |---|---|
@@ -1032,7 +1067,7 @@ These run **in parallel with Phase 0** (the owner's choice), as throwaway tests 
 
 ---
 
-## 25. Open decisions for the owner
+## 26. Open decisions for the owner
 Already decided: Chrome required; private use; fully offline PWA; balanced visual quality; free MakeHuman starter figures; 1–2 figures per scene; simple animation; graphic content on by default; no real medical scan data; all import sources (Daz, VaM, generic, VRM) supported; anatomy and FACS face built in-house (procedurally); Claude writes the code; sharing by sending files by hand (no server); metric units (cm/m/kg); building starts with Phase 0 and the risky prototypes in parallel; all feature areas (toys/ropes/latex, face/states, anatomy/cutting, fluids) are in scope, in the roadmap order below.
 
 No open decisions remain. New questions will be added here as they come up during building.
