@@ -26,7 +26,7 @@ import { ImportedFigure } from './figure/imported';
 import { BUILTIN_FIGURES, FigureObject, type AnatomyLayer, type BuiltinFigureId } from './figure/mannequin';
 import type { PosableFigure } from './figure/types';
 import { PoseTools } from './posing/poseTools';
-import { ShapeProp, overrideMaterials } from './props/builder';
+import { overrideMaterials } from './props/materials';
 import { NotanPass, applyStudyMaterials, studyStage, type StudyMode } from './study';
 import type { PoseSkeleton } from '@poser/posing';
 
@@ -76,7 +76,7 @@ export class Viewport {
   /** Joint handles, gizmo, IK and pins (PLAN.md section 6). */
   readonly poseTools: PoseTools;
 
-  private readonly figures = new Map<string, { object: PosableFigure; assetId: string; shapeKey?: string }>();
+  private readonly figures = new Map<string, { object: PosableFigure; assetId: string }>();
   /** Figures whose model is still loading (asset id per figure id). */
   private readonly loading = new Map<string, string>();
   private lastFigures: Figure[] = [];
@@ -97,7 +97,7 @@ export class Viewport {
   private study: StudyMode = 'normal';
   private notan: NotanPass | null = null;
   private lastModel: SceneModel | null = null;
-  /** Built-prop shapes and material settings by prop id. */
+  /** Prop settings (recolour, lock) by prop id. */
   private propData = new Map<string, Prop>();
   private propGizmo: TransformControls;
   private selectedProp: string | null = null;
@@ -264,17 +264,12 @@ export class Viewport {
     for (const fig of figures) {
       seen.add(fig.id);
       let entry = this.figures.get(fig.id);
-      const prop = this.propData.get(fig.id);
-      const shapeKey = prop?.shape ? JSON.stringify(prop.shape) : undefined;
-      if (entry && (entry.assetId !== fig.assetId || entry.shapeKey !== shapeKey)) {
+      if (entry && entry.assetId !== fig.assetId) {
         this.removeFigure(fig.id);
         entry = undefined;
       }
       if (!entry) {
-        if (prop?.shape) {
-          entry = this.addFigureObject(fig.id, fig.assetId, new ShapeProp(prop.shape, prop.material));
-          entry.shapeKey = shapeKey;
-        } else if (fig.assetId in BUILTIN_FIGURES) {
+        if (fig.assetId in BUILTIN_FIGURES) {
           entry = this.addFigureObject(fig.id, fig.assetId, new FigureObject(fig.assetId as BuiltinFigureId));
         } else {
           this.loadImported(fig.id, fig.assetId);
@@ -284,14 +279,14 @@ export class Viewport {
       this.applyFigure(entry.object, fig);
     }
     for (const id of [...this.figures.keys()]) if (!seen.has(id)) this.removeFigure(id);
-    // A rebuilt prop (new shape) gets the gizmo back.
+    // A reloaded prop gets the gizmo back.
     const sel = this.selectedProp ? this.figures.get(this.selectedProp) : undefined;
     if (sel && this.propGizmo && this.propGizmo.object !== sel.object.root) this.selectProp(this.selectedProp, this.propGizmo.mode as 'translate' | 'rotate');
     this.poseTools?.refresh();
   }
 
   private addFigureObject(id: string, assetId: string, object: PosableFigure) {
-    const entry: { object: PosableFigure; assetId: string; shapeKey?: string } = { object, assetId };
+    const entry: { object: PosableFigure; assetId: string } = { object, assetId };
     this.figures.set(id, entry);
     object.root.userData.figureId = id;
     this.scene.add(object.root);
@@ -315,12 +310,10 @@ export class Viewport {
   private applyPropMaterial(object: PosableFigure, prop: Prop): void {
     const key = JSON.stringify(prop.material ?? null);
     if (object.root.userData.materialKey === key) return;
-    // Imported props are recoloured once the study mode's own materials come off.
-    if (!(object instanceof ShapeProp) && this.study !== 'normal') return;
+    // Props are recoloured once the study mode's own materials come off.
+    if (this.study !== 'normal') return;
     object.root.userData.materialKey = key;
-    if (object instanceof ShapeProp) {
-      if (prop.material) object.setMaterial(prop.material);
-    } else overrideMaterials(object.root, prop.material ?? null);
+    overrideMaterials(object.root, prop.material ?? null);
   }
 
   /** Loads an imported model in the background, then shows it with the latest scene state. */

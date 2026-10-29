@@ -58,7 +58,7 @@ A web app that is a **realistic, physics-based NSFW figure modeller and anatomy 
 | **Mesh cutting** | Manifold (`manifold-3d`) is a WASM library with guaranteed-correct booleans, but it needs closed (watertight) meshes. | Use it for cuts; generate watertight cutting versions of skin at import. |
 | **Fluids** | WebGPU MLS-MPM demos simulate around 100k particles in real time in the browser, and MPM avoids SPH's neighbor-search cost. | Use MLS-MPM for particle fluids plus a texture-space surface-flow method for thin films. |
 | **Face rigs** | No openly licensed FACS template face was found. | Map existing Daz/ARKit face rigs; build or commission our own FACS template. |
-| **Built-in figures** | MakeHuman/MPFB core assets and exports are CC0. Exports must come from an official, unmodified MakeHuman build, and third-party add-on assets keep their own licenses. | Use them as the bundled starter male and female figures, so the app is usable before anything is imported. |
+| **Built-in figures** | MakeHuman/MPFB core assets and exports are CC0. Exports must come from an official, unmodified MakeHuman build, and third-party add-on assets keep their own licenses. | *Decided:* no figures are built or bundled beyond the existing procedural female and male mannequins, which keep the app usable before anything is imported. All other bodies are imported (MakeHuman exports included). |
 
 ---
 
@@ -779,7 +779,7 @@ Additions that make scenes look and behave like the real thing:
 - **Sim pinning brush:** paint areas that stay still while the rest simulates: cloth (keep a top fixed at the shoulders), soft tissue (hold one region steady), or hair. Pins can be soft (gently held) or hard (fixed).
 
 ### 17.6 Scene building and output
-- **Simple prop builder:** quick blocking props made in-app (box, cylinder, sphere, platform, steps, ramp, pole, ring, bar) with size in cm, physics material, and anchor points for ropes and restraints.
+- ~~**Simple prop builder**~~ *Dropped:* props are imported only, never built in-app. (Was: quick blocking props made in-app with size in cm, physics material, and anchor points.)
 - **Time-of-day sun:** sun position from time and compass direction, with matching sky color, light warmth, and shadow length. Works with the lighting presets.
 - **Recolor and material editor:** change color, pattern, shine, and fabric or material type for clothing, latex, ropes, toys, and props. Changing the type (e.g. cotton to latex) also updates its physics.
 - **Posed 3D export:** export the posed figure (with clothing, soft-tissue shape, and fluids frozen as meshes) as glTF, OBJ, or STL for Blender or 3D printing. For personal use only, since Daz/VaM licenses don't allow redistributing their content.
@@ -888,7 +888,7 @@ poser/
   packages/interaction/  attachments, hold/place, toys, body-opening channels, latex
   packages/rope/         rope solver, wrap tool, tie templates, knots, load overlay
   packages/marks/        skin marks, aging over time
-  assets/builtin/        CC0 starter figures (MakeHuman/MPFB), props, HDRIs
+  assets/builtin/        optional bundled HDRIs (figures are the procedural mannequins; bodies and props are imported)
   assets/anatomy/        generated female and male anatomy templates
   tools/blender/         anatomy and FACS generation scripts
   docs/                  import guides, architecture notes
@@ -953,7 +953,7 @@ Each phase ends with something usable. Week estimates assume one full-time devel
 - [x] Quality levels, GPU auto-detection and benchmark, adaptive quality, memory manager (benchmark thresholds to be tuned on real devices)
 - [x] Crash handling: GPU device-lost recovery, Safe Mode after a crash, WebGL2 compatibility mode (also used automatically when WebGPU exists but fails a startup self-test)
 - [ ] **Verify WebGPU in Chrome on iOS** on a real device
-- [ ] Load a bundled CC0 female figure (a male figure is bundled too). *Partly done:* procedural female and male mannequins on the canonical rig stand in until MakeHuman/MPFB exports are added to `assets/builtin/` (needs Blender with MPFB, which isn't available in Claude's environment)
+- [x] Built-in female and male figures: the procedural mannequins on the canonical rig. *Decided:* these stay the only built-in bodies; no MakeHuman figures are bundled, and other bodies are imported
 - [x] Rough placeholder anatomy (simple skeleton, muscle, and fat volumes) for the early prototypes
 - **Done when:** the app opens with a figure, the user can orbit it, and the scene saves and reloads.
 
@@ -963,10 +963,10 @@ Each phase ends with something usable. Week estimates assume one full-time devel
 - [x] Canonical rig with Daz G8/G9, VaM-export, Mixamo, CC4, and VRM maps, plus the manual mapping wizard
 - [x] Joint handles, rotation gizmo, IK effectors, pins, joint limits, mirror, hand presets, morph sliders
 - [x] Pose library and BVH/VRMA pose import
-- [x] Simple prop builder; time-of-day sun; recolor and material editor (physics materials and rope anchor points come with Phase 2 colliders)
+- [x] Time-of-day sun; recolor and material editor for imported props. ~~Simple prop builder~~ dropped: props are imported only
 - [ ] Body measurements readout; pose blending; random pose and camera; reference image overlay and camera match (pose blending, random pose and random camera done)
 - [x] ~~Built-in CC0 environments~~ Dropped: rooms and objects are imported as needed (section 16.5)
-- [x] Props (visual only), lighting presets, lens/ortho cameras, study modes (clay, silhouette, notan); also camera bookmarks and rule-of-thirds/golden-ratio guides
+- [x] Imported props (visual only; move, turn, lock, recolour in the Objects workspace), lighting presets, lens/ortho cameras, study modes (clay, silhouette, notan); also camera bookmarks and rule-of-thirds/golden-ratio guides
 - [ ] Screenshot capture; Daz export guide (screenshot capture done)
 - **Done when:** a Daz G8 FBX and a Mixamo character are imported, posed convincingly with IK and limits, lit, and captured.
 - **Remaining Phase 1 work, in order:**
@@ -1143,7 +1143,7 @@ These run **in parallel with Phase 0** (the owner's choice), as throwaway tests 
 ---
 
 ## 26. Open decisions for the owner
-Already decided: Chrome required; private use; installable PWA without offline caching; balanced visual quality; free MakeHuman starter figures; 1–2 figures per scene; simple animation; graphic content on by default; no real medical scan data; all import sources (Daz, VaM, generic, VRM) supported; anatomy and FACS face built in-house (procedurally); Claude writes the code; sharing by sending files by hand (no server); metric units (cm/m/kg); building starts with Phase 0 and the risky prototypes in parallel; all feature areas (toys/ropes/latex, face/states, anatomy/cutting, fluids) are in scope, in the roadmap order below.
+Already decided: Chrome required; private use; installable PWA without offline caching; balanced visual quality; built-in procedural mannequins only, all other bodies and all props imported; 1–2 figures per scene; simple animation; graphic content on by default; no real medical scan data; all import sources (Daz, VaM, generic, VRM) supported; anatomy and FACS face built in-house (procedurally); Claude writes the code; sharing by sending files by hand (no server); metric units (cm/m/kg); building starts with Phase 0 and the risky prototypes in parallel; all feature areas (toys/ropes/latex, face/states, anatomy/cutting, fluids) are in scope, in the roadmap order below.
 
 No open decisions remain. New questions will be added here as they come up during building.
 

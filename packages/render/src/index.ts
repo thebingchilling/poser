@@ -5,4 +5,4 @@ export * from './figure/types';
 export * from './figure/imported';
 export * from './posing/poseTools';
 export * from './study';
-export * from './props/builder';
+export * from './props/materials';

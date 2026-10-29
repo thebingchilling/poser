@@ -43,19 +43,6 @@ export interface Figure {
   locked: boolean;
 }
 
-/** Shapes made in the prop builder (PLAN.md section 17.6). */
-export type ShapeKind =
-  | 'box' | 'cylinder' | 'sphere' | 'platform' | 'steps' | 'ramp' | 'pole' | 'ring' | 'bar'
-  | 'wall' | 'bed' | 'sofa' | 'chair' | 'table' | 'stool' | 'cabinet' | 'rug' | 'lamp';
-
-export interface PropShape {
-  kind: ShapeKind;
-  /** Width, height, depth in metres. */
-  size: Vec3;
-  /** Number of steps (steps only). */
-  steps?: number;
-}
-
 export type MaterialType = 'matte' | 'wood' | 'metal' | 'plastic' | 'fabric' | 'leather' | 'latex' | 'rubber' | 'stone' | 'glass';
 
 /** Recolour and material settings (PLAN.md section 17.6). */
@@ -66,20 +53,18 @@ export interface PropMaterial {
   patternColor?: string;
   /** 0 (dull) to 1 (glossy); overrides the type's default. */
   shine?: number;
-  /** Colour of secondary parts (frames, legs, cushions) on furniture. */
-  accent?: string;
 }
 
 /** A prop: an imported (or built) object placed in the scene (PLAN.md section 19). */
 export interface Prop {
   id: string;
   name: string;
-  /** Library asset id, or `builtin:shape` for built props. */
+  /** Library asset id. */
   assetId: string;
   transform: Transform;
   visible: boolean;
   locked: boolean;
-  shape?: PropShape;
+  /** Recolour settings; the model's own materials when absent. */
   material?: PropMaterial;
 }
 
