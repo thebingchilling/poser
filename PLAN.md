@@ -990,6 +990,7 @@ One default body, in a female and a male version, built by us so the app looks l
   6. Simple PBR skin material (base colour, roughness), with no photo textures in v1; detail comes later with the skin work (sections 16 and 18).
   7. Write `assets/builtin/base-female.glb` and `base-male.glb` (target under 4 MB each, Draco or meshopt compressed), plus a rig map and license file.
 - **In the app:** the built-in figures load through the normal imported-figure path (`ImportedFigure` with the canonical rig map), so posing, IK, limits, morphs, study modes, and measurements behave exactly as for imports. New scenes start with the base female.
+- **Owner-supplied MakeHuman figures:** the owner will also send MakeHuman/MPFB exports (stock assets only, Game engine skeleton, GLB with textures ≤ 2048 px, under 25 MB per file for Cloudflare Pages). They are bundled in `assets/builtin/` as extra built-in figures with their CC0 license noted, and load through the same imported-figure path.
 - **Mannequins:** retired from new scenes; their code stays only as the Safe Mode fallback (no GLB loading) and for the GPU prototypes.
 - **Anatomy:** the MakeHuman base mesh has no detailed genitals; it stays neutral, and anatomy comes from the in-house anatomy work (section 9) like on any imported figure.
 - **Checks:** unit tests that the GLB loads, every canonical bone is present and weighted, and rest-pose joint heights fall in human ranges; a browser screenshot test of both versions in a few library poses.
