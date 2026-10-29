@@ -1,4 +1,4 @@
-import { activeScene } from '@poser/core';
+import { activeScene, getAsset, readAssetModel } from '@poser/core';
 import { AdaptiveQualityController, QUALITY_SETTINGS, logError, webgpuSelfTest } from '@poser/platform';
 import { Viewport, type ViewName } from '@poser/render';
 import { useSnackbar } from '@poser/ui';
@@ -76,6 +76,18 @@ export function ViewportView() {
         }
         vp = created;
         viewportRef.current = created;
+        // Imported models come from the Library (IndexedDB record + GLB in OPFS).
+        created.assetLoader = async (assetId) => {
+          const [record, model] = await Promise.all([getAsset(assetId), readAssetModel(assetId)]);
+          return record && model ? { model, rig: record.rig } : null;
+        };
+        created.onFigureLoad(
+          () => created.frameAll(),
+          (_id, err) => {
+            logError(err, 'load figure');
+            snackbar('A model in this scene could not be loaded');
+          },
+        );
         useUi.getState().set({ backend: created.backend });
         setViewport(created);
         setError(null);

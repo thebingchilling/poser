@@ -1,6 +1,8 @@
 import { CANONICAL_BONES, FEMALE_PROPORTIONS, MALE_PROPORTIONS, boneTail, restPose, type BodyProportions } from '@poser/rig';
 import { Bone, Group, Mesh, MeshStandardMaterial, Vector3, type BufferGeometry, type Material } from 'three/webgpu';
 import { alignToDirection, ellipsoid, taperedCapsule } from './shapes';
+import type { PosableFigure } from './types';
+import type { CanonicalPose } from '@poser/core';
 
 /**
  * Built-in placeholder figures. The plan's starter figures are CC0
@@ -92,7 +94,7 @@ function createMaterials(sex: 'female' | 'male'): LayerMaterials {
 /** Inner layers are the skin shape shrunk toward the bone axis. */
 const LAYER_SCALE: Record<Exclude<AnatomyLayer, 'skeleton'>, number> = { skin: 1, fat: 0.94, muscle: 0.8 };
 
-export class FigureObject {
+export class FigureObject implements PosableFigure {
   readonly root = new Group();
   readonly bones = new Map<string, Bone>();
   private readonly layers = new Map<AnatomyLayer, Mesh[]>();
@@ -218,6 +220,17 @@ export class FigureObject {
 
     this.root.updateMatrixWorld(true);
   }
+
+  /** The mannequin's bones are the canonical bones with identity rest, so a pose applies directly. */
+  applyPose(pose: CanonicalPose): void {
+    for (const [name, bone] of this.bones) {
+      const q = pose[name];
+      if (q) bone.quaternion.set(q[0], q[1], q[2], q[3]);
+      else bone.quaternion.identity();
+    }
+  }
+
+  setMorphs(): void {}
 
   setLayerVisible(layer: AnatomyLayer, visible: boolean): void {
     for (const mesh of this.layers.get(layer) ?? []) mesh.visible = visible;

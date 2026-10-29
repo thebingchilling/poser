@@ -8,3 +8,4 @@ export * from './autosave';
 export * from './storage/db';
 export * from './storage/projects';
 export * from './storage/opfs';
+export * from './assets';

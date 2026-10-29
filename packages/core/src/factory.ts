@@ -1,8 +1,12 @@
 import { createId } from './ids';
-import type { Figure, Light, Project, Scene, Transform } from './types';
+import type { Figure, Light, Project, Prop, Scene, Transform } from './types';
 
 export function identityTransform(): Transform {
   return { position: [0, 0, 0], rotation: [0, 0, 0, 1], scale: [1, 1, 1] };
+}
+
+export function createProp(assetId: string, name: string): Prop {
+  return { id: createId('prop'), name, assetId, transform: identityTransform(), visible: true, locked: false };
 }
 
 export function createFigure(assetId: string, name: string): Figure {
@@ -43,6 +47,7 @@ export function createScene(name = 'Scene 1'): Scene {
     id: createId('scene'),
     name,
     figures: [createFigure('builtin:female', 'Female figure')],
+    props: [],
     lights: defaultLights(),
     cameras: [],
     environment: { hdriAssetId: null, floor: true, grid: true, background: '#3a3a3a' },

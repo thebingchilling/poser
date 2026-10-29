@@ -1,7 +1,10 @@
-import { activeScene, type Light, type Project } from '@poser/core';
+import { activeScene, type AssetRecord, type Light, type Project } from '@poser/core';
 import { BUILTIN_FIGURES, type AnatomyLayer, type BuiltinFigureId } from '@poser/render';
-import { Button, Card, Divider, IconButton, ListItem, ListSubheader, Menu, SegmentedButtons, Slider, Switch, useSnackbar } from '@poser/ui';
-import { addBuiltinFigure, captureScreenshot, removeFigure } from '../actions';
+import { Button, Card, Divider, FilterChip, IconButton, ListItem, ListSubheader, Menu, SegmentedButtons, Slider, Switch, TextField, useSnackbar, type IconName } from '@poser/ui';
+import { useEffect, useState } from 'react';
+import { startImport } from '../import/startImport';
+import { useLibrary } from '../state/library';
+import { addAssetToScene, addBuiltinFigure, captureScreenshot, removeFigure, removeProp } from '../actions';
 import { editProject, useActiveScene } from '../state/project';
 import { useUi, type WorkspaceId } from '../state/ui';
 import { setView, viewportRef } from '../viewport/ViewportView';
@@ -16,9 +19,65 @@ function ComingInPhase({ phase, what }: { phase: number; what: string }) {
   );
 }
 
+const LIBRARY_FILTERS: { kind: AssetRecord['kind'] | 'all'; label: string; icon: IconName }[] = [
+  { kind: 'all', label: 'All', icon: 'library_books' },
+  { kind: 'figure', label: 'Figures', icon: 'person' },
+  { kind: 'garment', label: 'Clothing', icon: 'layers' },
+  { kind: 'prop', label: 'Props', icon: 'category' },
+];
+
+function AssetCard({ asset }: { asset: AssetRecord }) {
+  const remove = useLibrary((s) => s.remove);
+  const snackbar = useSnackbar();
+  return (
+    <Card variant="filled" className="asset-card">
+      {asset.thumbnail && <img className="asset-card__thumb" src={asset.thumbnail} alt="" draggable={false} />}
+      <span className="asset-card__title">{asset.name}</span>
+      <span className="asset-card__meta">
+        {asset.kind === 'figure' ? `Figure · ${asset.size[1].toFixed(2)} m` : asset.kind === 'garment' ? 'Clothing' : 'Prop'}
+        {asset.license ? ` · ${asset.license}` : ''}
+      </span>
+      <div className="asset-card__actions">
+        <Button variant="tonal" icon="add" onClick={() => addAssetToScene(asset)} disabled={asset.kind === 'garment'} title={asset.kind === 'garment' ? 'Dressing figures arrives in Phase 2' : undefined}>
+          Add
+        </Button>
+        <Menu
+          label={`${asset.name} actions`}
+          items={[{ label: 'Delete from Library', icon: 'delete', danger: true, onSelect: () => remove(asset.id).then(() => snackbar(`Deleted ${asset.name}`)) }]}
+          trigger={<IconButton icon="more_vert" label={`More actions for ${asset.name}`} />}
+        />
+      </div>
+    </Card>
+  );
+}
+
 function LibraryWorkspace() {
+  const { assets, loaded, refresh } = useLibrary();
+  const [filter, setFilter] = useState<(typeof LIBRARY_FILTERS)[number]['kind']>('all');
+  const [query, setQuery] = useState('');
+  useEffect(() => {
+    if (!loaded) void refresh();
+  }, [loaded, refresh]);
+  const shown = assets.filter((a) => (filter === 'all' || a.kind === filter) && a.name.toLowerCase().includes(query.trim().toLowerCase()));
   return (
     <>
+      <div className="button-wrap">
+        <Button variant="tonal" icon="upload" onClick={() => void startImport(false)}>Import files</Button>
+        <Button variant="text" icon="folder_open" onClick={() => void startImport(true)}>Import a folder</Button>
+      </div>
+      <p className="hint">Or drag files, folders, or zips anywhere onto the app. glTF, FBX, OBJ, VRM, Collada, STL, and PLY.</p>
+      <TextField label="Search" value={query} onChange={(e) => setQuery(e.target.value)} />
+      <div className="chip-row">
+        {LIBRARY_FILTERS.map((f) => (
+          <FilterChip key={f.kind} label={f.label} icon={f.icon} selected={filter === f.kind} onToggle={() => setFilter(f.kind)} />
+        ))}
+      </div>
+      {loaded && shown.length === 0 && <p className="empty">{assets.length ? 'Nothing matches.' : 'Nothing imported yet.'}</p>}
+      <div className="card-grid">
+        {shown.map((a) => (
+          <AssetCard key={a.id} asset={a} />
+        ))}
+      </div>
       <ListSubheader>Built-in figures</ListSubheader>
       <div className="card-grid">
         {(Object.keys(BUILTIN_FIGURES) as BuiltinFigureId[]).map((id) => (
@@ -31,7 +90,6 @@ function LibraryWorkspace() {
           </Card>
         ))}
       </div>
-      <ComingInPhase phase={1} what="Importing your own figures, clothing, props, and poses (drag and drop, files, folders, and zips), with filters and search." />
     </>
   );
 }
@@ -76,6 +134,21 @@ function SceneWorkspace() {
                 trigger={<IconButton icon="more_vert" label={`More actions for ${f.name}`} />}
               />
             </>
+          }
+        />
+      ))}
+      {scene.props.length > 0 && <ListSubheader>Props</ListSubheader>}
+      {scene.props.map((p) => (
+        <ListItem
+          key={p.id}
+          icon="category"
+          headline={p.name}
+          trailing={
+            <Menu
+              label={`${p.name} actions`}
+              items={[{ label: 'Remove from scene', icon: 'delete', danger: true, onSelect: () => removeProp(p.id) }]}
+              trigger={<IconButton icon="more_vert" label={`More actions for ${p.name}`} />}
+            />
           }
         />
       ))}

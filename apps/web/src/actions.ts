@@ -1,4 +1,4 @@
-import { activeScene, createFigure, createProject, deleteProject, loadProject, saveProject, type Project } from '@poser/core';
+import { activeScene, createFigure, createProject, createProp, deleteProject, loadProject, saveProject, type AssetRecord, type Project } from '@poser/core';
 import { BUILTIN_FIGURES, type BuiltinFigureId } from '@poser/render';
 import { POSER_EXTENSION, POSER_MIME, exportPoserFile, importPoserFile, poserFileName } from '@poser/platform';
 import { crashGuard } from './platformServices';
@@ -24,6 +24,33 @@ export function addBuiltinFigure(id: BuiltinFigureId): void {
     activeScene(p as Project).figures.push(fig);
   });
   useUi.getState().set({ selectedFigureId: fig.id });
+}
+
+/** Adds a Library asset to the scene: figures beside the others, props in front. */
+export function addAssetToScene(asset: AssetRecord): void {
+  const scene = activeScene(currentProject());
+  if (asset.kind === 'figure') {
+    const fig = createFigure(asset.id, asset.name);
+    const count = scene.figures.length;
+    fig.transform.position = [count === 0 ? 0 : (count % 2 ? 1 : -1) * Math.ceil(count / 2) * 0.9, 0, 0];
+    editProject(`Add ${asset.name}`, (p) => {
+      activeScene(p as Project).figures.push(fig);
+    });
+    useUi.getState().set({ selectedFigureId: fig.id });
+  } else {
+    const prop = createProp(asset.id, asset.name);
+    prop.transform.position = [0, 0, 0.8];
+    editProject(`Add ${asset.name}`, (p) => {
+      activeScene(p as Project).props.push(prop);
+    });
+  }
+}
+
+export function removeProp(propId: string): void {
+  editProject('Remove prop', (p) => {
+    const scene = activeScene(p as Project);
+    scene.props = scene.props.filter((x) => x.id !== propId);
+  });
 }
 
 export function removeFigure(figureId: string): void {

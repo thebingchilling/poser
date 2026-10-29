@@ -25,6 +25,9 @@ import {
   undo,
 } from '../actions';
 import { SettingsDialog } from '../dialogs/SettingsDialog';
+import { filesFromDataTransfer } from '../import/collectFiles';
+import { ImportWizard } from '../import/ImportWizard';
+import { startImport } from '../import/startImport';
 import { useProject } from '../state/project';
 import { useUi, type WorkspaceId } from '../state/ui';
 import { ViewportView, viewportRef } from '../viewport/ViewportView';
@@ -144,6 +147,7 @@ function WorkspaceFab({ workspace }: { workspace: WorkspaceId }) {
   const snackbar = useSnackbar();
   switch (workspace) {
     case 'library':
+      return <Fab icon="upload" onClick={() => void startImport(false)}>Import</Fab>;
     case 'scene':
       return (
         <Menu
@@ -198,7 +202,49 @@ function Banners() {
   );
 }
 
+/** Drag-and-drop import anywhere on the app (PLAN.md section 4.1). */
+function useFileDrop() {
+  const [over, setOver] = useState(false);
+  const snackbar = useSnackbar();
+  useEffect(() => {
+    let depth = 0;
+    const hasFiles = (e: DragEvent) => [...(e.dataTransfer?.types ?? [])].includes('Files');
+    const enter = (e: DragEvent) => {
+      if (!hasFiles(e)) return;
+      depth++;
+      setOver(true);
+    };
+    const leave = (e: DragEvent) => {
+      if (!hasFiles(e)) return;
+      depth = Math.max(0, depth - 1);
+      if (!depth) setOver(false);
+    };
+    const overFn = (e: DragEvent) => hasFiles(e) && e.preventDefault();
+    const drop = async (e: DragEvent) => {
+      if (!hasFiles(e) || !e.dataTransfer) return;
+      e.preventDefault();
+      depth = 0;
+      setOver(false);
+      const files = await filesFromDataTransfer(e.dataTransfer);
+      const count = await startImport(false, files);
+      if (!count) snackbar('No models found in what was dropped');
+    };
+    window.addEventListener('dragenter', enter);
+    window.addEventListener('dragleave', leave);
+    window.addEventListener('dragover', overFn);
+    window.addEventListener('drop', drop);
+    return () => {
+      window.removeEventListener('dragenter', enter);
+      window.removeEventListener('dragleave', leave);
+      window.removeEventListener('dragover', overFn);
+      window.removeEventListener('drop', drop);
+    };
+  }, [snackbar]);
+  return over;
+}
+
 export function AppShell() {
+  const dropping = useFileDrop();
   const size = useWindowSizeClass();
   const workspace = useUi((s) => s.workspace);
   const workspaceOpen = useUi((s) => s.workspaceOpen);
@@ -268,6 +314,8 @@ export function AppShell() {
           />
         </div>
         <SettingsDialog />
+        <ImportWizard />
+        {dropping && <div className="drop-overlay">Drop to import</div>}
       </div>
     );
   }
@@ -289,6 +337,8 @@ export function AppShell() {
       </div>
       <QuickBar />
       <SettingsDialog />
+      <ImportWizard />
+      {dropping && <div className="drop-overlay">Drop to import</div>}
     </div>
   );
 }

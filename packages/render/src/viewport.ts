@@ -1,4 +1,4 @@
-import type { Figure, Light, Scene as SceneModel } from '@poser/core';
+import type { AssetRigInfo, Figure, Light, Scene as SceneModel } from '@poser/core';
 import type { QualitySettings } from '@poser/platform';
 import {
   AmbientLight,
@@ -18,7 +18,9 @@ import {
   type Object3D,
 } from 'three/webgpu';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { ImportedFigure } from './figure/imported';
 import { BUILTIN_FIGURES, FigureObject, type AnatomyLayer, type BuiltinFigureId } from './figure/mannequin';
+import type { PosableFigure } from './figure/types';
 
 export type RendererBackend = 'webgpu' | 'webgl2';
 
@@ -59,7 +61,12 @@ export class Viewport {
   readonly controls: OrbitControls;
   readonly backend: RendererBackend;
 
-  private readonly figures = new Map<string, { object: FigureObject; assetId: string }>();
+  private readonly figures = new Map<string, { object: PosableFigure; assetId: string }>();
+  /** Figures whose model is still loading (asset id per figure id). */
+  private readonly loading = new Map<string, string>();
+  private lastFigures: Figure[] = [];
+  /** Supplies imported models from the Library. */
+  assetLoader: ((assetId: string) => Promise<{ model: Blob; rig?: AssetRigInfo } | null>) | null = null;
   private readonly lights = new Map<string, { object: DirectionalLight | AmbientLight; type: Light['type'] }>();
   private readonly grid = new Group();
   private readonly floor: Mesh;
@@ -133,7 +140,9 @@ export class Viewport {
   // ---------- Sync with the scene model ----------
 
   sync(model: SceneModel): void {
-    this.syncFigures(model.figures);
+    // Props are imported models without a rig: they share the figure path with no pose.
+    const props: Figure[] = (model.props ?? []).map((p) => ({ ...p, pose: {}, morphValues: {} }));
+    this.syncFigures([...model.figures, ...props]);
     this.syncLights(model.lights);
     this.floor.visible = model.environment.floor;
     this.grid.visible = model.environment.grid;
@@ -142,6 +151,7 @@ export class Viewport {
   }
 
   private syncFigures(figures: Figure[]): void {
+    this.lastFigures = figures;
     const seen = new Set<string>();
     for (const fig of figures) {
       seen.add(fig.id);
@@ -151,28 +161,72 @@ export class Viewport {
         entry = undefined;
       }
       if (!entry) {
-        const object = this.createFigureObject(fig.assetId);
-        if (!object) continue;
-        entry = { object, assetId: fig.assetId };
-        this.figures.set(fig.id, entry);
-        object.root.userData.figureId = fig.id;
-        this.scene.add(object.root);
-        this.applyAnatomyView(object);
+        if (fig.assetId in BUILTIN_FIGURES) {
+          entry = this.addFigureObject(fig.id, fig.assetId, new FigureObject(fig.assetId as BuiltinFigureId));
+        } else {
+          this.loadImported(fig.id, fig.assetId);
+          continue;
+        }
       }
-      const root = entry.object.root;
-      root.visible = fig.visible;
-      root.position.set(...fig.transform.position);
-      root.quaternion.set(...fig.transform.rotation);
-      root.scale.set(...fig.transform.scale);
-      for (const [bone, q] of Object.entries(fig.pose)) entry.object.bones.get(bone)?.quaternion.set(...q);
+      this.applyFigure(entry.object, fig);
     }
     for (const id of [...this.figures.keys()]) if (!seen.has(id)) this.removeFigure(id);
   }
 
-  private createFigureObject(assetId: string): FigureObject | null {
-    if (assetId in BUILTIN_FIGURES) return new FigureObject(assetId as BuiltinFigureId);
-    // Imported assets arrive in Phase 1.
-    return null;
+  private addFigureObject(id: string, assetId: string, object: PosableFigure) {
+    const entry = { object, assetId };
+    this.figures.set(id, entry);
+    object.root.userData.figureId = id;
+    this.scene.add(object.root);
+    this.applyAnatomyView(object);
+    return entry;
+  }
+
+  private applyFigure(object: PosableFigure, fig: Figure): void {
+    const root = object.root;
+    root.visible = fig.visible;
+    root.position.set(...fig.transform.position);
+    root.quaternion.set(...fig.transform.rotation);
+    root.scale.set(...fig.transform.scale);
+    object.applyPose(fig.pose);
+    object.setMorphs(fig.morphValues);
+  }
+
+  /** Loads an imported model in the background, then shows it with the latest scene state. */
+  private loadImported(figureId: string, assetId: string): void {
+    if (this.loading.get(figureId) === assetId || !this.assetLoader) return;
+    this.loading.set(figureId, assetId);
+    this.assetLoader(assetId)
+      .then(async (asset) => {
+        if (!asset || this.disposed || this.loading.get(figureId) !== assetId) return;
+        const object = await ImportedFigure.load(asset.model, asset.rig);
+        this.loading.delete(figureId);
+        const fig = this.lastFigures.find((f) => f.id === figureId);
+        if (!fig || fig.assetId !== assetId || this.disposed) {
+          object.dispose();
+          return;
+        }
+        this.applyFigure(this.addFigureObject(figureId, assetId, object).object, fig);
+        this.invalidate();
+        for (const l of this.loadListeners) l(figureId);
+      })
+      .catch((err: unknown) => {
+        this.loading.delete(figureId);
+        for (const l of this.errorListeners) l(figureId, err);
+      });
+  }
+
+  private loadListeners = new Set<(figureId: string) => void>();
+  private errorListeners = new Set<(figureId: string, err: unknown) => void>();
+
+  /** Called when an imported figure finishes loading, or fails to. */
+  onFigureLoad(loaded: (figureId: string) => void, failed?: (figureId: string, err: unknown) => void): () => void {
+    this.loadListeners.add(loaded);
+    if (failed) this.errorListeners.add(failed);
+    return () => {
+      this.loadListeners.delete(loaded);
+      if (failed) this.errorListeners.delete(failed);
+    };
   }
 
   private removeFigure(id: string): void {
@@ -240,7 +294,7 @@ export class Viewport {
     this.invalidate();
   }
 
-  private applyAnatomyView(object: FigureObject): void {
+  private applyAnatomyView(object: PosableFigure): void {
     for (const [layer, visible] of Object.entries(this.layerVisibility)) object.setLayerVisible(layer as AnatomyLayer, visible);
     object.setSkinOpacity(this.skinOpacity);
   }

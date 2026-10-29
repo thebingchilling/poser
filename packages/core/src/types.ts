@@ -39,6 +39,16 @@ export interface Figure {
   locked: boolean;
 }
 
+/** A prop: an imported (or built) object placed in the scene (PLAN.md section 19). */
+export interface Prop {
+  id: string;
+  name: string;
+  assetId: string;
+  transform: Transform;
+  visible: boolean;
+  locked: boolean;
+}
+
 export type LightType = 'directional' | 'point' | 'spot' | 'ambient';
 
 export interface Light {
@@ -72,6 +82,7 @@ export interface Scene {
   id: string;
   name: string;
   figures: Figure[];
+  props: Prop[];
   lights: Light[];
   cameras: CameraBookmark[];
   environment: Environment;

@@ -10,7 +10,8 @@
     "typecheck": "tsc -p .",
     "test": "vitest run",
     "test:watch": "vitest",
-    "e2e": "playwright test"
+    "e2e": "playwright test",
+    "test:gpu": "POSER_GPU_TESTS=1 vitest run"
   },
   "devDependencies": {
     "@playwright/test": "1.63.0",

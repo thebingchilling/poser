@@ -13,6 +13,7 @@
     "@poser/core": "workspace:*",
     "@poser/cutting": "workspace:*",
     "@poser/fluids": "workspace:*",
+    "@poser/importers": "workspace:*",
     "@poser/interaction": "workspace:*",
     "@poser/physics": "workspace:*",
     "@poser/platform": "workspace:*",

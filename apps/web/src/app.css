@@ -98,3 +98,25 @@
 
 /* Keep snackbars above the phone navigation bar. */
 @media (max-width: 599px) { :root { --snackbar-offset: 96px; } }
+
+/* ---------- Import ---------- */
+.bone-map { display: grid; grid-template-columns: 1fr; gap: 4px; margin: 8px 0; }
+.bone-map__row { display: grid; grid-template-columns: 9rem 1fr; align-items: center; gap: 8px; font: var(--md-sys-typescale-body-medium); }
+.bone-map__row[data-missing] span { color: var(--md-sys-color-error); }
+.bone-map select {
+  min-width: 0; height: 36px; padding: 0 8px; border-radius: var(--md-sys-shape-corner-extra-small);
+  border: 1px solid var(--md-sys-color-outline); background: var(--md-sys-color-surface-container-highest); color: var(--md-sys-color-on-surface);
+}
+.warnings { margin: 0; padding-left: 20px; color: var(--md-sys-color-on-surface-variant); }
+.wizard-actions { position: sticky; bottom: 0; display: flex; flex-direction: column; gap: 8px; padding-top: 16px; background: var(--md-sys-color-surface-container-high); }
+.wizard-actions .button-wrap { justify-content: flex-end; }
+.drop-overlay {
+  position: fixed; inset: 0; z-index: 35; display: grid; place-items: center; pointer-events: none;
+  background: color-mix(in srgb, var(--md-sys-color-primary) 18%, transparent);
+  border: 3px dashed var(--md-sys-color-primary);
+  font: var(--md-sys-typescale-headline-small); color: var(--md-sys-color-on-surface);
+}
+.asset-card__thumb { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: var(--md-sys-shape-corner-small); background: #3a3a3a; }
+.chip-row { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0; }
+.asset-card__actions { display: flex; align-items: center; gap: 4px; }
+.asset-card__actions .md-button { flex: 1; }

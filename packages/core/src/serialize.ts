@@ -1,7 +1,7 @@
 import type { Project } from './types';
 
 export const PROJECT_FORMAT = 'poser-project';
-export const PROJECT_FORMAT_VERSION = 1;
+export const PROJECT_FORMAT_VERSION = 2;
 
 export interface SerializedProject {
   format: typeof PROJECT_FORMAT;
@@ -14,7 +14,14 @@ export class ProjectFormatError extends Error {
 }
 
 /** Migrations from version N to N+1, keyed by N. */
-const migrations: Record<number, (project: unknown) => unknown> = {};
+const migrations: Record<number, (project: unknown) => unknown> = {
+  // 1 → 2: scenes gained a props list.
+  1: (project) => {
+    const p = project as { scenes?: { props?: unknown[] }[] };
+    for (const scene of p.scenes ?? []) scene.props ??= [];
+    return p;
+  },
+};
 
 export function serializeProject(project: Project): string {
   const doc: SerializedProject = { format: PROJECT_FORMAT, version: PROJECT_FORMAT_VERSION, project };

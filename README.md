@@ -15,6 +15,7 @@ A private, browser-based figure modeller and anatomy study app. The full plan is
 pnpm install
 pnpm dev         # dev server at http://localhost:5173
 pnpm test        # unit tests (Vitest)
+pnpm test:gpu    # GPU simulation tests (slow without a GPU driver)
 pnpm typecheck
 pnpm build       # production build in apps/web/dist
 pnpm e2e         # end-to-end tests (Playwright; run `npx playwright install chromium` once)

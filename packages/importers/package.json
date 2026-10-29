@@ -1,0 +1,19 @@
+{
+  "name": "@poser/importers",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@pixiv/three-vrm": "^3.5.5",
+    "@poser/core": "workspace:*",
+    "@poser/rig": "workspace:*",
+    "fflate": "^0.8.2",
+    "three": "^0.186.1"
+  },
+  "devDependencies": {
+    "@types/three": "^0.186.0"
+  }
+}
