@@ -962,11 +962,11 @@ Each phase ends with something usable. Week estimates assume one full-time devel
 - [x] Canonical rig with Daz G8/G9, VaM-export, Mixamo, CC4, and VRM maps, plus the manual mapping wizard
 - [x] Joint handles, rotation gizmo, IK effectors, pins, joint limits, mirror, hand presets, morph sliders
 - [x] Pose library and BVH/VRMA pose import
-- [ ] Simple prop builder; time-of-day sun; recolor and material editor
+- [x] Simple prop builder; time-of-day sun; recolor and material editor (physics materials and rope anchor points come with Phase 2 colliders)
 - [ ] Body measurements readout; pose blending; random pose and camera; reference image overlay and camera match (pose blending, random pose and random camera done)
 - [ ] Built-in CC0 environments (bedroom, bathroom, studio, dungeon-style room, living room)
-- [ ] Props (visual only), lighting presets, lens/ortho cameras, study modes (clay, silhouette, notan)
-- [ ] Screenshot capture; Daz export guide
+- [x] Props (visual only), lighting presets, lens/ortho cameras, study modes (clay, silhouette, notan); also camera bookmarks and rule-of-thirds/golden-ratio guides
+- [ ] Screenshot capture; Daz export guide (screenshot capture done)
 - **Done when:** a Daz G8 FBX and a Mixamo character are imported, posed convincingly with IK and limits, lit, and captured.
 
 ### Phase 2: Physics and cloth (about 8 weeks)

@@ -8,6 +8,7 @@ import { applyPoseSelected, copySideSelected, handPresetSelected, mirrorSelected
 import { startImport } from '../import/startImport';
 import { PoseLibraryPanel, PoseMixPanel } from './PoseLibrary';
 import { RenderWorkspace } from './RenderWorkspace';
+import { ObjectsWorkspace } from './ObjectsWorkspace';
 import { useLibrary } from '../state/library';
 import { addAssetToScene, addBuiltinFigure, captureScreenshot, removeFigure, removeProp } from '../actions';
 import { editProject, useActiveScene } from '../state/project';
@@ -304,7 +305,6 @@ function PlaceholderWorkspace({ id }: { id: WorkspaceId }) {
   const ws = WORKSPACES.find((w) => w.id === id)!;
   const what: Partial<Record<WorkspaceId, string>> = {
     physics: 'Settle and Live modes, ragdolls, soft tissue, cloth, and figure-to-figure contact.',
-    objects: 'Props, toys, restraints, ropes, and latex, with the attachment and holding system.',
     animate: 'A simple keyframe timeline with physics baking and video export.',
   };
   return <ComingInPhase phase={ws.phase ?? 1} what={what[id] ?? ''} />;
@@ -322,6 +322,8 @@ export function WorkspaceContent({ id }: { id: WorkspaceId }) {
       return <BodyWorkspace />;
     case 'render':
       return <RenderWorkspace />;
+    case 'objects':
+      return <ObjectsWorkspace />;
     default:
       return <PlaceholderWorkspace id={id} />;
   }

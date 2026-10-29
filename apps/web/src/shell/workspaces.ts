@@ -7,7 +7,7 @@ export const WORKSPACES: readonly (NavItem<WorkspaceId> & { title: string; phase
   { id: 'pose', icon: 'accessibility_new', label: 'Pose', title: 'Pose' },
   { id: 'body', icon: 'body_system', label: 'Body', title: 'Body' },
   { id: 'physics', icon: 'science', label: 'Physics', title: 'Physics', phase: 2 },
-  { id: 'objects', icon: 'category', label: 'Objects', title: 'Objects', phase: 2 },
+  { id: 'objects', icon: 'category', label: 'Objects', title: 'Objects' },
   { id: 'render', icon: 'lightbulb', label: 'Render', title: 'Render' },
   { id: 'animate', icon: 'movie', label: 'Animate', title: 'Animate', phase: 9 },
 ];

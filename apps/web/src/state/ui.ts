@@ -14,6 +14,8 @@ interface UiState {
   selectedFigureId: string | null;
   /** Selected canonical joint on the selected figure. */
   selectedJoint: string | null;
+  selectedPropId: string | null;
+  propGizmo: 'translate' | 'rotate';
   /** FK rotates joints; IK drags hands and feet (PLAN.md section 6). */
   poseMode: 'fk' | 'ik';
   jointLimits: boolean;
@@ -50,6 +52,8 @@ export const useUi = create<UiState>()((set, get) => ({
   inspectorOpen: true,
   selectedFigureId: null,
   selectedJoint: null,
+  selectedPropId: null,
+  propGizmo: 'translate',
   poseMode: 'fk',
   jointLimits: true,
   poseTab: 'adjust',

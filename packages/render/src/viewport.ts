@@ -1,4 +1,4 @@
-import type { AssetRigInfo, CanonicalPose, Figure, Light, Scene as SceneModel } from '@poser/core';
+import type { AssetRigInfo, CanonicalPose, Figure, Light, Prop, Scene as SceneModel } from '@poser/core';
 import type { QualitySettings } from '@poser/platform';
 import {
   AmbientLight,
@@ -21,10 +21,12 @@ import {
   type Object3D,
 } from 'three/webgpu';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { TransformControls } from 'three/addons/controls/TransformControls.js';
 import { ImportedFigure } from './figure/imported';
 import { BUILTIN_FIGURES, FigureObject, type AnatomyLayer, type BuiltinFigureId } from './figure/mannequin';
 import type { PosableFigure } from './figure/types';
 import { PoseTools } from './posing/poseTools';
+import { ShapeProp, overrideMaterials } from './props/builder';
 import { NotanPass, applyStudyMaterials, studyStage, type StudyMode } from './study';
 import type { PoseSkeleton } from '@poser/posing';
 
@@ -74,7 +76,7 @@ export class Viewport {
   /** Joint handles, gizmo, IK and pins (PLAN.md section 6). */
   readonly poseTools: PoseTools;
 
-  private readonly figures = new Map<string, { object: PosableFigure; assetId: string }>();
+  private readonly figures = new Map<string, { object: PosableFigure; assetId: string; shapeKey?: string }>();
   /** Figures whose model is still loading (asset id per figure id). */
   private readonly loading = new Map<string, string>();
   private lastFigures: Figure[] = [];
@@ -95,6 +97,13 @@ export class Viewport {
   private study: StudyMode = 'normal';
   private notan: NotanPass | null = null;
   private lastModel: SceneModel | null = null;
+  /** Built-prop shapes and material settings by prop id. */
+  private propData = new Map<string, Prop>();
+  private propGizmo: TransformControls;
+  private selectedProp: string | null = null;
+  private propDragId = 0;
+  /** Called while a prop is dragged with the gizmo (one coalesce key per drag). */
+  onPropTransform: ((propId: string, position: [number, number, number], rotation: [number, number, number, number], coalesceKey: string) => void) | null = null;
 
   private constructor(
     readonly renderer: WebGPURenderer,
@@ -141,6 +150,25 @@ export class Viewport {
     );
     this.scene.add(this.poseTools.group, this.poseTools.helper);
 
+    this.propGizmo = new TransformControls(this.camera, canvas);
+    this.propGizmo.setSize(0.9);
+    this.propGizmo.addEventListener('dragging-changed', (e) => {
+      const dragging = !!(e as unknown as { value: boolean }).value;
+      this.controls.enabled = !dragging;
+      if (dragging) this.propDragId++;
+    });
+    this.propGizmo.addEventListener('objectChange', () => {
+      const o = this.propGizmo.object;
+      const id = this.selectedProp;
+      if (!o || !id) return;
+      // Props stand on the floor or on something; never sink below it.
+      if (o.position.y < 0) o.position.y = 0;
+      this.onPropTransform?.(id, o.position.toArray(), o.quaternion.toArray() as [number, number, number, number], `prop-drag-${this.propDragId}`);
+      this.invalidate();
+    });
+    this.propGizmo.addEventListener('change', () => this.invalidate());
+    this.scene.add(this.propGizmo.getHelper());
+
     this.resizeObserver = new ResizeObserver(() => this.resize());
     this.resizeObserver.observe(canvas);
     this.applyQuality();
@@ -170,6 +198,7 @@ export class Viewport {
     this.lastModel = model;
     // Props are imported models without a rig: they share the figure path with no pose.
     const props: Figure[] = (model.props ?? []).map((p) => ({ ...p, pose: {}, morphValues: {} }));
+    this.propData = new Map((model.props ?? []).map((p) => [p.id, p]));
     this.syncFigures([...model.figures, ...props]);
     this.syncLights(model.lights);
     this.applyStage(model);
@@ -183,6 +212,21 @@ export class Viewport {
     (this.scene.background as Color).copy(stage.background ?? new Color(model.environment.background));
   }
 
+  // ---------- Prop gizmo ----------
+
+  /** Shows a move or turn gizmo on a prop (null hides it). */
+  selectProp(propId: string | null, mode: 'translate' | 'rotate' = 'translate'): void {
+    this.selectedProp = propId;
+    const entry = propId ? this.figures.get(propId) : undefined;
+    if (entry && this.propData.get(propId!)?.locked !== true) {
+      this.propGizmo.attach(entry.object.root);
+      this.propGizmo.setMode(mode);
+      // Turning is about the vertical only; moving is free.
+      this.propGizmo.showX = this.propGizmo.showZ = mode === 'translate';
+    } else this.propGizmo.detach();
+    this.invalidate();
+  }
+
   // ---------- Study modes ----------
 
   /** Clay, silhouette, or notan view (PLAN.md section 18). */
@@ -190,7 +234,7 @@ export class Viewport {
     if (mode !== this.study) {
       this.study = mode;
       for (const { object } of this.figures.values()) applyStudyMaterials(object.root, mode);
-      if (this.lastModel) this.applyStage(this.lastModel);
+      if (this.lastModel) this.sync(this.lastModel);
     }
     const notan = mode === 'notan2' || mode === 'notan3';
     if (notan && !this.notan) this.notan = new NotanPass(this.renderer, this.scene, this.camera);
@@ -220,12 +264,17 @@ export class Viewport {
     for (const fig of figures) {
       seen.add(fig.id);
       let entry = this.figures.get(fig.id);
-      if (entry && entry.assetId !== fig.assetId) {
+      const prop = this.propData.get(fig.id);
+      const shapeKey = prop?.shape ? JSON.stringify(prop.shape) : undefined;
+      if (entry && (entry.assetId !== fig.assetId || entry.shapeKey !== shapeKey)) {
         this.removeFigure(fig.id);
         entry = undefined;
       }
       if (!entry) {
-        if (fig.assetId in BUILTIN_FIGURES) {
+        if (prop?.shape) {
+          entry = this.addFigureObject(fig.id, fig.assetId, new ShapeProp(prop.shape, prop.material));
+          entry.shapeKey = shapeKey;
+        } else if (fig.assetId in BUILTIN_FIGURES) {
           entry = this.addFigureObject(fig.id, fig.assetId, new FigureObject(fig.assetId as BuiltinFigureId));
         } else {
           this.loadImported(fig.id, fig.assetId);
@@ -235,11 +284,14 @@ export class Viewport {
       this.applyFigure(entry.object, fig);
     }
     for (const id of [...this.figures.keys()]) if (!seen.has(id)) this.removeFigure(id);
+    // A rebuilt prop (new shape) gets the gizmo back.
+    const sel = this.selectedProp ? this.figures.get(this.selectedProp) : undefined;
+    if (sel && this.propGizmo && this.propGizmo.object !== sel.object.root) this.selectProp(this.selectedProp, this.propGizmo.mode as 'translate' | 'rotate');
     this.poseTools?.refresh();
   }
 
   private addFigureObject(id: string, assetId: string, object: PosableFigure) {
-    const entry = { object, assetId };
+    const entry: { object: PosableFigure; assetId: string; shapeKey?: string } = { object, assetId };
     this.figures.set(id, entry);
     object.root.userData.figureId = id;
     this.scene.add(object.root);
@@ -256,6 +308,19 @@ export class Viewport {
     root.scale.set(...fig.transform.scale);
     object.applyPose(fig.pose);
     object.setMorphs(fig.morphValues);
+    const prop = this.propData.get(fig.id);
+    if (prop) this.applyPropMaterial(object, prop);
+  }
+
+  private applyPropMaterial(object: PosableFigure, prop: Prop): void {
+    const key = JSON.stringify(prop.material ?? null);
+    if (object.root.userData.materialKey === key) return;
+    // Imported props are recoloured once the study mode's own materials come off.
+    if (!(object instanceof ShapeProp) && this.study !== 'normal') return;
+    object.root.userData.materialKey = key;
+    if (object instanceof ShapeProp) {
+      if (prop.material) object.setMaterial(prop.material);
+    } else overrideMaterials(object.root, prop.material ?? null);
   }
 
   /** Loads an imported model in the background, then shows it with the latest scene state. */
@@ -299,6 +364,7 @@ export class Viewport {
   private removeFigure(id: string): void {
     const entry = this.figures.get(id);
     if (!entry) return;
+    if (this.propGizmo.object === entry.object.root) this.propGizmo.detach();
     this.scene.remove(entry.object.root);
     entry.object.dispose();
     this.figures.delete(id);
@@ -458,6 +524,7 @@ export class Viewport {
     this.focal = focal;
     this.controls.object = this.camera;
     this.poseTools.setCamera(this.camera);
+    this.propGizmo.camera = this.camera;
     this.setViewHeight(height);
     this.onProjectionChange();
     this.invalidate();
@@ -493,7 +560,7 @@ export class Viewport {
 
   /** Frame everything visible (figures, or the floor area if empty). */
   frameAll(): void {
-    const objects: Object3D[] = [...this.figures.values()].filter((f) => f.object.root.visible && f.object.poseSkeleton).map((f) => f.object.root);
+    const objects: Object3D[] = [...this.figures.values()].filter((f) => f.object.root.visible).map((f) => f.object.root);
     const target = new Vector3(0, 0.9, 0);
     let height = 1.8;
     if (objects.length) {
@@ -502,7 +569,8 @@ export class Viewport {
       if (!box.isEmpty()) {
         box.getCenter(target);
         const size = box.getSize(new Vector3());
-        height = Math.max(size.y, Math.max(size.x, size.z) / Math.max(0.5, this.aspect())) * 1.0;
+        // Seen at an angle, the wider side spans roughly three quarters of its length on screen.
+        height = Math.max(size.y, (Math.max(size.x, size.z) * 0.75) / Math.max(0.5, this.aspect()));
       }
     }
     this.controls.target.copy(target);

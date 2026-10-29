@@ -30,6 +30,8 @@ export function ViewportView() {
   const notanThreshold = useUi((s) => s.notanThreshold);
   const lens = useUi((s) => s.lens);
   const overlay = useUi((s) => s.overlay);
+  const selectedPropId = useUi((s) => s.selectedPropId);
+  const propGizmo = useUi((s) => s.propGizmo);
   const skinOpacity = useUi((s) => s.skinOpacity);
   const adaptive = useSettings((s) => s.adaptiveQuality);
   // ?renderer=webgl also forces compatibility mode, for quick checks on a device.
@@ -87,7 +89,24 @@ export function ViewportView() {
         };
         created.poseTools.onSelect = (figureId, joint) => {
           const ui = useUi.getState();
-          ui.set({ selectedFigureId: figureId, selectedJoint: joint, ...(figureId ? { inspectorOpen: true } : {}) });
+          const scene = activeScene(projectStore.getState().project);
+          if (figureId && scene.props.some((p) => p.id === figureId)) {
+            ui.set({ selectedPropId: figureId, selectedFigureId: null, selectedJoint: null });
+            return;
+          }
+          ui.set({ selectedFigureId: figureId, selectedJoint: joint, selectedPropId: null, ...(figureId ? { inspectorOpen: true } : {}) });
+        };
+        created.onPropTransform = (propId, position, rotation, coalesceKey) => {
+          editProject(
+            'Move prop',
+            (p) => {
+              const prop = activeScene(p as Project).props.find((x) => x.id === propId);
+              if (!prop) return;
+              prop.transform.position = position;
+              prop.transform.rotation = rotation;
+            },
+            { coalesceKey },
+          );
         };
         created.poseTools.onEdit = (edit) => {
           editProject(
@@ -148,6 +167,10 @@ export function ViewportView() {
   useEffect(() => {
     viewport?.setAnatomyView(anatomy, skinOpacity);
   }, [viewport, anatomy, skinOpacity]);
+
+  useEffect(() => {
+    viewport?.selectProp(selectedPropId, propGizmo);
+  }, [viewport, selectedPropId, propGizmo]);
 
   useEffect(() => {
     viewport?.setStudyMode(studyMode, notanThreshold);

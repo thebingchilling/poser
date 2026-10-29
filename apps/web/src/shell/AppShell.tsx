@@ -74,7 +74,7 @@ function useShortcuts(doUndo: () => void, doRedo: () => void) {
       } else if (!mod && e.key.toLowerCase() === 'm') {
         mirrorSelected();
       } else if (e.key === 'Escape') {
-        useUi.getState().set({ selectedJoint: null });
+        useUi.getState().set({ selectedJoint: null, selectedPropId: null });
       }
     };
     window.addEventListener('keydown', onKey);

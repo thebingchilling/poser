@@ -51,6 +51,7 @@ export function removeProp(propId: string): void {
     const scene = activeScene(p as Project);
     scene.props = scene.props.filter((x) => x.id !== propId);
   });
+  if (useUi.getState().selectedPropId === propId) useUi.getState().set({ selectedPropId: null });
 }
 
 export function removeFigure(figureId: string): void {
