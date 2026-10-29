@@ -16,6 +16,10 @@ import {
   Quaternion,
   Scene,
   Spherical,
+  SRGBColorSpace,
+  ShadowNodeMaterial,
+  TextureLoader,
+  type Texture,
   Vector3,
   WebGPURenderer,
   type Object3D,
@@ -98,6 +102,12 @@ export class Viewport {
   private study: StudyMode = 'normal';
   private notan: NotanPass | null = null;
   private lastModel: SceneModel | null = null;
+  private readonly backgroundColor = new Color(0x3a3a3a);
+  private readonly floorMaterial = new MeshStandardMaterial({ color: 0x4a4a4a, roughness: 0.95 });
+  private readonly shadowCatcher = new ShadowNodeMaterial({ opacity: 0.45 });
+  private refTexture: Texture | null = null;
+  /** The floor grid stays on while matching a photo's perspective. */
+  private matchGrid = false;
   /** Prop settings (recolour, lock) by prop id. */
   private propData = new Map<string, Prop>();
   private propGizmo: TransformControls;
@@ -113,7 +123,7 @@ export class Viewport {
   ) {
     this.quality = options.quality;
     this.backend = (renderer.backend as { isWebGPUBackend?: boolean }).isWebGPUBackend ? 'webgpu' : 'webgl2';
-    this.scene.background = new Color(0x3a3a3a);
+    this.scene.background = this.backgroundColor;
 
     this.perspective.fov = fovFor(50);
     this.camera.position.set(2.2, 1.6, 5);
@@ -129,7 +139,7 @@ export class Viewport {
     });
     this.controls.update();
 
-    this.floor = new Mesh(new CircleGeometry(12, 64), new MeshStandardMaterial({ color: 0x4a4a4a, roughness: 0.95 }));
+    this.floor = new Mesh(new CircleGeometry(12, 64), this.floorMaterial);
     this.floor.rotation.x = -Math.PI / 2;
     this.floor.receiveShadow = true;
     this.scene.add(this.floor);
@@ -208,9 +218,74 @@ export class Viewport {
 
   private applyStage(model: SceneModel): void {
     const stage = studyStage(this.study);
-    this.floor.visible = stage.floor ?? model.environment.floor;
-    this.grid.visible = stage.grid ?? model.environment.grid;
-    (this.scene.background as Color).copy(stage.background ?? new Color(model.environment.background));
+    // A reference photo behind the scene replaces the backdrop; the floor then only catches shadows.
+    const photo = this.refTexture && this.study === 'normal';
+    this.floor.visible = photo ? true : (stage.floor ?? model.environment.floor);
+    this.floor.material = photo ? this.shadowCatcher : this.floorMaterial;
+    this.grid.visible = this.matchGrid || (photo ? false : (stage.grid ?? model.environment.grid));
+    this.backgroundColor.copy(stage.background ?? new Color(model.environment.background));
+    this.scene.background = photo ? this.refTexture : this.backgroundColor;
+  }
+
+  // ---------- Reference photo and camera match (PLAN.md section 17.7) ----------
+
+  /** Shows a photo behind the scene, filling the view (null removes it). */
+  async setBackgroundImage(url: string | null): Promise<void> {
+    this.refTexture?.dispose();
+    this.refTexture = null;
+    if (url) {
+      const tex = await new TextureLoader().loadAsync(url);
+      tex.colorSpace = SRGBColorSpace;
+      this.refTexture = tex;
+      this.fitBackground();
+    }
+    if (this.lastModel) this.applyStage(this.lastModel);
+    this.invalidate();
+  }
+
+  /** Crops the photo to fill the view without stretching (like CSS object-fit: cover). */
+  private fitBackground(): void {
+    const tex = this.refTexture;
+    const img = tex?.image as { width?: number; height?: number } | undefined;
+    if (!tex || !img?.width || !img.height) return;
+    const imageAspect = img.width / img.height;
+    const viewAspect = this.aspect();
+    if (viewAspect > imageAspect) {
+      tex.repeat.set(1, imageAspect / viewAspect);
+      tex.offset.set(0, (1 - tex.repeat.y) / 2);
+    } else {
+      tex.repeat.set(viewAspect / imageAspect, 1);
+      tex.offset.set((1 - tex.repeat.x) / 2, 0);
+    }
+  }
+
+  /**
+   * Matches the camera to a photo: the camera stands `height` metres above
+   * the floor and tilts so the horizon falls at `horizon` (0 = top of the
+   * view, 1 = bottom), keeping its heading and distance to the subject.
+   */
+  setMatchGrid(on: boolean): void {
+    this.matchGrid = on;
+    if (this.lastModel) this.applyStage(this.lastModel);
+    this.invalidate();
+  }
+
+  matchCamera(horizon: number, height: number): void {
+    if (this.camera instanceof OrthographicCamera) return;
+    const ndc = 1 - 2 * horizon;
+    const tilt = Math.atan(ndc * Math.tan((this.perspective.fov * Math.PI) / 360));
+    const target = this.controls.target.clone();
+    const flat = this.camera.position.clone().sub(target).setY(0);
+    if (flat.lengthSq() < 1e-6) flat.set(0, 0, 1);
+    flat.normalize();
+    const dist = Math.max(1, Math.hypot(this.camera.position.x - target.x, this.camera.position.z - target.z));
+    this.camera.position.set(target.x + flat.x * dist, height, target.z + flat.z * dist);
+    // Look along the heading, tilted down by `tilt` (up when negative).
+    const forward = flat.clone().negate().multiplyScalar(Math.cos(tilt));
+    forward.y = -Math.sin(tilt);
+    this.controls.target.copy(this.camera.position).addScaledVector(forward, dist / Math.max(0.2, Math.cos(tilt)));
+    this.controls.update();
+    this.invalidate();
   }
 
   // ---------- Prop gizmo ----------
@@ -630,6 +705,7 @@ export class Viewport {
     this.perspective.aspect = w / h;
     this.perspective.updateProjectionMatrix();
     this.updateOrthoAspect();
+    this.fitBackground();
     this.invalidate();
   }
 

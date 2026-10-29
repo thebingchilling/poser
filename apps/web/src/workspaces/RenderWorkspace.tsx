@@ -1,6 +1,6 @@
 import { activeScene, DEFAULT_SUN, LIGHTING_PRESETS, type LightingPresetId, type Light, type Project, type SunSettings } from '@poser/core';
 import { STUDY_MODE_LABELS, type StudyMode } from '@poser/render';
-import { Button, FilterChip, IconButton, ListItem, ListSubheader, Menu, Slider, useSnackbar } from '@poser/ui';
+import { Button, FilterChip, IconButton, ListItem, ListSubheader, Menu, Slider, Switch, useSnackbar } from '@poser/ui';
 import { captureScreenshot } from '../actions';
 import { editProject, useActiveScene } from '../state/project';
 import { useUi } from '../state/ui';
@@ -109,10 +109,75 @@ export function RenderWorkspace() {
         <Slider label="Light / shadow split" value={threshold} min={0.05} max={0.95} step={0.01} displayScale={100} unit="%" onChange={(v) => set({ notanThreshold: v })} />
       )}
 
+      <ReferenceSection />
+
       <ListSubheader>Capture</ListSubheader>
       <Button variant="tonal" icon="photo_camera" onClick={() => captureScreenshot().then(() => snackbar('Screenshot saved'), (e: Error) => snackbar(e.message))}>
         Save screenshot
       </Button>
+    </>
+  );
+}
+
+function pickImage(): Promise<File | null> {
+  return new Promise((resolve) => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.onchange = () => resolve(input.files?.[0] ?? null);
+    input.click();
+  });
+}
+
+/** Reference photo overlay and camera match (PLAN.md section 17.7). */
+function ReferenceSection() {
+  const reference = useUi((s) => s.reference);
+  const mode = useUi((s) => s.referenceMode);
+  const opacity = useUi((s) => s.referenceOpacity);
+  const match = useUi((s) => s.cameraMatch);
+  const height = useUi((s) => s.cameraHeight);
+  const lens = useUi((s) => s.lens);
+  const set = useUi((s) => s.set);
+  const load = async () => {
+    const file = await pickImage();
+    if (!file) return;
+    if (reference) URL.revokeObjectURL(reference.url);
+    set({ reference: { url: URL.createObjectURL(file), name: file.name } });
+  };
+  const remove = () => {
+    if (reference) URL.revokeObjectURL(reference.url);
+    set({ reference: null, cameraMatch: false });
+  };
+  return (
+    <>
+      <ListSubheader>Reference image</ListSubheader>
+      <div className="button-wrap">
+        <Button variant="tonal" icon="upload" onClick={() => void load()}>{reference ? 'Change image' : 'Load image'}</Button>
+        {reference && <Button variant="text" icon="delete" onClick={remove}>Remove</Button>}
+      </div>
+      {!reference && <p className="hint">Show a photo over the view to match a pose, or behind the scene to place figures into it. Kept for this session only.</p>}
+      {reference && (
+        <>
+          <p className="hint">{reference.name}</p>
+          <div className="chip-row">
+            <FilterChip label="Over the view" selected={mode === 'over'} onToggle={() => set({ referenceMode: 'over' })} />
+            <FilterChip label="Behind the scene" selected={mode === 'behind'} onToggle={() => set({ referenceMode: 'behind' })} />
+          </div>
+          {mode === 'over' ? (
+            <Slider label="Image opacity" value={opacity} min={0.05} max={1} step={0.01} displayScale={100} unit="%" onChange={(v) => set({ referenceOpacity: v })} />
+          ) : (
+            <p className="hint">The floor turns invisible but still catches shadows, so figures sit in the photo. Captures include the photo.</p>
+          )}
+          <Switch
+            label="Match camera"
+            supporting="Drag the yellow line onto the photo's horizon, then set the lens and camera height"
+            checked={match}
+            onChange={(v) => set({ cameraMatch: v, ...(v && lens === null ? { lens: 50 } : {}) })}
+          />
+          {match && <Slider label="Camera height" value={height} min={0.2} max={3} step={0.01} unit="m" onChange={(v) => set({ cameraHeight: v })} />}
+          {match && <p className="hint">Use the lens chips above to match the photo's field of view: the floor grid should line up with the floor in the photo.</p>}
+        </>
+      )}
     </>
   );
 }

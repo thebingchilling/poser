@@ -142,3 +142,8 @@
 .measure-list > div:nth-child(odd) { background: var(--md-sys-color-surface-container); }
 .measure-list dt { font: var(--md-sys-typescale-body-medium); color: var(--md-sys-color-on-surface-variant); }
 .measure-list dd { margin: 0; font: var(--md-sys-typescale-body-medium); font-variant-numeric: tabular-nums; }
+.viewport__reference { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; pointer-events: none; }
+.viewport__horizon { position: absolute; left: 0; right: 0; height: 17px; margin-top: -8px; cursor: ns-resize; touch-action: none; }
+.viewport__horizon::before { content: ''; position: absolute; left: 0; right: 0; top: 8px; border-top: 1px dashed #ffd54a; }
+.viewport__horizon span { position: absolute; left: 12px; top: -12px; padding: 1px 6px; border-radius: 4px; background: #ffd54a; color: #1d1b16; font: var(--md-sys-typescale-label-small); }
+.viewport__horizon:focus-visible::before { border-top-width: 2px; }

@@ -28,6 +28,14 @@ interface UiState {
   overlay: 'none' | 'thirds' | 'golden';
   /** Lens focal length (35mm equivalent), or null for orthographic. */
   lens: number | null;
+  /** Reference photo for this session (PLAN.md section 17.7). */
+  reference: { url: string; name: string } | null;
+  referenceMode: 'over' | 'behind';
+  referenceOpacity: number;
+  /** Camera match: horizon position (0 top – 1 bottom) and camera height (m). */
+  cameraMatch: boolean;
+  horizon: number;
+  cameraHeight: number;
   anatomy: Record<AnatomyLayer, boolean>;
   skinOpacity: number;
   /** Steps below the chosen level this session (device lost, adaptive quality). */
@@ -62,6 +70,12 @@ export const useUi = create<UiState>()((set, get) => ({
   notanThreshold: 0.35,
   overlay: 'none',
   lens: 50,
+  reference: null,
+  referenceMode: 'over',
+  referenceOpacity: 0.5,
+  cameraMatch: false,
+  horizon: 0.45,
+  cameraHeight: 1.6,
   anatomy: { skin: true, fat: false, muscle: false, skeleton: false },
   skinOpacity: 1,
   qualityDrop: 0,

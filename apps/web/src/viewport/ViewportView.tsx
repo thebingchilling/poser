@@ -31,6 +31,12 @@ export function ViewportView() {
   const lens = useUi((s) => s.lens);
   const overlay = useUi((s) => s.overlay);
   const selectedPropId = useUi((s) => s.selectedPropId);
+  const reference = useUi((s) => s.reference);
+  const referenceMode = useUi((s) => s.referenceMode);
+  const referenceOpacity = useUi((s) => s.referenceOpacity);
+  const cameraMatch = useUi((s) => s.cameraMatch);
+  const horizon = useUi((s) => s.horizon);
+  const cameraHeight = useUi((s) => s.cameraHeight);
   const propGizmo = useUi((s) => s.propGizmo);
   const skinOpacity = useUi((s) => s.skinOpacity);
   const adaptive = useSettings((s) => s.adaptiveQuality);
@@ -180,6 +186,18 @@ export function ViewportView() {
     if (viewport && viewport.lens !== lens) viewport.setLens(lens);
   }, [viewport, lens]);
 
+  useEffect(() => {
+    void viewport?.setBackgroundImage(reference && referenceMode === 'behind' ? reference.url : null);
+  }, [viewport, reference, referenceMode]);
+
+  useEffect(() => {
+    if (viewport && cameraMatch) viewport.matchCamera(horizon, cameraHeight);
+  }, [viewport, cameraMatch, horizon, cameraHeight, lens]);
+
+  useEffect(() => {
+    viewport?.setMatchGrid(cameraMatch);
+  }, [viewport, cameraMatch]);
+
   // Pose tools follow the selection, mode, and the figure's pins.
   const selectedFigureId = useUi((s) => s.selectedFigureId);
   const selectedJoint = useUi((s) => s.selectedJoint);
@@ -206,7 +224,9 @@ export function ViewportView() {
   return (
     <div className="viewport">
       <canvas ref={canvasRef} className="viewport__canvas" aria-label="3D viewport" tabIndex={0} />
+      {reference && referenceMode === 'over' && <img className="viewport__reference" src={reference.url} alt="" style={{ opacity: referenceOpacity }} />}
       {overlay !== 'none' && <CompositionOverlay kind={overlay} />}
+      {cameraMatch && <HorizonGuide horizon={horizon} />}
       {viewport && <ViewCube viewport={viewport} />}
       {error && (
         <div className="viewport__error" role="alert">
@@ -231,5 +251,40 @@ function CompositionOverlay({ kind }: { kind: 'thirds' | 'golden' }) {
         </g>
       ))}
     </svg>
+  );
+}
+
+/** Draggable horizon line for camera match: line it up with the photo's horizon. */
+function HorizonGuide({ horizon }: { horizon: number }) {
+  const set = useUi((s) => s.set);
+  const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    const box = (e.currentTarget.parentElement as HTMLElement).getBoundingClientRect();
+    e.currentTarget.setPointerCapture(e.pointerId);
+    const move = (ev: PointerEvent) => set({ horizon: Math.min(0.98, Math.max(0.02, (ev.clientY - box.top) / box.height)) });
+    const up = () => {
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', up);
+    };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
+  };
+  return (
+    <div
+      className="viewport__horizon"
+      style={{ top: `${horizon * 100}%` }}
+      role="slider"
+      aria-label="Horizon"
+      aria-valuemin={0}
+      aria-valuemax={100}
+      aria-valuenow={Math.round(horizon * 100)}
+      tabIndex={0}
+      onPointerDown={onPointerDown}
+      onKeyDown={(e) => {
+        if (e.key === 'ArrowUp') set({ horizon: Math.max(0.02, horizon - 0.005) });
+        if (e.key === 'ArrowDown') set({ horizon: Math.min(0.98, horizon + 0.005) });
+      }}
+    >
+      <span>Horizon</span>
+    </div>
   );
 }
