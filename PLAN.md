@@ -957,10 +957,10 @@ Each phase ends with something usable. Week estimates assume one full-time devel
 - **Done when:** the app opens with a figure, the user can orbit it, and the scene saves and reloads.
 
 ### Phase 1: Import and posing MVP (about 5 weeks)
-- [ ] Drag-and-drop, file/folder pickers, zip unpacking, import wizard, Library panel
-- [ ] glTF, FBX, OBJ, VRM, DAE/STL/PLY importers; mesh and texture optimization in workers
-- [ ] Canonical rig with Daz G8/G9, VaM-export, Mixamo, CC4, and VRM maps, plus the manual mapping wizard
-- [ ] Joint handles, rotation gizmo, IK effectors, pins, joint limits, mirror, hand presets, morph sliders
+- [x] Drag-and-drop, file/folder pickers, zip unpacking, import wizard, Library panel
+- [ ] glTF, FBX, OBJ, VRM, DAE/STL/PLY importers; mesh and texture optimization in workers (importers done; worker-side mesh and texture optimization still to do)
+- [x] Canonical rig with Daz G8/G9, VaM-export, Mixamo, CC4, and VRM maps, plus the manual mapping wizard
+- [x] Joint handles, rotation gizmo, IK effectors, pins, joint limits, mirror, hand presets, morph sliders
 - [ ] Pose library and BVH/VRMA pose import
 - [ ] Simple prop builder; time-of-day sun; recolor and material editor
 - [ ] Body measurements readout; pose blending; random pose and camera; reference image overlay and camera match

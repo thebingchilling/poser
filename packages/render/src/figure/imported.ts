@@ -1,6 +1,7 @@
 import type { AssetRigInfo, CanonicalPose } from '@poser/core';
 import { extractBones } from '@poser/importers';
-import { Retargeter, type RigMap } from '@poser/rig';
+import { PoseSkeleton } from '@poser/posing';
+import { Retargeter, qmul, qrot, vadd, type RigMap, type SourceBone, type V3 } from '@poser/rig';
 import { Box3, Group, Mesh, Vector3, type Bone, type Material, type Object3D } from 'three/webgpu';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import type { AnatomyLayer } from './mannequin';
@@ -14,6 +15,7 @@ export class ImportedFigure implements PosableFigure {
   readonly root = new Group();
   readonly height: number;
   private readonly retargeter: Retargeter | null = null;
+  readonly poseSkeleton: PoseSkeleton | null = null;
   private readonly bones: (Bone | undefined)[] = [];
   private readonly morphMeshes: Mesh[] = [];
   private readonly materials: Material[] = [];
@@ -41,6 +43,7 @@ export class ImportedFigure implements PosableFigure {
         if ((o as Bone).isBone) byName.set(o.name, o as Bone);
       });
       this.bones = sourceBones.map((b) => byName.get(b.name));
+      this.poseSkeleton = new PoseSkeleton(canonicalRest(this.retargeter, sourceBones));
     }
   }
 
@@ -89,4 +92,30 @@ export class ImportedFigure implements PosableFigure {
     });
     for (const m of this.materials) m.dispose();
   }
+}
+
+/**
+ * Joint positions of the figure's corrected T-pose (identity canonical pose),
+ * keyed by canonical bone: the rest skeleton posing tools work in.
+ */
+function canonicalRest(rt: Retargeter, bones: SourceBone[]): Record<string, V3> {
+  const local = rt.apply({});
+  const wr: [number, number, number, number][] = [];
+  const wp: V3[] = [];
+  bones.forEach((b, i) => {
+    if (b.parent < 0) {
+      wr[i] = local[i]!;
+      wp[i] = b.position;
+    } else {
+      wr[i] = qmul(wr[b.parent]!, local[i]!);
+      wp[i] = vadd(wp[b.parent]!, qrot(wr[b.parent]!, b.position));
+    }
+  });
+  const index = new Map(bones.map((b, i) => [b.name, i]));
+  const out: Record<string, V3> = {};
+  for (const [canon, m] of Object.entries(rt.map)) {
+    const i = m ? index.get(m.bone) : undefined;
+    if (i !== undefined) out[canon] = wp[i]!;
+  }
+  return out;
 }

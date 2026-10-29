@@ -35,6 +35,8 @@ export interface Figure {
   transform: Transform;
   pose: CanonicalPose;
   morphValues: Record<string, number>;
+  /** Pinned effectors (hands, feet) and where they're held, in figure space (PLAN.md section 6). */
+  pins?: Record<string, Vec3>;
   visible: boolean;
   locked: boolean;
 }

@@ -1,4 +1,5 @@
 import type { CanonicalPose } from '@poser/core';
+import type { PoseSkeleton } from '@poser/posing';
 import type { Group } from 'three/webgpu';
 import type { AnatomyLayer } from './mannequin';
 
@@ -6,6 +7,8 @@ import type { AnatomyLayer } from './mannequin';
 export interface PosableFigure {
   readonly root: Group;
   readonly height: number;
+  /** Canonical skeleton at this figure's joints (null for props without a rig). */
+  readonly poseSkeleton: PoseSkeleton | null;
   applyPose(pose: CanonicalPose): void;
   setMorphs(values: Record<string, number>): void;
   setLayerVisible(layer: AnatomyLayer, visible: boolean): void;

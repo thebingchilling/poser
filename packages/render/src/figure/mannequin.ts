@@ -2,6 +2,7 @@ import { CANONICAL_BONES, FEMALE_PROPORTIONS, MALE_PROPORTIONS, boneTail, restPo
 import { Bone, Group, Mesh, MeshStandardMaterial, Vector3, type BufferGeometry, type Material } from 'three/webgpu';
 import { alignToDirection, ellipsoid, taperedCapsule } from './shapes';
 import type { PosableFigure } from './types';
+import { PoseSkeleton } from '@poser/posing';
 import type { CanonicalPose } from '@poser/core';
 
 /**
@@ -100,9 +101,11 @@ export class FigureObject implements PosableFigure {
   private readonly layers = new Map<AnatomyLayer, Mesh[]>();
   private readonly materials: LayerMaterials;
   readonly height: number;
+  readonly poseSkeleton: PoseSkeleton;
 
   constructor(readonly builtinId: BuiltinFigureId) {
     const def = BUILTIN_FIGURES[builtinId];
+    this.poseSkeleton = new PoseSkeleton(restPose(def.proportions));
     this.height = def.proportions.height;
     this.root.userData.height = this.height;
     this.materials = createMaterials(def.sex);

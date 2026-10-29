@@ -21,6 +21,8 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { ImportedFigure } from './figure/imported';
 import { BUILTIN_FIGURES, FigureObject, type AnatomyLayer, type BuiltinFigureId } from './figure/mannequin';
 import type { PosableFigure } from './figure/types';
+import { PoseTools } from './posing/poseTools';
+import type { PoseSkeleton } from '@poser/posing';
 
 export type RendererBackend = 'webgpu' | 'webgl2';
 
@@ -60,6 +62,8 @@ export class Viewport {
   readonly camera = new PerspectiveCamera(35, 1, 0.05, 200);
   readonly controls: OrbitControls;
   readonly backend: RendererBackend;
+  /** Joint handles, gizmo, IK and pins (PLAN.md section 6). */
+  readonly poseTools: PoseTools;
 
   private readonly figures = new Map<string, { object: PosableFigure; assetId: string }>();
   /** Figures whose model is still loading (asset id per figure id). */
@@ -113,6 +117,16 @@ export class Viewport {
     major.position.y = 0.002;
     this.grid.add(minor, major);
     this.scene.add(this.grid);
+
+    this.poseTools = new PoseTools(
+      this.camera,
+      canvas,
+      this.controls,
+      () => this.invalidate(),
+      () => this.figures,
+      (id) => this.lastFigures.find((f) => f.id === id)?.pose,
+    );
+    this.scene.add(this.poseTools.group, this.poseTools.helper);
 
     this.resizeObserver = new ResizeObserver(() => this.resize());
     this.resizeObserver.observe(canvas);
@@ -171,6 +185,7 @@ export class Viewport {
       this.applyFigure(entry.object, fig);
     }
     for (const id of [...this.figures.keys()]) if (!seen.has(id)) this.removeFigure(id);
+    this.poseTools?.refresh();
   }
 
   private addFigureObject(id: string, assetId: string, object: PosableFigure) {
@@ -207,6 +222,7 @@ export class Viewport {
           return;
         }
         this.applyFigure(this.addFigureObject(figureId, assetId, object).object, fig);
+        this.poseTools.refresh();
         this.invalidate();
         for (const l of this.loadListeners) l(figureId);
       })
@@ -283,6 +299,11 @@ export class Viewport {
         this.lights.delete(id);
       }
     }
+  }
+
+  /** The posing skeleton of a figure (null for props or until loaded). */
+  figureSkeleton(figureId: string): PoseSkeleton | null {
+    return this.figures.get(figureId)?.object.poseSkeleton ?? null;
   }
 
   // ---------- Anatomy layer view (placeholder anatomy) ----------
@@ -412,6 +433,7 @@ export class Viewport {
     void this.renderer.setAnimationLoop(null);
     this.resizeObserver.disconnect();
     this.controls.dispose();
+    this.poseTools.dispose();
     for (const id of [...this.figures.keys()]) this.removeFigure(id);
     this.renderer.dispose();
   }

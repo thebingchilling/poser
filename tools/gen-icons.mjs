@@ -9,7 +9,7 @@ const ICONS = [
   'center_focus_strong', 'check', 'close', 'dark_mode', 'delete', 'deployed_code', 'download', 'edit',
   'female', 'folder_open', 'grid_on', 'info', 'install_desktop', 'layers', 'library_books', 'light_mode',
   'lightbulb', 'lock', 'lock_open', 'male', 'memory', 'menu', 'more_vert', 'movie', 'open_with', 'palette', 'pan_tool_alt', 'pause',
-  'person', 'person_add', 'photo_camera', 'play_arrow', 'redo', 'restart_alt', 'science', 'search',
+  'person', 'person_add', 'photo_camera', 'play_arrow', 'redo', 'restart_alt', 'science', 'search', 'sync_alt', 'arrow_forward',
   'settings', 'shield_lock', 'speed', 'storage', 'straighten', 'tab', 'undo', 'upload', 'visibility',
   'visibility_off', 'warning', 'wb_sunny',
 ];

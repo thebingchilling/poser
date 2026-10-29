@@ -10,6 +10,7 @@
     "@poser/core": "workspace:*",
     "@poser/importers": "workspace:*",
     "@poser/platform": "workspace:*",
+    "@poser/posing": "workspace:*",
     "@poser/rig": "workspace:*",
     "three": "^0.186.1"
   },

@@ -71,6 +71,9 @@ importers:
       '@poser/platform':
         specifier: workspace:*
         version: link:../../packages/platform
+      '@poser/posing':
+        specifier: workspace:*
+        version: link:../../packages/posing
       '@poser/render':
         specifier: workspace:*
         version: link:../../packages/render
@@ -192,6 +195,12 @@ importers:
         specifier: ^0.8.2
         version: 0.8.3
 
+  packages/posing:
+    dependencies:
+      '@poser/rig':
+        specifier: workspace:*
+        version: link:../rig
+
   packages/render:
     dependencies:
       '@poser/core':
@@ -203,6 +212,9 @@ importers:
       '@poser/platform':
         specifier: workspace:*
         version: link:../platform
+      '@poser/posing':
+        specifier: workspace:*
+        version: link:../posing
       '@poser/rig':
         specifier: workspace:*
         version: link:../rig

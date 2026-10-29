@@ -1,7 +1,10 @@
 import { activeScene, type AssetRecord, type Light, type Project } from '@poser/core';
 import { BUILTIN_FIGURES, type AnatomyLayer, type BuiltinFigureId } from '@poser/render';
-import { Button, Card, Divider, FilterChip, IconButton, ListItem, ListSubheader, Menu, SegmentedButtons, Slider, Switch, TextField, useSnackbar, type IconName } from '@poser/ui';
+import { AssistChip, Button, Card, Divider, FilterChip, IconButton, ListItem, ListSubheader, Menu, SegmentedButtons, Slider, Switch, TextField, useSnackbar, type IconName } from '@poser/ui';
 import { useEffect, useState } from 'react';
+import { HAND_PRESET_LABELS, type HandPreset } from '@poser/posing';
+import { EFFECTORS, jointLabel } from '@poser/render';
+import { copySideSelected, handPresetSelected, mirrorSelected, resetJointSelected, resetPoseSelected, togglePinSelected } from './posing';
 import { startImport } from '../import/startImport';
 import { useLibrary } from '../state/library';
 import { addAssetToScene, addBuiltinFigure, captureScreenshot, removeFigure, removeProp } from '../actions';
@@ -173,17 +176,69 @@ function SceneWorkspace() {
 }
 
 function PoseWorkspace() {
+  const selectedId = useUi((s) => s.selectedFigureId);
+  const joint = useUi((s) => s.selectedJoint);
+  const mode = useUi((s) => s.poseMode);
+  const limits = useUi((s) => s.jointLimits);
+  const set = useUi((s) => s.set);
+  const scene = useActiveScene();
+  const snackbar = useSnackbar();
+  const figure = scene.figures.find((f) => f.id === selectedId);
+  const isEffector = !!joint && (EFFECTORS as string[]).includes(joint);
+  const pinned = !!(joint && figure?.pins?.[joint]);
   return (
     <>
+      {!figure ? (
+        <p className="empty">Click a figure, or one of its joints, to pose it.</p>
+      ) : (
+        <p className="hint">
+          <strong>{figure.name}</strong>
+          {joint ? ` · ${jointLabel(joint)}` : ' · click a joint handle'}
+        </p>
+      )}
+      <ListSubheader>Mode</ListSubheader>
+      <SegmentedButtons
+        label="Posing mode"
+        value={mode}
+        onChange={(m) => set({ poseMode: m })}
+        segments={[
+          { value: 'fk', label: 'Rotate joints', icon: '3d_rotation' },
+          { value: 'ik', label: 'Move hands & feet', icon: 'open_with' },
+        ]}
+      />
+      <p className="hint">{mode === 'ik' ? 'Select a hand or foot (yellow handles) and drag the arrows; the limb follows.' : 'Select a joint and drag the rings to rotate it.'} Shortcut: Q.</p>
+      <Switch label="Joint limits" supporting="Keep joints within natural ranges" checked={limits} onChange={(v) => set({ jointLimits: v })} />
+      <div className="button-wrap">
+        <Button variant="tonal" icon="lock" disabled={!isEffector} onClick={() => togglePinSelected() || snackbar('Select a hand or foot to pin it')}>
+          {pinned ? 'Unpin' : 'Pin'}
+        </Button>
+        <Button variant="tonal" icon="restart_alt" disabled={!joint} onClick={resetJointSelected}>Reset joint</Button>
+      </div>
+      <ListSubheader>Whole pose</ListSubheader>
+      <div className="button-wrap">
+        <Button variant="tonal" icon="sync_alt" disabled={!figure} onClick={mirrorSelected}>Mirror</Button>
+        <Button variant="text" icon="arrow_forward" disabled={!figure} onClick={() => copySideSelected('left')}>Left to right</Button>
+        <Button variant="text" icon="arrow_back" disabled={!figure} onClick={() => copySideSelected('right')}>Right to left</Button>
+        <Button variant="text" icon="restart_alt" disabled={!figure} onClick={resetPoseSelected}>Reset pose</Button>
+      </div>
+      <ListSubheader>Hands</ListSubheader>
+      {(['left', 'right'] as const).map((side) => (
+        <div key={side}>
+          <p className="hint">{side === 'left' ? 'Left hand' : 'Right hand'}</p>
+          <div className="chip-row">
+            {(Object.keys(HAND_PRESET_LABELS) as HandPreset[]).map((p) => (
+              <AssistChip key={p} icon="pan_tool_alt" label={HAND_PRESET_LABELS[p]} disabled={!figure} onClick={() => handPresetSelected(side, p)} />
+            ))}
+          </div>
+        </div>
+      ))}
       <ListSubheader>Views</ListSubheader>
       <div className="button-wrap">
-        <Button variant="tonal" icon="3d_rotation" onClick={() => setView('front')}>Front</Button>
-        <Button variant="tonal" icon="3d_rotation" onClick={() => setView('left')}>Side</Button>
-        <Button variant="tonal" icon="3d_rotation" onClick={() => setView('back')}>Back</Button>
-        <Button variant="tonal" icon="3d_rotation" onClick={() => setView('top')}>Top</Button>
-        <Button variant="tonal" icon="center_focus_strong" onClick={() => viewportRef.current?.frameAll()}>Frame all</Button>
+        <Button variant="text" icon="3d_rotation" onClick={() => setView('front')}>Front</Button>
+        <Button variant="text" icon="3d_rotation" onClick={() => setView('left')}>Side</Button>
+        <Button variant="text" icon="3d_rotation" onClick={() => setView('top')}>Top</Button>
+        <Button variant="text" icon="center_focus_strong" onClick={() => viewportRef.current?.frameAll()}>Frame all</Button>
       </div>
-      <ComingInPhase phase={1} what="Joint handles, rotation gizmos, IK effectors, pins, joint limits, mirroring, hand presets, and the pose library." />
     </>
   );
 }

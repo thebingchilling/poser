@@ -12,6 +12,11 @@ interface UiState {
   workspaceOpen: boolean;
   inspectorOpen: boolean;
   selectedFigureId: string | null;
+  /** Selected canonical joint on the selected figure. */
+  selectedJoint: string | null;
+  /** FK rotates joints; IK drags hands and feet (PLAN.md section 6). */
+  poseMode: 'fk' | 'ik';
+  jointLimits: boolean;
   mode: SimMode;
   anatomy: Record<AnatomyLayer, boolean>;
   skinOpacity: number;
@@ -36,6 +41,9 @@ export const useUi = create<UiState>()((set, get) => ({
   workspaceOpen: true,
   inspectorOpen: true,
   selectedFigureId: null,
+  selectedJoint: null,
+  poseMode: 'fk',
+  jointLimits: true,
   mode: 'pose',
   anatomy: { skin: true, fat: false, muscle: false, skeleton: false },
   skinOpacity: 1,

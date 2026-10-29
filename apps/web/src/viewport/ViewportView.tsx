@@ -1,10 +1,10 @@
-import { activeScene, getAsset, readAssetModel } from '@poser/core';
+import { activeScene, getAsset, readAssetModel, type Project } from '@poser/core';
 import { AdaptiveQualityController, QUALITY_SETTINGS, logError, webgpuSelfTest } from '@poser/platform';
 import { Viewport, type ViewName } from '@poser/render';
 import { useSnackbar } from '@poser/ui';
 import { useEffect, useRef, useState } from 'react';
 import { crashGuard, memoryManager } from '../platformServices';
-import { projectStore } from '../state/project';
+import { editProject, projectStore, useProject } from '../state/project';
 import { useSettings } from '../state/settings';
 import { useEffectiveQuality, useUi } from '../state/ui';
 import { ViewCube } from './ViewCube';
@@ -81,6 +81,22 @@ export function ViewportView() {
           const [record, model] = await Promise.all([getAsset(assetId), readAssetModel(assetId)]);
           return record && model ? { model, rig: record.rig } : null;
         };
+        created.poseTools.onSelect = (figureId, joint) => {
+          const ui = useUi.getState();
+          ui.set({ selectedFigureId: figureId, selectedJoint: joint, ...(figureId ? { inspectorOpen: true } : {}) });
+        };
+        created.poseTools.onEdit = (edit) => {
+          editProject(
+            edit.label,
+            (p) => {
+              const f = activeScene(p as Project).figures.find((x) => x.id === edit.figureId);
+              if (!f) return;
+              f.pose = edit.pose;
+              if (edit.pins) f.pins = edit.pins;
+            },
+            { coalesceKey: edit.coalesceKey },
+          );
+        };
         created.onFigureLoad(
           () => created.frameAll(),
           (_id, err) => {
@@ -128,6 +144,16 @@ export function ViewportView() {
   useEffect(() => {
     viewport?.setAnatomyView(anatomy, skinOpacity);
   }, [viewport, anatomy, skinOpacity]);
+
+  // Pose tools follow the selection, mode, and the figure's pins.
+  const selectedFigureId = useUi((s) => s.selectedFigureId);
+  const selectedJoint = useUi((s) => s.selectedJoint);
+  const poseMode = useUi((s) => s.poseMode);
+  const jointLimits = useUi((s) => s.jointLimits);
+  const pins = useProject((s) => activeScene(s.project).figures.find((f) => f.id === selectedFigureId)?.pins);
+  useEffect(() => {
+    viewport?.poseTools.setState({ figureId: selectedFigureId, joint: selectedJoint, mode: poseMode, limits: jointLimits, pins: pins ?? {} });
+  }, [viewport, selectedFigureId, selectedJoint, poseMode, jointLimits, pins]);
 
   // Adaptive quality (PLAN.md section 3.5, step 4).
   useEffect(() => {

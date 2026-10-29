@@ -17,6 +17,7 @@
     "@poser/interaction": "workspace:*",
     "@poser/physics": "workspace:*",
     "@poser/platform": "workspace:*",
+    "@poser/posing": "workspace:*",
     "@poser/render": "workspace:*",
     "@poser/rig": "workspace:*",
     "@poser/rope": "workspace:*",

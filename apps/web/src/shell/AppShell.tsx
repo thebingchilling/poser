@@ -34,6 +34,7 @@ import { ViewportView, viewportRef } from '../viewport/ViewportView';
 import { Inspector } from '../workspaces/Inspector';
 import { ModeSwitch, WorkspaceContent } from '../workspaces/Workspaces';
 import { ConfirmDialog, OpenProjectDialog, RenameDialog } from './ProjectDialogs';
+import { mirrorSelected, togglePinSelected } from '../workspaces/posing';
 import { PHONE_PRIMARY, WORKSPACES } from './workspaces';
 
 function useUndoRedo() {
@@ -65,6 +66,15 @@ function useShortcuts(doUndo: () => void, doRedo: () => void) {
         doRedo();
       } else if (!mod && !e.altKey && e.key.toLowerCase() === 'f') {
         viewportRef.current?.frameAll();
+      } else if (!mod && e.key.toLowerCase() === 'q') {
+        const ui = useUi.getState();
+        ui.set({ poseMode: ui.poseMode === 'fk' ? 'ik' : 'fk' });
+      } else if (!mod && e.key.toLowerCase() === 'p') {
+        togglePinSelected();
+      } else if (!mod && e.key.toLowerCase() === 'm') {
+        mirrorSelected();
+      } else if (e.key === 'Escape') {
+        useUi.getState().set({ selectedJoint: null });
       }
     };
     window.addEventListener('keydown', onKey);
