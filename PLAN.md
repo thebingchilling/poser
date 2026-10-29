@@ -728,6 +728,7 @@ Additions that make scenes look and behave like the real thing:
 - **Video and GIF capture** of Live-mode simulation (browser MediaRecorder), for short physics clips.
 
 ### 16.5 Built-in environments
+*Dropped:* no rooms or objects are built or bundled; users import the rooms and props they need (section 4). The original idea is kept below for reference.
 - A few bundled rooms (bedroom, bathroom with shower, photo studio, dungeon-style room, living room) with furniture already set up as physics props with anchor points.
 - Built from CC0 assets (e.g. Poly Haven props, textures, HDRIs, bundled with the app at build time, not downloaded by users).
 
@@ -964,16 +965,15 @@ Each phase ends with something usable. Week estimates assume one full-time devel
 - [x] Pose library and BVH/VRMA pose import
 - [x] Simple prop builder; time-of-day sun; recolor and material editor (physics materials and rope anchor points come with Phase 2 colliders)
 - [ ] Body measurements readout; pose blending; random pose and camera; reference image overlay and camera match (pose blending, random pose and random camera done)
-- [ ] Built-in CC0 environments (bedroom, bathroom, studio, dungeon-style room, living room)
+- [x] ~~Built-in CC0 environments~~ Dropped: rooms and objects are imported as needed (section 16.5)
 - [x] Props (visual only), lighting presets, lens/ortho cameras, study modes (clay, silhouette, notan); also camera bookmarks and rule-of-thirds/golden-ratio guides
 - [ ] Screenshot capture; Daz export guide (screenshot capture done)
 - **Done when:** a Daz G8 FBX and a Mixamo character are imported, posed convincingly with IK and limits, lit, and captured.
 - **Remaining Phase 1 work, in order:**
-  1. **Built-in rooms:** bedroom, bathroom with shower, photo studio (paper sweep backdrop), dungeon-style room, and living room, assembled from the built-in props and furniture (box, wall, bed, sofa, chair, table, cabinet, rug, lamp, bathtub, shower, backdrop, pillar) with matching lighting. Made in-app from primitives, so CC0 by construction; Poly Haven textures and HDRIs can be bundled later.
-  2. **Body measurements readout:** height, bust, underbust, waist, and hips (tape-measure circumference of the mesh at each level), bra size, estimated weight from body volume, and limb lengths, in metric, updating with morphs.
-  3. **Reference image overlay and camera match:** a semi-transparent photo over the viewport or behind the scene, with a draggable horizon line, lens, and camera height so the floor and figure match the photo's perspective.
-  4. **Daz export guide:** step-by-step in-app help for Daz Studio → FBX (Genesis 8) and Diffeomorphic → Blender → glTF (Genesis 9), opened from the Library and the import wizard.
-  5. **Mesh and texture optimisation in workers:** decimation and texture downscaling by quality level, and pruning unused morphs, run off the main thread during import.
+  1. **Body measurements readout:** height, bust, underbust, waist, and hips (tape-measure circumference of the mesh at each level), bra size, estimated weight from body volume, and limb lengths, in metric, updating with morphs.
+  2. **Reference image overlay and camera match:** a semi-transparent photo over the viewport or behind the scene, with a draggable horizon line, lens, and camera height so the floor and figure match the photo's perspective.
+  3. **Daz export guide:** step-by-step in-app help for Daz Studio → FBX (Genesis 8) and Diffeomorphic → Blender → glTF (Genesis 9), opened from the Library and the import wizard.
+  4. **Mesh and texture optimisation in workers:** decimation and texture downscaling by quality level, and pruning unused morphs, run off the main thread during import.
 
 ### Phase 2: Physics and cloth (about 8 weeks)
 - [ ] Jolt worker, automatic ragdoll, muscle motors, Settle and Live modes

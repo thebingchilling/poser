@@ -22,7 +22,7 @@ import type { PosableFigure } from '../figure/types';
 
 /**
  * Props made in the app (PLAN.md section 17.6): blocking shapes sized in
- * centimetres, and simple furniture for the built-in rooms. Everything is
+ * centimetres, and simple furniture. Everything is
  * built from primitives, so it is ours to ship (CC0). The origin is at the
  * centre of the base, on the floor.
  */
@@ -43,16 +43,12 @@ export const SHAPE_LABELS: Record<ShapeKind, string> = {
   chair: 'Chair',
   table: 'Table',
   stool: 'Stool',
-  bathtub: 'Bathtub',
-  shower: 'Shower',
-  backdrop: 'Photo backdrop',
-  pillar: 'Pillar',
   cabinet: 'Cabinet',
   rug: 'Rug',
   lamp: 'Floor lamp',
 };
 
-/** Shapes offered in the prop builder (furniture is used by the built-in rooms too). */
+/** Shapes offered in the prop builder. */
 export const BUILDER_SHAPES: ShapeKind[] = ['box', 'cylinder', 'sphere', 'platform', 'steps', 'ramp', 'pole', 'ring', 'bar', 'wall', 'bed', 'sofa', 'chair', 'table', 'stool', 'cabinet', 'rug', 'lamp'];
 
 /** Default size (m) and material for each shape. */
@@ -72,10 +68,6 @@ export const SHAPE_DEFAULTS: Record<ShapeKind, { size: [number, number, number];
   chair: { size: [0.48, 0.9, 0.5], material: { type: 'wood', color: '#8a6a4a', accent: '#8a6a4a' } },
   table: { size: [1.4, 0.75, 0.8], material: { type: 'wood', color: '#8a6a4a', accent: '#6b4c35' } },
   stool: { size: [0.4, 0.5, 0.4], material: { type: 'wood', color: '#8a6a4a' } },
-  bathtub: { size: [0.8, 0.6, 1.7], material: { type: 'plastic', color: '#f2f2f0', accent: '#c8c8c8' } },
-  shower: { size: [0.9, 2.1, 0.9], material: { type: 'glass', color: '#dfeaf0', accent: '#c8c8c8' } },
-  backdrop: { size: [3.2, 2.8, 3], material: { type: 'matte', color: '#e6e6e6', accent: '#2a2a2a' } },
-  pillar: { size: [0.4, 2.6, 0.4], material: { type: 'stone', color: '#8c867c' } },
   cabinet: { size: [1, 0.85, 0.45], material: { type: 'wood', color: '#7a5a3e', accent: '#c8c8c8' } },
   rug: { size: [2, 0.01, 1.4], material: { type: 'fabric', color: '#8a3d3d' } },
   lamp: { size: [0.4, 1.6, 0.4], material: { type: 'fabric', color: '#efe6d2', accent: '#2a2a2a' } },
@@ -234,47 +226,6 @@ function shapeParts(shape: PropShape): Part[] {
       return [box(w, 0.04, d, 0, h - 0.04, 0), ...legs(w, d, h - 0.04, 0.06, 0.06)];
     case 'stool':
       return [cyl(w / 2, 0.05, 0, h - 0.05, 0), ...legs(w * 0.7, d * 0.7, h - 0.05, 0.035, 0.03, 'main')];
-    case 'bathtub': {
-      const t = 0.07;
-      return [
-        box(w, t, d, 0, 0, 0),
-        box(t, h, d, -w / 2 + t / 2, 0, 0),
-        box(t, h, d, w / 2 - t / 2, 0, 0),
-        box(w, h, t, 0, 0, -d / 2 + t / 2),
-        box(w, h, t, 0, 0, d / 2 - t / 2),
-        cyl(0.02, 0.25, 0, h, -d / 2 + 0.06, 'accent'),
-      ];
-    }
-    case 'shower':
-      return [
-        box(w, 0.05, d, 0, 0, 0, 'accent'),
-        box(0.01, h, d, w / 2, 0, 0, 'main'),
-        box(w, h, 0.01, 0, 0, d / 2, 'main'),
-        cyl(0.015, h, -w / 2 + 0.06, 0, -d / 2 + 0.06, 'accent'),
-        { geo: new CylinderGeometry(0.1, 0.1, 0.02, 24), x: -w / 2 + 0.2, y: h - 0.05, z: -d / 2 + 0.2, role: 'accent' },
-      ];
-    case 'backdrop': {
-      // A paper sweep: wall curving into the floor, no corner line.
-      const r = 0.6;
-      const pts: Vector2[] = [];
-      for (let i = 0; i <= 12; i++) {
-        const a = (i / 12) * (Math.PI / 2);
-        pts.push(new Vector2(-d / 2 + r - Math.sin(a) * r, r - Math.cos(a) * r));
-      }
-      pts.push(new Vector2(-d / 2, h));
-      const s = new Shape();
-      s.moveTo(d / 2, 0);
-      for (const p of pts) s.lineTo(p.x, p.y);
-      s.lineTo(-d / 2 - 0.01, h);
-      for (let i = pts.length - 1; i >= 0; i--) s.lineTo(pts[i]!.x - 0.01, pts[i]!.y - 0.01);
-      s.lineTo(d / 2, -0.01);
-      const g = new ExtrudeGeometry(s, { depth: w, bevelEnabled: false });
-      g.translate(0, 0, -w / 2);
-      g.rotateY(Math.PI / 2);
-      return [{ geo: g }];
-    }
-    case 'pillar':
-      return [box(w * 1.3, 0.12, d * 1.3, 0, 0, 0), cyl(w / 2, h - 0.24, 0, 0.12, 0, 'main', 32), box(w * 1.3, 0.12, d * 1.3, 0, h - 0.12, 0)];
     case 'cabinet':
       return [
         box(w, h - 0.08, d, 0, 0.08, 0),

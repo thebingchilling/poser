@@ -43,10 +43,10 @@ export interface Figure {
   locked: boolean;
 }
 
-/** Shapes made in the prop builder (PLAN.md section 17.6), plus furniture for built-in rooms. */
+/** Shapes made in the prop builder (PLAN.md section 17.6). */
 export type ShapeKind =
   | 'box' | 'cylinder' | 'sphere' | 'platform' | 'steps' | 'ramp' | 'pole' | 'ring' | 'bar'
-  | 'wall' | 'bed' | 'sofa' | 'chair' | 'table' | 'stool' | 'bathtub' | 'shower' | 'backdrop' | 'pillar' | 'cabinet' | 'rug' | 'lamp';
+  | 'wall' | 'bed' | 'sofa' | 'chair' | 'table' | 'stool' | 'cabinet' | 'rug' | 'lamp';
 
 export interface PropShape {
   kind: ShapeKind;
