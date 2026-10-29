@@ -25,6 +25,7 @@ import {
   undo,
 } from '../actions';
 import { SettingsDialog } from '../dialogs/SettingsDialog';
+import { DazGuideDialog } from '../dialogs/DazGuideDialog';
 import { filesFromDataTransfer } from '../import/collectFiles';
 import { ImportWizard } from '../import/ImportWizard';
 import { startImport } from '../import/startImport';
@@ -326,6 +327,7 @@ export function AppShell() {
           />
         </div>
         <SettingsDialog />
+        <DazGuideDialog />
         <ImportWizard />
         {dropping && <div className="drop-overlay">Drop to import</div>}
       </div>
@@ -349,6 +351,7 @@ export function AppShell() {
       </div>
       <QuickBar />
       <SettingsDialog />
+        <DazGuideDialog />
       <ImportWizard />
       {dropping && <div className="drop-overlay">Drop to import</div>}
     </div>

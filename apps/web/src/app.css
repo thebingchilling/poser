@@ -147,3 +147,5 @@
 .viewport__horizon::before { content: ''; position: absolute; left: 0; right: 0; top: 8px; border-top: 1px dashed #ffd54a; }
 .viewport__horizon span { position: absolute; left: 12px; top: -12px; padding: 1px 6px; border-radius: 4px; background: #ffd54a; color: #1d1b16; font: var(--md-sys-typescale-label-small); }
 .viewport__horizon:focus-visible::before { border-top-width: 2px; }
+.guide-steps { margin: 8px 0; padding-left: 24px; display: flex; flex-direction: column; gap: 8px; font: var(--md-sys-typescale-body-medium); }
+.guide-steps code { font-size: 0.95em; padding: 0 4px; border-radius: 4px; background: var(--md-sys-color-surface-container-high); }

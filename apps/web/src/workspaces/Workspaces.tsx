@@ -80,6 +80,7 @@ function LibraryWorkspace() {
         <Button variant="text" icon="folder_open" onClick={() => void startImport(true)}>Import a folder</Button>
       </div>
       <p className="hint">Or drag files, folders, or zips anywhere onto the app. glTF, FBX, OBJ, VRM, Collada, STL, and PLY.</p>
+      <Button variant="text" icon="info" onClick={() => useUi.getState().set({ dazGuideOpen: true })}>How to export from Daz</Button>
       <TextField label="Search" value={query} onChange={(e) => setQuery(e.target.value)} />
       <div className="chip-row">
         {LIBRARY_FILTERS.map((f) => (

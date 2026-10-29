@@ -7,6 +7,7 @@ import { logError } from '@poser/platform';
 import { addAssetToScene } from '../actions';
 import { useLibrary } from '../state/library';
 import { useImport } from './importStore';
+import { useUi } from '../state/ui';
 import { PoseStep } from './PoseStep';
 
 const REQUIRED: [string, string][] = [
@@ -180,6 +181,9 @@ function ModelStep({ prepared, onDone, onSkip }: { prepared: PreparedImport; onD
         {busy && <LinearProgress label={busy} />}
         {busy && <span className="hint">{busy}…</span>}
         <div className="button-wrap">
+          <Button variant="text" icon="info" onClick={() => useUi.getState().set({ dazGuideOpen: true })}>
+            Daz export guide
+          </Button>
           <Button variant="text" onClick={onSkip} disabled={!!busy}>
             Skip
           </Button>
