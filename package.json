@@ -11,7 +11,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "e2e": "playwright test",
-    "test:gpu": "POSER_GPU_TESTS=1 vitest run"
+    "test:gpu": "POSER_GPU_TESTS=1 vitest run",
+    "serve": "node tools/pagesserve.mjs"
   },
   "devDependencies": {
     "@playwright/test": "1.63.0",

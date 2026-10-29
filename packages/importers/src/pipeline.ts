@@ -2,6 +2,7 @@ import { MODEL_FILE, createId, saveAsset, type AssetKind, type AssetRecord } fro
 import type { RigMap } from '@poser/rig';
 import { analyseModel, type ModelAnalysis, type Normalisation } from './analyse';
 import { exportNormalisedGlb, type ImportQuality } from './exportGlb';
+import { optimiseInWorker } from './optimiseClient';
 import type { VirtualFiles } from './files';
 import type { ModelFormat } from './formats';
 import { loadModel, type LoadedModel } from './load';
@@ -49,7 +50,17 @@ export function defaultChoices(p: PreparedImport): ImportChoices {
 
 export async function finishImport(p: PreparedImport, choices: ImportChoices, onProgress?: (step: string) => void): Promise<AssetRecord> {
   onProgress?.('Converting');
-  const { glb, normalised } = await exportNormalisedGlb(p.loaded.root, choices.normalisation, choices.quality);
+  const exported = await exportNormalisedGlb(p.loaded.root, choices.normalisation, choices.quality);
+  const normalised = exported.normalised;
+  onProgress?.('Optimising');
+  // A copy goes to the worker, so the original stays usable if optimisation fails.
+  const optimised = await optimiseInWorker(exported.glb.slice(0), choices.quality).catch((err: unknown) => {
+    // The unoptimised model still works; keep it rather than failing the import.
+    console.warn('Import optimisation skipped:', err);
+    return null;
+  });
+  const glb = optimised?.glb ?? exported.glb;
+  const remaining = optimised ? new Set(optimised.report.morphNames) : null;
   onProgress?.('Making a thumbnail');
   const thumbnail = renderThumbnail(normalised);
   const map = choices.kind === 'figure' ? choices.rigMap : undefined;
@@ -62,9 +73,9 @@ export async function finishImport(p: PreparedImport, choices: ImportChoices, on
     format: p.format,
     importedAt: Date.now(),
     tags: [],
-    morphs: p.analysis.morphs,
+    morphs: remaining ? p.analysis.morphs.filter((m) => remaining.has(m)) : p.analysis.morphs,
     size: p.analysis.size,
-    triangles: p.analysis.triangles,
+    triangles: optimised?.report.trianglesAfter ?? p.analysis.triangles,
     thumbnail,
     files: [MODEL_FILE],
   };

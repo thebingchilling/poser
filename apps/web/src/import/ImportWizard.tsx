@@ -1,5 +1,5 @@
 import type { AssetKind } from '@poser/core';
-import { defaultChoices, finishImport, prepareImport, type ImportChoices, type ImportQuality, type ModelFormat, type PreparedImport } from '@poser/importers';
+import { TRIANGLE_LIMITS, defaultChoices, finishImport, prepareImport, type ImportChoices, type ImportQuality, type ModelFormat, type PreparedImport } from '@poser/importers';
 import { RIG_LABELS, type RigKind } from '@poser/rig';
 import { Button, Dialog, LinearProgress, ListSubheader, SegmentedButtons, TextField, useSnackbar } from '@poser/ui';
 import { useEffect, useMemo, useState } from 'react';
@@ -160,6 +160,12 @@ function ModelStep({ prepared, onDone, onSkip }: { prepared: PreparedImport; onD
           { value: 'light', label: 'Light (1K)' },
         ]}
       />
+      <p className="hint">
+        {choices.quality === 'high'
+          ? 'Keeps every triangle.'
+          : `Meshes over ${(TRIANGLE_LIMITS[choices.quality] / 1000).toFixed(0)}k triangles are simplified (this model has ${(a.triangles / 1000).toFixed(0)}k).`}{' '}
+        Morphs that move nothing are removed.
+      </p>
 
       <ListSubheader>Details</ListSubheader>
       <TextField label="Name" value={choices.name} onChange={(e) => set({ name: e.target.value })} />

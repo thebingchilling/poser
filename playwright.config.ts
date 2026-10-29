@@ -24,7 +24,8 @@ export default defineConfig({
     { name: 'phone', use: { ...devices['Pixel 7'] } },
   ],
   webServer: {
-    command: 'pnpm build && pnpm preview --port 4173 --strictPort',
+    // Serves the build with the production headers (CSP etc.), so policy breakage fails the tests.
+    command: 'pnpm build && node tools/pagesserve.mjs 4173',
     url: 'http://localhost:4173',
     reuseExistingServer: true,
     timeout: 120_000,

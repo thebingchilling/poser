@@ -960,7 +960,7 @@ Each phase ends with something usable. Week estimates assume one full-time devel
 
 ### Phase 1: Import and posing MVP (about 5 weeks)
 - [x] Drag-and-drop, file/folder pickers, zip unpacking, import wizard, Library panel
-- [ ] glTF, FBX, OBJ, VRM, DAE/STL/PLY importers; mesh and texture optimization in workers (importers done; worker-side mesh and texture optimization still to do)
+- [x] glTF, FBX, OBJ, VRM, DAE/STL/PLY importers; mesh and texture optimization in workers (textures downscaled per quality on export; a Web Worker welds, simplifies to the quality's triangle budget, and removes morphs that move nothing)
 - [x] Canonical rig with Daz G8/G9, VaM-export, Mixamo, CC4, and VRM maps, plus the manual mapping wizard
 - [x] Joint handles, rotation gizmo, IK effectors, pins, joint limits, mirror, hand presets, morph sliders
 - [x] Pose library and BVH/VRMA pose import
@@ -974,7 +974,7 @@ Each phase ends with something usable. Week estimates assume one full-time devel
   1. ~~**Body measurements readout:**~~ *Done* (Body workspace). height, bust, underbust, waist, and hips (tape-measure circumference of the mesh at each level), bra size, estimated weight from body volume, and limb lengths, in metric, updating with morphs.
   2. ~~**Reference image overlay and camera match:**~~ *Done* (Render workspace; the photo is kept for the session only). a semi-transparent photo over the viewport or behind the scene, with a draggable horizon line, lens, and camera height so the floor and figure match the photo's perspective.
   3. ~~**Daz export guide:**~~ *Done* (Library and import wizard). step-by-step in-app help for Daz Studio → FBX (Genesis 8) and Diffeomorphic → Blender → glTF (Genesis 9), opened from the Library and the import wizard.
-  4. **Mesh and texture optimisation in workers:** decimation and texture downscaling by quality level, and pruning unused morphs, run off the main thread during import.
+  4. ~~**Mesh and texture optimisation in workers:**~~ *Done*. decimation and texture downscaling by quality level, and pruning unused morphs, run off the main thread during import.
   5. **Default base figure** (replaces the procedural mannequins; see below).
 
 #### Default base figure (plan)

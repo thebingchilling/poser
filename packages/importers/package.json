@@ -7,14 +7,16 @@
     ".": "./src/index.ts"
   },
   "dependencies": {
+    "@gltf-transform/core": "^4.5.1",
     "@pixiv/three-vrm": "^3.5.5",
     "@poser/core": "workspace:*",
     "@poser/rig": "workspace:*",
     "fflate": "^0.8.2",
+    "meshoptimizer": "^1.3.0",
     "three": "^0.186.1"
   },
   "devDependencies": {
-    "@types/three": "^0.186.0",
-    "@poser/posing": "workspace:*"
+    "@poser/posing": "workspace:*",
+    "@types/three": "^0.186.0"
   }
 }
