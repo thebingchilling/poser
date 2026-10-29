@@ -9,6 +9,7 @@ import { startImport } from '../import/startImport';
 import { PoseLibraryPanel, PoseMixPanel } from './PoseLibrary';
 import { RenderWorkspace } from './RenderWorkspace';
 import { ObjectsWorkspace } from './ObjectsWorkspace';
+import { MeasurementsPanel } from './Measurements';
 import { useLibrary } from '../state/library';
 import { addAssetToScene, addBuiltinFigure, captureScreenshot, removeFigure, removeProp } from '../actions';
 import { editProject, useActiveScene } from '../state/project';
@@ -283,6 +284,7 @@ function BodyWorkspace() {
   const set = useUi((s) => s.set);
   return (
     <>
+      <MeasurementsPanel />
       <ListSubheader>Anatomy layers</ListSubheader>
       <p className="hint">Placeholder anatomy for early testing. The real layered anatomy arrives in Phase 5.</p>
       {(Object.keys(LAYER_LABELS) as AnatomyLayer[]).map((layer) => (

@@ -27,6 +27,7 @@ import { BUILTIN_FIGURES, FigureObject, type AnatomyLayer, type BuiltinFigureId 
 import type { PosableFigure } from './figure/types';
 import { PoseTools } from './posing/poseTools';
 import { overrideMaterials } from './props/materials';
+import { collectTriangles, measureBody, type BodyMeasurements } from './figure/measure';
 import { NotanPass, applyStudyMaterials, studyStage, type StudyMode } from './study';
 import type { PoseSkeleton } from '@poser/posing';
 
@@ -416,6 +417,22 @@ export class Viewport {
   /** The posing skeleton of a figure (null for props or until loaded). */
   figureSkeleton(figureId: string): PoseSkeleton | null {
     return this.figures.get(figureId)?.object.poseSkeleton ?? null;
+  }
+
+  /**
+   * Body measurements of a figure (PLAN.md section 17.3), taken in its rest
+   * pose with its current body shape. Null until loaded, or for props.
+   */
+  measureFigure(figureId: string): BodyMeasurements | null {
+    const entry = this.figures.get(figureId);
+    const skel = entry?.object.poseSkeleton;
+    if (!entry || !skel) return null;
+    const current = this.lastFigures.find((f) => f.id === figureId);
+    entry.object.applyPose({});
+    const tris = collectTriangles(entry.object.root);
+    if (current) entry.object.applyPose(current.pose);
+    entry.object.root.updateMatrixWorld(true);
+    return measureBody(tris, skel.rest as Record<string, [number, number, number]>);
   }
 
   /**

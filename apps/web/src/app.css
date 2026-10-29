@@ -137,3 +137,8 @@
 .viewport__overlay line { stroke: rgb(255 255 255 / 0.55); stroke-width: 1px; vector-effect: non-scaling-stroke; }
 .color-field { display: inline-flex; align-items: center; gap: 8px; font: var(--md-sys-typescale-label-large); color: var(--md-sys-color-on-surface); cursor: pointer; min-height: 40px; }
 .color-field input { width: 40px; height: 32px; padding: 0; border: 1px solid var(--md-sys-color-outline); border-radius: var(--md-sys-shape-corner-small); background: none; cursor: pointer; }
+.measure-list { margin: 0 0 8px; display: grid; gap: 2px; }
+.measure-list > div { display: flex; justify-content: space-between; padding: 6px 16px; border-radius: var(--md-sys-shape-corner-small); }
+.measure-list > div:nth-child(odd) { background: var(--md-sys-color-surface-container); }
+.measure-list dt { font: var(--md-sys-typescale-body-medium); color: var(--md-sys-color-on-surface-variant); }
+.measure-list dd { margin: 0; font: var(--md-sys-typescale-body-medium); font-variant-numeric: tabular-nums; }
