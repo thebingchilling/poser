@@ -18,25 +18,47 @@ export interface LoadedModel {
   warnings: string[];
 }
 
+/** How long to wait for a model's textures before importing without the stragglers. */
+const TEXTURE_WAIT_MS = 30_000;
+
 /**
  * Loads a model with the matching three.js loader (PLAN.md section 4.2).
  * Every external reference (textures, .bin, .mtl) is looked up in the
  * virtual folder, so imports work from loose files, folders, or zips.
+ * Resolves once the model and its textures have loaded.
  */
 export async function loadModel(vfs: VirtualFiles, path: string, format: ModelFormat): Promise<LoadedModel> {
   const warnings: string[] = [];
   const manager = new LoadingManager();
+  // Loaders return before their textures finish loading; track the manager until it goes idle.
+  let started = false;
+  let done = false;
+  let markIdle = () => {};
+  const idle = new Promise<void>((resolve) => (markIdle = resolve));
+  manager.onStart = () => (started = true);
+  manager.onLoad = () => {
+    done = true;
+    markIdle();
+  };
+  manager.onError = (url) => warnings.push(`Could not load ${url.split('/').pop()}`);
   manager.setURLModifier((url) => {
     if (url.startsWith('data:')) return url;
     // Blob URLs from the main file arrive as blob:<origin>/<name>; look up the name.
     const ref = url.startsWith('blob:') ? url.slice(url.lastIndexOf('/') + 1) : url;
     const found = vfs.resolve(ref, path);
     if (!found) {
-      warnings.push(`Missing file: ${ref.split('/').pop()}`);
+      warnings.push(`Missing file: ${ref.split(/[\\/]/).pop()}`);
       return url;
     }
     return vfs.url(found)!;
   });
+
+  const model = await parse(vfs, path, format, manager, warnings);
+  if (started && !done) await Promise.race([idle, new Promise((r) => setTimeout(r, TEXTURE_WAIT_MS))]);
+  return model;
+}
+
+async function parse(vfs: VirtualFiles, path: string, format: ModelFormat, manager: LoadingManager, warnings: string[]): Promise<LoadedModel> {
   const blob = vfs.get(path);
   if (!blob) throw new Error(`File not found: ${path}`);
   const buffer = await blob.arrayBuffer();

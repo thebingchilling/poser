@@ -1,6 +1,7 @@
 import { Box3, Group, Matrix4, SkinnedMesh, Vector3, type Object3D } from 'three';
 import { GLTFExporter } from 'three/addons/exporters/GLTFExporter.js';
 import { normalisationMatrix, type Normalisation } from './analyse';
+import { prepareMaterials } from './materials';
 
 export type ImportQuality = 'high' | 'balanced' | 'light';
 
@@ -13,7 +14,8 @@ export const TEXTURE_LIMITS: Record<ImportQuality, number> = { high: 4096, balan
  * capped to the chosen size. Every import format ends up like this, so the
  * rest of the app only reads GLB.
  */
-export async function exportNormalisedGlb(root: Object3D, n: Normalisation, quality: ImportQuality): Promise<{ glb: ArrayBuffer; normalised: Object3D }> {
+export async function exportNormalisedGlb(root: Object3D, n: Normalisation, quality: ImportQuality): Promise<{ glb: ArrayBuffer; normalised: Object3D; warnings: string[] }> {
+  const warnings = prepareMaterials(root);
   root.traverse((o) => {
     if (o instanceof SkinnedMesh) o.skeleton.pose();
   });
@@ -30,5 +32,5 @@ export async function exportNormalisedGlb(root: Object3D, n: Normalisation, qual
   const exporter = new GLTFExporter();
   const result = await exporter.parseAsync(wrapper, { binary: true, animations: [], maxTextureSize: TEXTURE_LIMITS[quality], onlyVisible: true });
   // The wrapper (normalised, on the floor) is handy for the thumbnail.
-  return { glb: result as ArrayBuffer, normalised: wrapper };
+  return { glb: result as ArrayBuffer, normalised: wrapper, warnings };
 }
