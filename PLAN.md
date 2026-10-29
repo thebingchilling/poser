@@ -58,7 +58,7 @@ A web app that is a **realistic, physics-based NSFW figure modeller and anatomy 
 | **Mesh cutting** | Manifold (`manifold-3d`) is a WASM library with guaranteed-correct booleans, but it needs closed (watertight) meshes. | Use it for cuts; generate watertight cutting versions of skin at import. |
 | **Fluids** | WebGPU MLS-MPM demos simulate around 100k particles in real time in the browser, and MPM avoids SPH's neighbor-search cost. | Use MLS-MPM for particle fluids plus a texture-space surface-flow method for thin films. |
 | **Face rigs** | No openly licensed FACS template face was found. | Map existing Daz/ARKit face rigs; build or commission our own FACS template. |
-| **Built-in figures** | MakeHuman/MPFB core assets and exports are CC0. Exports must come from an official, unmodified MakeHuman build, and third-party add-on assets keep their own licenses. | *Decided:* no figures are built or bundled beyond the existing procedural female and male mannequins, which keep the app usable before anything is imported. All other bodies are imported (MakeHuman exports included). |
+| **Built-in figures** | MakeHuman/MPFB core assets (base mesh, shape targets, default skeleton and weights) and official exports are CC0. Third-party add-on assets keep their own licenses. | *Planned:* build our own default base figures (female and male) from the CC0 MakeHuman base mesh with a build-time script, to replace the procedural mannequins (Phase 1, base figure). No third-party add-on assets. All other bodies are imported. |
 
 ---
 
@@ -888,7 +888,8 @@ poser/
   packages/interaction/  attachments, hold/place, toys, body-opening channels, latex
   packages/rope/         rope solver, wrap tool, tie templates, knots, load overlay
   packages/marks/        skin marks, aging over time
-  assets/builtin/        optional bundled HDRIs (figures are the procedural mannequins; bodies and props are imported)
+  assets/builtin/        default base figures (built from the CC0 MakeHuman base mesh), optional HDRIs
+  tools/base-figure/     build script that makes the base figures
   assets/anatomy/        generated female and male anatomy templates
   tools/blender/         anatomy and FACS generation scripts
   docs/                  import guides, architecture notes
@@ -953,7 +954,7 @@ Each phase ends with something usable. Week estimates assume one full-time devel
 - [x] Quality levels, GPU auto-detection and benchmark, adaptive quality, memory manager (benchmark thresholds to be tuned on real devices)
 - [x] Crash handling: GPU device-lost recovery, Safe Mode after a crash, WebGL2 compatibility mode (also used automatically when WebGPU exists but fails a startup self-test)
 - [ ] **Verify WebGPU in Chrome on iOS** on a real device
-- [x] Built-in female and male figures: the procedural mannequins on the canonical rig. *Decided:* these stay the only built-in bodies; no MakeHuman figures are bundled, and other bodies are imported
+- [x] Built-in female and male figures: procedural mannequins on the canonical rig, as placeholders. *Planned:* replaced by our own default base figures built from the CC0 MakeHuman base mesh (Phase 1, base figure); other bodies are imported
 - [x] Rough placeholder anatomy (simple skeleton, muscle, and fat volumes) for the early prototypes
 - **Done when:** the app opens with a figure, the user can orbit it, and the scene saves and reloads.
 
@@ -974,6 +975,25 @@ Each phase ends with something usable. Week estimates assume one full-time devel
   2. **Reference image overlay and camera match:** a semi-transparent photo over the viewport or behind the scene, with a draggable horizon line, lens, and camera height so the floor and figure match the photo's perspective.
   3. **Daz export guide:** step-by-step in-app help for Daz Studio → FBX (Genesis 8) and Diffeomorphic → Blender → glTF (Genesis 9), opened from the Library and the import wizard.
   4. **Mesh and texture optimisation in workers:** decimation and texture downscaling by quality level, and pruning unused morphs, run off the main thread during import.
+  5. **Default base figure** (replaces the procedural mannequins; see below).
+
+#### Default base figure (plan)
+One default body, in a female and a male version, built by us so the app looks like a real figure before anything is imported. It is the only body we make; everything else is imported.
+
+- **Source:** the MakeHuman base mesh, its shape targets, and its default skeleton with skin weights, all CC0. Taken from the official MakeHuman asset repository at a pinned version, checked into `tools/base-figure/` with their license notes. No third-party add-on assets (skins, hair, clothes).
+- **Build-time script** (`tools/base-figure/`, Node, run by hand, output committed to `assets/builtin/`):
+  1. Load the base mesh; drop the helper geometry (joint markers, tights, hair and eyebrow helpers) and keep the body, eyes, and teeth.
+  2. Apply the macro targets for each version: gender, adult age (about 25), average muscle and weight, and standard proportions; female and male get their own target mix.
+  3. Fit the canonical skeleton (section 5) from the MakeHuman joint vertex groups (each joint at its group's centre), in a T-pose so the canonical rest pose needs no correction.
+  4. Transfer MakeHuman's default skin weights onto the canonical bones (its bones map onto ours by name; finger and spine splits merge or share weights).
+  5. Keep a small set of body-shape targets as glTF morph targets (weight, muscle, height, bust, hips, waist, shoulders), so the Body tab's morph sliders work on it.
+  6. Simple PBR skin material (base colour, roughness), with no photo textures in v1; detail comes later with the skin work (sections 16 and 18).
+  7. Write `assets/builtin/base-female.glb` and `base-male.glb` (target under 4 MB each, Draco or meshopt compressed), plus a rig map and license file.
+- **In the app:** the built-in figures load through the normal imported-figure path (`ImportedFigure` with the canonical rig map), so posing, IK, limits, morphs, study modes, and measurements behave exactly as for imports. New scenes start with the base female.
+- **Mannequins:** retired from new scenes; their code stays only as the Safe Mode fallback (no GLB loading) and for the GPU prototypes.
+- **Anatomy:** the MakeHuman base mesh has no detailed genitals; it stays neutral, and anatomy comes from the in-house anatomy work (section 9) like on any imported figure.
+- **Checks:** unit tests that the GLB loads, every canonical bone is present and weighted, and rest-pose joint heights fall in human ranges; a browser screenshot test of both versions in a few library poses.
+- **Done when:** new scenes open with the base female, it poses cleanly with IK and joint limits (no collapsing joints or bad weights at shoulders, hips, and knees in the built-in poses), body-shape sliders work, and both files are under 4 MB.
 
 ### Phase 2: Physics and cloth (about 8 weeks)
 - [ ] Jolt worker, automatic ragdoll, muscle motors, Settle and Live modes
@@ -1143,7 +1163,7 @@ These run **in parallel with Phase 0** (the owner's choice), as throwaway tests 
 ---
 
 ## 26. Open decisions for the owner
-Already decided: Chrome required; private use; installable PWA without offline caching; balanced visual quality; built-in procedural mannequins only, all other bodies and all props imported; 1–2 figures per scene; simple animation; graphic content on by default; no real medical scan data; all import sources (Daz, VaM, generic, VRM) supported; anatomy and FACS face built in-house (procedurally); Claude writes the code; sharing by sending files by hand (no server); metric units (cm/m/kg); building starts with Phase 0 and the risky prototypes in parallel; all feature areas (toys/ropes/latex, face/states, anatomy/cutting, fluids) are in scope, in the roadmap order below.
+Already decided: Chrome required; private use; installable PWA without offline caching; balanced visual quality; one default base figure (female and male) built by us from the CC0 MakeHuman base mesh, all other bodies and all props imported; 1–2 figures per scene; simple animation; graphic content on by default; no real medical scan data; all import sources (Daz, VaM, generic, VRM) supported; anatomy and FACS face built in-house (procedurally); Claude writes the code; sharing by sending files by hand (no server); metric units (cm/m/kg); building starts with Phase 0 and the risky prototypes in parallel; all feature areas (toys/ropes/latex, face/states, anatomy/cutting, fluids) are in scope, in the roadmap order below.
 
 No open decisions remain. New questions will be added here as they come up during building.
 
