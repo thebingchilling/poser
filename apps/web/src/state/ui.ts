@@ -1,6 +1,6 @@
 import type { QualityLevel } from '@poser/core';
 import { stepQuality, type GpuInfo } from '@poser/platform';
-import type { AnatomyLayer, RendererBackend } from '@poser/render';
+import type { AnatomyLayer, RendererBackend, StudyMode } from '@poser/render';
 import { create } from 'zustand';
 import { useSettings } from './settings';
 
@@ -20,6 +20,12 @@ interface UiState {
   /** Pose workspace tab. */
   poseTab: 'adjust' | 'library' | 'mix';
   mode: SimMode;
+  /** Render workspace view settings (PLAN.md section 18). */
+  studyMode: StudyMode;
+  notanThreshold: number;
+  overlay: 'none' | 'thirds' | 'golden';
+  /** Lens focal length (35mm equivalent), or null for orthographic. */
+  lens: number | null;
   anatomy: Record<AnatomyLayer, boolean>;
   skinOpacity: number;
   /** Steps below the chosen level this session (device lost, adaptive quality). */
@@ -48,6 +54,10 @@ export const useUi = create<UiState>()((set, get) => ({
   jointLimits: true,
   poseTab: 'adjust',
   mode: 'pose',
+  studyMode: 'normal',
+  notanThreshold: 0.35,
+  overlay: 'none',
+  lens: 50,
   anatomy: { skin: true, fat: false, muscle: false, skeleton: false },
   skinOpacity: 1,
   qualityDrop: 0,

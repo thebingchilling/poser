@@ -7,6 +7,7 @@ import { EFFECTORS, jointLabel } from '@poser/render';
 import { applyPoseSelected, copySideSelected, handPresetSelected, mirrorSelected, resetJointSelected, resetPoseSelected, togglePinSelected } from './posing';
 import { startImport } from '../import/startImport';
 import { PoseLibraryPanel, PoseMixPanel } from './PoseLibrary';
+import { RenderWorkspace } from './RenderWorkspace';
 import { useLibrary } from '../state/library';
 import { addAssetToScene, addBuiltinFigure, captureScreenshot, removeFigure, removeProp } from '../actions';
 import { editProject, useActiveScene } from '../state/project';
@@ -295,37 +296,6 @@ function BodyWorkspace() {
       <Slider label="Skin opacity" value={skinOpacity} min={0} max={1} step={0.01} displayScale={100} unit="%" onChange={(v) => set({ skinOpacity: v })} disabled={!anatomy.skin} />
       <Divider />
       <ComingInPhase phase={4} what="Expressions, hands and feet, muscle tension, and body states." />
-    </>
-  );
-}
-
-function RenderWorkspace() {
-  const scene = useActiveScene();
-  const snackbar = useSnackbar();
-  const setIntensity = (light: Light, value: number) =>
-    editProject(
-      `Change ${light.name.toLowerCase()}`,
-      (p) => {
-        const l = activeScene(p as Project).lights.find((x) => x.id === light.id);
-        if (l) l.intensity = value;
-      },
-      { coalesceKey: `light-intensity:${light.id}` },
-    );
-  return (
-    <>
-      <ListSubheader>Lights</ListSubheader>
-      {scene.lights.map((l) => (
-        <Slider key={l.id} label={l.name} value={l.intensity} min={0} max={l.type === 'ambient' ? 2 : 5} step={0.05} onChange={(v) => setIntensity(l, v)} disabled={!l.visible} />
-      ))}
-      <ListSubheader>Capture</ListSubheader>
-      <Button
-        variant="tonal"
-        icon="photo_camera"
-        onClick={() => captureScreenshot().then(() => snackbar('Screenshot saved'), (e: Error) => snackbar(e.message))}
-      >
-        Save screenshot
-      </Button>
-      <ComingInPhase phase={1} what="Lighting presets, lens and orthographic cameras, and study modes (clay, silhouette, notan)." />
     </>
   );
 }

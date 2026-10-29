@@ -4,3 +4,4 @@ export * from './figure/shapes';
 export * from './figure/types';
 export * from './figure/imported';
 export * from './posing/poseTools';
+export * from './study';

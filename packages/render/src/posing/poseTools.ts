@@ -75,10 +75,17 @@ export class PoseTools {
   };
 
   onEdit: ((edit: PoseEdit) => void) | null = null;
+
+  /** Follows the viewport when it switches between perspective and orthographic cameras. */
+  setCamera(camera: Camera): void {
+    this.camera = camera;
+    this.controls.camera = camera;
+  }
+
   onSelect: ((figureId: string | null, joint: string | null) => void) | null = null;
 
   constructor(
-    private readonly camera: Camera,
+    private camera: Camera,
     private readonly canvas: HTMLCanvasElement,
     private readonly orbit: OrbitControls,
     private readonly invalidate: () => void,

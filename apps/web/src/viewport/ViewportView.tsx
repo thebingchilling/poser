@@ -26,6 +26,10 @@ export function ViewportView() {
   const quality = useEffectiveQuality();
   const generation = useUi((s) => s.viewportGeneration);
   const anatomy = useUi((s) => s.anatomy);
+  const studyMode = useUi((s) => s.studyMode);
+  const notanThreshold = useUi((s) => s.notanThreshold);
+  const lens = useUi((s) => s.lens);
+  const overlay = useUi((s) => s.overlay);
   const skinOpacity = useUi((s) => s.skinOpacity);
   const adaptive = useSettings((s) => s.adaptiveQuality);
   // ?renderer=webgl also forces compatibility mode, for quick checks on a device.
@@ -145,6 +149,14 @@ export function ViewportView() {
     viewport?.setAnatomyView(anatomy, skinOpacity);
   }, [viewport, anatomy, skinOpacity]);
 
+  useEffect(() => {
+    viewport?.setStudyMode(studyMode, notanThreshold);
+  }, [viewport, studyMode, notanThreshold]);
+
+  useEffect(() => {
+    if (viewport && viewport.lens !== lens) viewport.setLens(lens);
+  }, [viewport, lens]);
+
   // Pose tools follow the selection, mode, and the figure's pins.
   const selectedFigureId = useUi((s) => s.selectedFigureId);
   const selectedJoint = useUi((s) => s.selectedJoint);
@@ -171,6 +183,7 @@ export function ViewportView() {
   return (
     <div className="viewport">
       <canvas ref={canvasRef} className="viewport__canvas" aria-label="3D viewport" tabIndex={0} />
+      {overlay !== 'none' && <CompositionOverlay kind={overlay} />}
       {viewport && <ViewCube viewport={viewport} />}
       {error && (
         <div className="viewport__error" role="alert">
@@ -179,5 +192,21 @@ export function ViewportView() {
         </div>
       )}
     </div>
+  );
+}
+
+/** Rule-of-thirds or golden-ratio guides over the view (PLAN.md section 18). Not included in captures. */
+function CompositionOverlay({ kind }: { kind: 'thirds' | 'golden' }) {
+  const a = kind === 'thirds' ? 100 / 3 : 38.2;
+  const b = 100 - a;
+  return (
+    <svg className="viewport__overlay" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+      {[a, b].map((v) => (
+        <g key={v}>
+          <line x1={v} y1={0} x2={v} y2={100} />
+          <line x1={0} y1={v} x2={100} y2={v} />
+        </g>
+      ))}
+    </svg>
   );
 }

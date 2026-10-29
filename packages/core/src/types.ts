@@ -6,6 +6,8 @@
  * Units are metric throughout: metres, kilograms, seconds.
  */
 
+import type { SunSettings } from './lighting';
+
 export type Vec3 = [number, number, number];
 /** Quaternion as [x, y, z, w]. */
 export type Quat = [number, number, number, number];
@@ -51,13 +53,17 @@ export interface Prop {
   locked: boolean;
 }
 
-export type LightType = 'directional' | 'point' | 'spot' | 'ambient';
+export type LightType = 'directional' | 'point' | 'spot' | 'ambient' | 'hemisphere';
 
 export interface Light {
   id: string;
   name: string;
   type: LightType;
   transform: Transform;
+  /** Where a directional or spot light points (default: about a standing figure's centre). */
+  target?: Vec3;
+  /** Sky colour is `color`; hemisphere lights also have a ground colour. */
+  groundColor?: string;
   color: string;
   intensity: number;
   castShadow: boolean;
@@ -71,6 +77,8 @@ export interface CameraBookmark {
   focalLength: number | null;
   position: Vec3;
   target: Vec3;
+  /** View height at the target, for orthographic views (metres). */
+  height?: number;
 }
 
 export interface Environment {
@@ -78,6 +86,10 @@ export interface Environment {
   floor: boolean;
   grid: boolean;
   background: string;
+  /** The lighting preset in use, 'sun' for time of day, or 'custom' after manual changes. */
+  lighting?: string;
+  /** Time-of-day sun settings (when lighting is 'sun'). */
+  sun?: SunSettings;
 }
 
 export interface Scene {

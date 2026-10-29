@@ -10,7 +10,9 @@ import {
   Group,
   Mesh,
   MeshStandardMaterial,
+  OrthographicCamera,
   PerspectiveCamera,
+  HemisphereLight,
   Quaternion,
   Scene,
   Spherical,
@@ -23,6 +25,7 @@ import { ImportedFigure } from './figure/imported';
 import { BUILTIN_FIGURES, FigureObject, type AnatomyLayer, type BuiltinFigureId } from './figure/mannequin';
 import type { PosableFigure } from './figure/types';
 import { PoseTools } from './posing/poseTools';
+import { NotanPass, applyStudyMaterials, studyStage, type StudyMode } from './study';
 import type { PoseSkeleton } from '@poser/posing';
 
 export type RendererBackend = 'webgpu' | 'webgl2';
@@ -60,7 +63,12 @@ const VIEW_DIRECTIONS: Record<ViewName, [number, number, number]> = {
  */
 export class Viewport {
   readonly scene = new Scene();
-  readonly camera = new PerspectiveCamera(35, 1, 0.05, 200);
+  private readonly perspective = new PerspectiveCamera(35, 1, 0.05, 200);
+  private readonly ortho = new OrthographicCamera(-1, 1, 1, -1, -50, 200);
+  /** The active camera: perspective with a lens, or orthographic. */
+  camera: PerspectiveCamera | OrthographicCamera = this.perspective;
+  /** Lens focal length (35mm equivalent), or null when orthographic. */
+  private focal: number | null = 50;
   readonly controls: OrbitControls;
   readonly backend: RendererBackend;
   /** Joint handles, gizmo, IK and pins (PLAN.md section 6). */
@@ -72,7 +80,7 @@ export class Viewport {
   private lastFigures: Figure[] = [];
   /** Supplies imported models from the Library. */
   assetLoader: ((assetId: string) => Promise<{ model: Blob; rig?: AssetRigInfo } | null>) | null = null;
-  private readonly lights = new Map<string, { object: DirectionalLight | AmbientLight; type: Light['type'] }>();
+  private readonly lights = new Map<string, { object: DirectionalLight | AmbientLight | HemisphereLight; type: Light['type'] }>();
   private readonly grid = new Group();
   private readonly floor: Mesh;
   private quality: QualitySettings;
@@ -84,6 +92,9 @@ export class Viewport {
   private skinOpacity = 1;
   private layerVisibility: Record<AnatomyLayer, boolean> = { skin: true, fat: false, muscle: false, skeleton: false };
   private disposed = false;
+  private study: StudyMode = 'normal';
+  private notan: NotanPass | null = null;
+  private lastModel: SceneModel | null = null;
 
   private constructor(
     readonly renderer: WebGPURenderer,
@@ -94,7 +105,8 @@ export class Viewport {
     this.backend = (renderer.backend as { isWebGPUBackend?: boolean }).isWebGPUBackend ? 'webgpu' : 'webgl2';
     this.scene.background = new Color(0x3a3a3a);
 
-    this.camera.position.set(1.6, 1.4, 3.6);
+    this.perspective.fov = fovFor(50);
+    this.camera.position.set(2.2, 1.6, 5);
     this.controls = new OrbitControls(this.camera, canvas);
     this.controls.target.set(0, 0.95, 0);
     this.controls.enableDamping = true;
@@ -155,14 +167,51 @@ export class Viewport {
   // ---------- Sync with the scene model ----------
 
   sync(model: SceneModel): void {
+    this.lastModel = model;
     // Props are imported models without a rig: they share the figure path with no pose.
     const props: Figure[] = (model.props ?? []).map((p) => ({ ...p, pose: {}, morphValues: {} }));
     this.syncFigures([...model.figures, ...props]);
     this.syncLights(model.lights);
-    this.floor.visible = model.environment.floor;
-    this.grid.visible = model.environment.grid;
-    (this.scene.background as Color).set(model.environment.background);
+    this.applyStage(model);
     this.invalidate();
+  }
+
+  private applyStage(model: SceneModel): void {
+    const stage = studyStage(this.study);
+    this.floor.visible = stage.floor ?? model.environment.floor;
+    this.grid.visible = stage.grid ?? model.environment.grid;
+    (this.scene.background as Color).copy(stage.background ?? new Color(model.environment.background));
+  }
+
+  // ---------- Study modes ----------
+
+  /** Clay, silhouette, or notan view (PLAN.md section 18). */
+  setStudyMode(mode: StudyMode, threshold?: number): void {
+    if (mode !== this.study) {
+      this.study = mode;
+      for (const { object } of this.figures.values()) applyStudyMaterials(object.root, mode);
+      if (this.lastModel) this.applyStage(this.lastModel);
+    }
+    const notan = mode === 'notan2' || mode === 'notan3';
+    if (notan && !this.notan) this.notan = new NotanPass(this.renderer, this.scene, this.camera);
+    if (!notan && this.notan) {
+      this.notan.dispose();
+      this.notan = null;
+    }
+    if (this.notan) {
+      this.notan.setLevels(mode === 'notan2' ? 2 : 3);
+      if (threshold !== undefined) this.notan.threshold.value = threshold;
+    }
+    this.invalidate();
+  }
+
+  get studyMode(): StudyMode {
+    return this.study;
+  }
+
+  private renderFrame(): void {
+    if (this.notan) this.notan.render();
+    else this.renderer.render(this.scene, this.camera);
   }
 
   private syncFigures(figures: Figure[]): void {
@@ -195,6 +244,7 @@ export class Viewport {
     object.root.userData.figureId = id;
     this.scene.add(object.root);
     this.applyAnatomyView(object);
+    if (this.study !== 'normal') applyStudyMaterials(object.root, this.study);
     return entry;
   }
 
@@ -265,7 +315,7 @@ export class Viewport {
         entry = undefined;
       }
       if (!entry) {
-        const object = l.type === 'ambient' ? new AmbientLight() : new DirectionalLight();
+        const object = l.type === 'ambient' ? new AmbientLight() : l.type === 'hemisphere' ? new HemisphereLight() : new DirectionalLight();
         entry = { object, type: l.type };
         this.lights.set(l.id, entry);
         this.scene.add(object);
@@ -276,14 +326,16 @@ export class Viewport {
       o.color.set(l.color);
       o.intensity = l.intensity;
       o.position.set(...l.transform.position);
+      if (o instanceof HemisphereLight) o.groundColor.set(l.groundColor ?? '#444444');
       if (o instanceof DirectionalLight) {
-        o.target.position.set(0, 0.9, 0);
+        o.target.position.set(...(l.target ?? [0, 0.9, 0]));
         o.castShadow = l.castShadow && this.quality.shadows;
         const cam = o.shadow.camera;
-        cam.left = cam.bottom = -2.5;
-        cam.right = cam.top = 2.5;
+        cam.left = cam.bottom = -3;
+        cam.right = cam.top = 3;
         cam.near = 0.1;
-        cam.far = 15;
+        cam.far = o.position.distanceTo(o.target.position) + 8;
+        cam.updateProjectionMatrix();
         o.shadow.bias = -0.0004;
         o.shadow.normalBias = 0.02;
         if (o.shadow.mapSize.x !== this.quality.shadowMapSize) {
@@ -349,29 +401,117 @@ export class Viewport {
     this.controls.update();
   }
 
+  /** Height of the view at the orbit target (metres). */
+  private viewHeight(): number {
+    if (this.camera instanceof OrthographicCamera) return (this.ortho.top - this.ortho.bottom) / this.ortho.zoom;
+    const dist = this.camera.position.distanceTo(this.controls.target);
+    return 2 * dist * Math.tan((this.perspective.fov * Math.PI) / 360);
+  }
+
+  /** Sets the view so `height` metres fit at the orbit target, keeping the view direction. */
+  private setViewHeight(height: number): void {
+    const dir = this.camera.position.clone().sub(this.controls.target).normalize();
+    if (this.camera instanceof OrthographicCamera) {
+      this.ortho.zoom = 1;
+      this.ortho.top = height / 2;
+      this.ortho.bottom = -height / 2;
+      this.updateOrthoAspect();
+      // Far enough back that nothing in the scene is behind the camera.
+      this.camera.position.copy(this.controls.target).addScaledVector(dir, 20);
+    } else {
+      const dist = height / 2 / Math.tan((this.perspective.fov * Math.PI) / 360);
+      this.camera.position.copy(this.controls.target).addScaledVector(dir, dist);
+    }
+    this.camera.updateProjectionMatrix();
+    this.controls.update();
+  }
+
+  private updateOrthoAspect(): void {
+    const { clientWidth: w, clientHeight: h } = this.canvas;
+    const aspect = w && h ? w / h : 1;
+    const half = (this.ortho.top - this.ortho.bottom) / 2;
+    this.ortho.left = -half * aspect;
+    this.ortho.right = half * aspect;
+    this.ortho.updateProjectionMatrix();
+  }
+
+  /**
+   * Lens focal length in mm (35mm equivalent), or null for an orthographic
+   * view (PLAN.md section 18). The subject keeps its size on screen, so a
+   * longer lens moves the camera back and flattens perspective as in a photo.
+   */
+  setLens(focal: number | null): void {
+    const height = this.viewHeight();
+    const from = this.camera;
+    if (focal === null) {
+      this.ortho.position.copy(from.position);
+      this.ortho.quaternion.copy(from.quaternion);
+      this.camera = this.ortho;
+    } else {
+      this.perspective.fov = fovFor(focal);
+      if (from === this.ortho) {
+        this.perspective.position.copy(from.position);
+        this.perspective.quaternion.copy(from.quaternion);
+      }
+      this.camera = this.perspective;
+    }
+    this.focal = focal;
+    this.controls.object = this.camera;
+    this.poseTools.setCamera(this.camera);
+    this.setViewHeight(height);
+    this.onProjectionChange();
+    this.invalidate();
+  }
+
+  get lens(): number | null {
+    return this.focal;
+  }
+
+  /** Called after a lens or orthographic switch (post-processing follows the camera). */
+  private onProjectionChange = () => {
+    if (!this.notan) return;
+    const threshold = this.notan.threshold.value;
+    this.notan.dispose();
+    this.notan = null;
+    this.setStudyMode(this.study, threshold);
+  };
+
+  /** Where the camera is, for bookmarks. */
+  cameraState(): { position: [number, number, number]; target: [number, number, number]; focalLength: number | null; height: number } {
+    return { position: this.camera.position.toArray(), target: this.controls.target.toArray(), focalLength: this.focal, height: this.viewHeight() };
+  }
+
+  /** Restores a bookmarked camera. */
+  setCameraState(state: { position: [number, number, number]; target: [number, number, number]; focalLength: number | null; height?: number }): void {
+    if (state.focalLength !== this.focal) this.setLens(state.focalLength);
+    this.controls.target.set(...state.target);
+    this.camera.position.set(...state.position);
+    if (this.camera instanceof OrthographicCamera && state.height) this.setViewHeight(state.height);
+    this.controls.update();
+    this.invalidate();
+  }
+
   /** Frame everything visible (figures, or the floor area if empty). */
   frameAll(): void {
-    const objects: Object3D[] = [...this.figures.values()].filter((f) => f.object.root.visible).map((f) => f.object.root);
+    const objects: Object3D[] = [...this.figures.values()].filter((f) => f.object.root.visible && f.object.poseSkeleton).map((f) => f.object.root);
     const target = new Vector3(0, 0.9, 0);
     let height = 1.8;
     if (objects.length) {
-      const center = new Vector3();
-      let maxH = 0;
-      for (const o of objects) {
-        center.add(o.position);
-        maxH = Math.max(maxH, (o.userData.height as number | undefined) ?? 1.8);
+      const box = new Box3();
+      for (const o of objects) box.expandByObject(o, true);
+      if (!box.isEmpty()) {
+        box.getCenter(target);
+        const size = box.getSize(new Vector3());
+        height = Math.max(size.y, Math.max(size.x, size.z) / Math.max(0.5, this.aspect())) * 1.0;
       }
-      center.divideScalar(objects.length);
-      target.set(center.x, maxH / 2, center.z);
-      height = maxH * (objects.length > 1 ? 1.4 : 1);
     }
-    const fov = (this.camera.fov * Math.PI) / 180;
-    const dist = (height / 2 / Math.tan(fov / 2)) * 1.25;
-    const offset = new Spherical().setFromVector3(this.camera.position.clone().sub(this.controls.target));
-    offset.radius = dist;
     this.controls.target.copy(target);
-    this.camera.position.copy(target).add(new Vector3().setFromSpherical(offset));
-    this.controls.update();
+    this.setViewHeight(height * 1.2);
+  }
+
+  private aspect(): number {
+    const { clientWidth: w, clientHeight: h } = this.canvas;
+    return w && h ? w / h : 1;
   }
 
   /** A random view around the figures (PLAN.md section 17: random camera). */
@@ -409,8 +549,9 @@ export class Viewport {
     const { clientWidth: w, clientHeight: h } = this.canvas;
     if (!w || !h) return;
     this.renderer.setSize(w, h, false);
-    this.camera.aspect = w / h;
-    this.camera.updateProjectionMatrix();
+    this.perspective.aspect = w / h;
+    this.perspective.updateProjectionMatrix();
+    this.updateOrthoAspect();
     this.invalidate();
   }
 
@@ -433,7 +574,7 @@ export class Viewport {
       return;
     }
     this.needsRender = false;
-    this.renderer.render(this.scene, this.camera);
+    this.renderFrame();
     if (this.lastFrame) {
       const ms = time - this.lastFrame;
       for (const l of this.frameListeners) l(ms);
@@ -443,7 +584,7 @@ export class Viewport {
 
   /** PNG of the current view at the canvas's resolution. */
   async capture(): Promise<Blob> {
-    this.renderer.render(this.scene, this.camera);
+    this.renderFrame();
     return new Promise((resolve, reject) =>
       this.canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('Capture failed'))), 'image/png'),
     );
@@ -464,4 +605,9 @@ export class Viewport {
     for (const id of [...this.figures.keys()]) this.removeFigure(id);
     this.renderer.dispose();
   }
+}
+
+/** Vertical field of view (degrees) for a 35mm-equivalent focal length (24 mm frame height). */
+export function fovFor(focal: number): number {
+  return (2 * Math.atan(12 / focal) * 180) / Math.PI;
 }
