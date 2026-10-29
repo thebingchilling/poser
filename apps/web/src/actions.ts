@@ -61,7 +61,7 @@ export function removeFigure(figureId: string): void {
   if (useUi.getState().selectedFigureId === figureId) useUi.getState().set({ selectedFigureId: null });
 }
 
-function download(blob: Blob, name: string): void {
+export function download(blob: Blob, name: string): void {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;

@@ -11,7 +11,7 @@ const ICONS = [
   'lightbulb', 'lock', 'lock_open', 'male', 'memory', 'menu', 'more_vert', 'movie', 'open_with', 'palette', 'pan_tool_alt', 'pause',
   'person', 'person_add', 'photo_camera', 'play_arrow', 'redo', 'restart_alt', 'science', 'search', 'sync_alt', 'arrow_forward',
   'settings', 'shield_lock', 'speed', 'storage', 'straighten', 'tab', 'undo', 'upload', 'visibility',
-  'visibility_off', 'warning', 'wb_sunny',
+  'visibility_off', 'warning', 'wb_sunny', 'bookmark_add', 'casino', 'videocam', 'tune',
 ];
 
 const require = createRequire(join(process.cwd(), 'packages/ui/package.json'));

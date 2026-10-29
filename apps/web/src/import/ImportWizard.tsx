@@ -7,6 +7,7 @@ import { logError } from '@poser/platform';
 import { addAssetToScene } from '../actions';
 import { useLibrary } from '../state/library';
 import { useImport } from './importStore';
+import { PoseStep } from './PoseStep';
 
 const REQUIRED: [string, string][] = [
   ['hips', 'Hips'], ['spine', 'Spine'], ['chest', 'Chest'], ['head', 'Head'],
@@ -201,8 +202,9 @@ export function ImportWizard() {
     setPrepared(null);
     setError(null);
     if (!vfs || !item) return;
+    if (item.role.kind === 'pose') return;
     if (item.role.kind !== 'model') {
-      setError('Pose files are imported from the Pose workspace (coming in the next update).');
+      setError('This file type can’t be imported.');
       return;
     }
     let cancelled = false;
@@ -222,7 +224,8 @@ export function ImportWizard() {
   const title = `Import ${item.path.split('/').pop()}${items.length > 1 ? ` (${index + 1} of ${items.length})` : ''}`;
   return (
     <Dialog open onOpenChange={(o) => !o && close()} title={title} icon="download" large>
-      {!prepared && !error && (
+      {item.role.kind === 'pose' && <PoseStep key={item.path} vfs={vfs} path={item.path} onDone={next} />}
+      {item.role.kind !== 'pose' && !prepared && !error && (
         <>
           <LinearProgress label="Reading file" />
           <p className="hint">Reading the file and looking at its skeleton…</p>

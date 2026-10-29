@@ -1,11 +1,12 @@
 import { activeScene, type AssetRecord, type Light, type Project } from '@poser/core';
 import { BUILTIN_FIGURES, type AnatomyLayer, type BuiltinFigureId } from '@poser/render';
-import { AssistChip, Button, Card, Divider, FilterChip, IconButton, ListItem, ListSubheader, Menu, SegmentedButtons, Slider, Switch, TextField, useSnackbar, type IconName } from '@poser/ui';
+import { AssistChip, Button, Card, Divider, FilterChip, IconButton, ListItem, ListSubheader, Menu, SegmentedButtons, Slider, Switch, Tabs, TextField, useSnackbar, type IconName } from '@poser/ui';
 import { useEffect, useState } from 'react';
 import { HAND_PRESET_LABELS, type HandPreset } from '@poser/posing';
 import { EFFECTORS, jointLabel } from '@poser/render';
-import { copySideSelected, handPresetSelected, mirrorSelected, resetJointSelected, resetPoseSelected, togglePinSelected } from './posing';
+import { applyPoseSelected, copySideSelected, handPresetSelected, mirrorSelected, resetJointSelected, resetPoseSelected, togglePinSelected } from './posing';
 import { startImport } from '../import/startImport';
+import { PoseLibraryPanel, PoseMixPanel } from './PoseLibrary';
 import { useLibrary } from '../state/library';
 import { addAssetToScene, addBuiltinFigure, captureScreenshot, removeFigure, removeProp } from '../actions';
 import { editProject, useActiveScene } from '../state/project';
@@ -27,6 +28,7 @@ const LIBRARY_FILTERS: { kind: AssetRecord['kind'] | 'all'; label: string; icon:
   { kind: 'figure', label: 'Figures', icon: 'person' },
   { kind: 'garment', label: 'Clothing', icon: 'layers' },
   { kind: 'prop', label: 'Props', icon: 'category' },
+  { kind: 'pose', label: 'Poses', icon: 'accessibility_new' },
 ];
 
 function AssetCard({ asset }: { asset: AssetRecord }) {
@@ -37,13 +39,19 @@ function AssetCard({ asset }: { asset: AssetRecord }) {
       {asset.thumbnail && <img className="asset-card__thumb" src={asset.thumbnail} alt="" draggable={false} />}
       <span className="asset-card__title">{asset.name}</span>
       <span className="asset-card__meta">
-        {asset.kind === 'figure' ? `Figure · ${asset.size[1].toFixed(2)} m` : asset.kind === 'garment' ? 'Clothing' : 'Prop'}
+        {asset.kind === 'figure' ? `Figure · ${asset.size[1].toFixed(2)} m` : asset.kind === 'garment' ? 'Clothing' : asset.kind === 'pose' ? 'Pose' : 'Prop'}
         {asset.license ? ` · ${asset.license}` : ''}
       </span>
       <div className="asset-card__actions">
-        <Button variant="tonal" icon="add" onClick={() => addAssetToScene(asset)} disabled={asset.kind === 'garment'} title={asset.kind === 'garment' ? 'Dressing figures arrives in Phase 2' : undefined}>
-          Add
-        </Button>
+        {asset.kind === 'pose' ? (
+          <Button variant="tonal" icon="accessibility_new" onClick={() => applyPoseSelected(asset.pose ?? {}, `Pose: ${asset.name}`) || snackbar('Select a figure first')}>
+            Apply
+          </Button>
+        ) : (
+          <Button variant="tonal" icon="add" onClick={() => addAssetToScene(asset)} disabled={asset.kind === 'garment'} title={asset.kind === 'garment' ? 'Dressing figures arrives in Phase 2' : undefined}>
+            Add
+          </Button>
+        )}
         <Menu
           label={`${asset.name} actions`}
           items={[{ label: 'Delete from Library', icon: 'delete', danger: true, onSelect: () => remove(asset.id).then(() => snackbar(`Deleted ${asset.name}`)) }]}
@@ -175,7 +183,7 @@ function SceneWorkspace() {
   );
 }
 
-function PoseWorkspace() {
+function PoseAdjustPanel() {
   const selectedId = useUi((s) => s.selectedFigureId);
   const joint = useUi((s) => s.selectedJoint);
   const mode = useUi((s) => s.poseMode);
@@ -240,6 +248,23 @@ function PoseWorkspace() {
         <Button variant="text" icon="center_focus_strong" onClick={() => viewportRef.current?.frameAll()}>Frame all</Button>
       </div>
     </>
+  );
+}
+
+function PoseWorkspace() {
+  const tab = useUi((s) => s.poseTab);
+  const set = useUi((s) => s.set);
+  return (
+    <Tabs
+      label="Pose tools"
+      value={tab}
+      onChange={(t) => set({ poseTab: t })}
+      tabs={[
+        { value: 'adjust', label: 'Adjust', icon: 'tune', content: <PoseAdjustPanel /> },
+        { value: 'library', label: 'Library', icon: 'library_books', content: <PoseLibraryPanel /> },
+        { value: 'mix', label: 'Blend & random', icon: 'casino', content: <PoseMixPanel /> },
+      ]}
+    />
   );
 }
 

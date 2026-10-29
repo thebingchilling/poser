@@ -1,6 +1,8 @@
-import { activeScene, type CanonicalPose, type Figure, type Project, type Vec3 } from '@poser/core';
+import { activeScene, createId, saveAsset, type CanonicalPose, type Figure, type Project, type Vec3 } from '@poser/core';
 import { EFFECTORS, viewportFigureSkeleton } from '../viewport/figureAccess';
-import { applyHandPreset, applyLimits, copySide, mirrorPose, solveTwoBone, type Effector, type HandPreset } from '@poser/posing';
+import { applyHandPreset, applyLimits, copySide, mirrorPose, poseThumbnailUrl, randomPose, solveTwoBone, type Effector, type HandPreset, type RandomLock } from '@poser/posing';
+import { useLibrary } from '../state/library';
+import { viewportRef } from '../viewport/ViewportView';
 import { currentProject, editProject } from '../state/project';
 import { useUi } from '../state/ui';
 
@@ -60,4 +62,61 @@ export function togglePinSelected(): boolean {
     if (f) f.pins = pins;
   });
   return true;
+}
+
+/**
+ * Puts a whole pose on the selected figure (library, imported file, blend,
+ * random). Joint limits apply, pins are released (they belong to the old
+ * pose), and the figure moves up or down so its lowest point stays at the
+ * same height: a kneeling pose stays on the floor, one on a bed stays on it.
+ */
+export function applyPoseSelected(pose: CanonicalPose, label: string, coalesceKey?: string): boolean {
+  const fig = selectedFigure();
+  if (!fig) return false;
+  const skel = viewportFigureSkeleton(fig.id);
+  const next = skel && useUi.getState().jointLimits ? applyLimits(skel, pose).pose : pose;
+  const vp = viewportRef.current;
+  const before = vp?.lowestPoint(fig.id) ?? null;
+  const after = vp?.lowestPoint(fig.id, next) ?? null;
+  const dy = before !== null && after !== null ? before - after : 0;
+  editProject(
+    label,
+    (p) => {
+      const f = activeScene(p as Project).figures.find((x) => x.id === fig.id);
+      if (!f) return;
+      f.pose = next;
+      f.pins = {};
+      f.transform.position[1] += dy;
+    },
+    coalesceKey ? { coalesceKey } : undefined,
+  );
+  return true;
+}
+
+/** A random pose on the selected figure (PLAN.md section 17). */
+export function randomPoseSelected(amount: number, locks: RandomLock[]): boolean {
+  const fig = selectedFigure();
+  if (!fig) return false;
+  const skeleton = viewportFigureSkeleton(fig.id) ?? undefined;
+  return applyPoseSelected(randomPose(fig.pose, { amount, locks, skeleton }), 'Random pose');
+}
+
+/** Saves a pose to the Library (kept on this device, works on any figure). */
+export async function savePoseToLibrary(name: string, pose: CanonicalPose, sourceName = 'Poser', format = 'pose'): Promise<void> {
+  await saveAsset({
+    id: createId('pose'),
+    kind: 'pose',
+    name: name.trim() || 'Pose',
+    sourceName,
+    format,
+    importedAt: Date.now(),
+    tags: [],
+    morphs: [],
+    size: [0, 0, 0],
+    triangles: 0,
+    thumbnail: poseThumbnailUrl(pose),
+    pose,
+    files: [],
+  });
+  await useLibrary.getState().refresh();
 }

@@ -961,9 +961,9 @@ Each phase ends with something usable. Week estimates assume one full-time devel
 - [ ] glTF, FBX, OBJ, VRM, DAE/STL/PLY importers; mesh and texture optimization in workers (importers done; worker-side mesh and texture optimization still to do)
 - [x] Canonical rig with Daz G8/G9, VaM-export, Mixamo, CC4, and VRM maps, plus the manual mapping wizard
 - [x] Joint handles, rotation gizmo, IK effectors, pins, joint limits, mirror, hand presets, morph sliders
-- [ ] Pose library and BVH/VRMA pose import
+- [x] Pose library and BVH/VRMA pose import
 - [ ] Simple prop builder; time-of-day sun; recolor and material editor
-- [ ] Body measurements readout; pose blending; random pose and camera; reference image overlay and camera match
+- [ ] Body measurements readout; pose blending; random pose and camera; reference image overlay and camera match (pose blending, random pose and random camera done)
 - [ ] Built-in CC0 environments (bedroom, bathroom, studio, dungeon-style room, living room)
 - [ ] Props (visual only), lighting presets, lens/ortho cameras, study modes (clay, silhouette, notan)
 - [ ] Screenshot capture; Daz export guide

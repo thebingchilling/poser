@@ -1,7 +1,8 @@
-import type { AssetRigInfo, Figure, Light, Scene as SceneModel } from '@poser/core';
+import type { AssetRigInfo, CanonicalPose, Figure, Light, Scene as SceneModel } from '@poser/core';
 import type { QualitySettings } from '@poser/platform';
 import {
   AmbientLight,
+  Box3,
   CircleGeometry,
   Color,
   DirectionalLight,
@@ -306,6 +307,25 @@ export class Viewport {
     return this.figures.get(figureId)?.object.poseSkeleton ?? null;
   }
 
+  /**
+   * Height of a figure's lowest point (world space), optionally under a trial
+   * pose, from the posed mesh itself. Used to keep a figure's contact height
+   * when a pose changes (a kneeling figure stays on the floor, one on a bed
+   * stays on the bed).
+   */
+  lowestPoint(figureId: string, pose?: CanonicalPose): number | null {
+    const entry = this.figures.get(figureId);
+    if (!entry) return null;
+    const object = entry.object;
+    const current = this.lastFigures.find((f) => f.id === figureId);
+    if (pose) object.applyPose(pose);
+    object.root.updateMatrixWorld(true);
+    const y = new Box3().setFromObject(object.root, true).min.y;
+    if (pose && current) object.applyPose(current.pose);
+    object.root.updateMatrixWorld(true);
+    return Number.isFinite(y) ? y : null;
+  }
+
   // ---------- Anatomy layer view (placeholder anatomy) ----------
 
   setAnatomyView(visibility: Record<AnatomyLayer, boolean>, skinOpacity: number): void {
@@ -352,6 +372,13 @@ export class Viewport {
     this.controls.target.copy(target);
     this.camera.position.copy(target).add(new Vector3().setFromSpherical(offset));
     this.controls.update();
+  }
+
+  /** A random view around the figures (PLAN.md section 17: random camera). */
+  randomView(random: () => number = Math.random): void {
+    const offset = new Spherical(1, ((90 - (-5 + random() * 50)) * Math.PI) / 180, random() * Math.PI * 2);
+    this.camera.position.copy(this.controls.target).add(new Vector3().setFromSpherical(offset));
+    this.frameAll();
   }
 
   onCameraChange(listener: (q: Quaternion) => void): () => void {

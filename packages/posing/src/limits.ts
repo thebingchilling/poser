@@ -60,7 +60,8 @@ export function clampRotation(q: Q, limit: JointLimit, boneDir: V3): Q {
   const angle = 2 * Math.acos(Math.max(-1, Math.min(1, swing[3])));
   const s = Math.sqrt(Math.max(0, 1 - swing[3] * swing[3]));
   const v: V3 = s < 1e-9 ? [0, 0, 0] : [(swing[0] / s) * angle, (swing[1] / s) * angle, (swing[2] / s) * angle];
-  const a = vnorm(limit.axis);
+  // The hinge axis made square to the bone (swings never rotate about the bone itself).
+  const a = vnorm(vsub(limit.axis, [d[0] * dot3(limit.axis, d), d[1] * dot3(limit.axis, d), d[2] * dot3(limit.axis, d)]));
   const sideAxis = vnorm([d[1] * a[2] - d[2] * a[1], d[2] * a[0] - d[0] * a[2], d[0] * a[1] - d[1] * a[0]]);
   let main = v[0] * a[0] + v[1] * a[1] + v[2] * a[2];
   let side = v[0] * sideAxis[0] + v[1] * sideAxis[1] + v[2] * sideAxis[2];
@@ -71,6 +72,8 @@ export function clampRotation(q: Q, limit: JointLimit, boneDir: V3): Q {
   const clampedSwing: Q = sl < 1e-9 ? [0, 0, 0, 1] : axisAngle(sv, sl);
   return qnorm(qmul(clampedSwing, axisAngle(d, tw)));
 }
+
+const dot3 = (a: V3, b: V3) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
 
 function wrap(a: number): number {
   return Math.atan2(Math.sin(a), Math.cos(a));

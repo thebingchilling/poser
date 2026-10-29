@@ -180,10 +180,12 @@ function WorkspaceFab({ workspace }: { workspace: WorkspaceId }) {
 
 function QuickBar() {
   const open = useUi((s) => s.openWorkspace);
+  const set = useUi((s) => s.set);
+  const openPoseTab = (poseTab: 'library' | 'adjust') => set({ workspace: 'pose', workspaceOpen: true, poseTab });
   return (
     <div className="quick-bar" role="toolbar" aria-label="Quick access">
-      <AssistChip icon="accessibility_new" label="Poses" onClick={() => open('pose')} />
-      <AssistChip icon="pan_tool_alt" label="Hands" onClick={() => open('pose')} />
+      <AssistChip icon="accessibility_new" label="Poses" onClick={() => openPoseTab('library')} />
+      <AssistChip icon="pan_tool_alt" label="Hands" onClick={() => openPoseTab('adjust')} />
       <AssistChip icon="person" label="Expressions" onClick={() => open('body')} />
       <AssistChip icon="lightbulb" label="Lighting" onClick={() => open('render')} />
     </div>

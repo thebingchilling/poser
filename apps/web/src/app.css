@@ -120,3 +120,16 @@
 .chip-row { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0; }
 .asset-card__actions { display: flex; align-items: center; gap: 4px; }
 .asset-card__actions .md-button { flex: 1; }
+
+/* Pose library */
+.pose-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 8px; margin-block: 8px; }
+.pose-grid--small { grid-template-columns: repeat(auto-fill, minmax(76px, 1fr)); }
+.pose-tile { position: relative; border-radius: var(--md-sys-shape-corner-medium); background: var(--md-sys-color-surface-container-high); overflow: hidden; outline: 2px solid transparent; }
+.pose-tile[data-selected] { outline-color: var(--md-sys-color-primary); }
+.pose-tile__button { display: flex; flex-direction: column; width: 100%; padding: 0 0 6px; border: 0; background: none; color: var(--md-sys-color-on-surface); font: var(--md-sys-typescale-label-medium); text-align: center; cursor: pointer; }
+.pose-tile__button img { width: 100%; aspect-ratio: 1; display: block; }
+.pose-tile__button span { padding: 4px 6px 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pose-tile__more { position: absolute; top: 0; right: 0; }
+.pose-import { display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-start; }
+.pose-import__thumb { width: 200px; max-width: 100%; aspect-ratio: 1; border-radius: var(--md-sys-shape-corner-medium); }
+.pose-import__fields { flex: 1 1 240px; display: flex; flex-direction: column; gap: 8px; }

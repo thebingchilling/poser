@@ -17,6 +17,8 @@ interface UiState {
   /** FK rotates joints; IK drags hands and feet (PLAN.md section 6). */
   poseMode: 'fk' | 'ik';
   jointLimits: boolean;
+  /** Pose workspace tab. */
+  poseTab: 'adjust' | 'library' | 'mix';
   mode: SimMode;
   anatomy: Record<AnatomyLayer, boolean>;
   skinOpacity: number;
@@ -44,6 +46,7 @@ export const useUi = create<UiState>()((set, get) => ({
   selectedJoint: null,
   poseMode: 'fk',
   jointLimits: true,
+  poseTab: 'adjust',
   mode: 'pose',
   anatomy: { skin: true, fat: false, muscle: false, skeleton: false },
   skinOpacity: 1,

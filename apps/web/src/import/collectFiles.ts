@@ -34,11 +34,12 @@ export function filesFromInput(list: FileList): PickedFile[] {
 }
 
 /** Opens the file (or folder) picker. */
-export function pickFiles(folder = false): Promise<PickedFile[]> {
+export function pickFiles(folder = false, accept?: string): Promise<PickedFile[]> {
   return new Promise((resolve) => {
     const input = document.createElement('input');
     input.type = 'file';
     input.multiple = true;
+    if (accept) input.accept = accept;
     if (folder) (input as HTMLInputElement & { webkitdirectory: boolean }).webkitdirectory = true;
     input.onchange = () => resolve(input.files ? filesFromInput(input.files) : []);
     input.click();

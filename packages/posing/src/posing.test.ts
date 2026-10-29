@@ -5,6 +5,8 @@ import { effectorPosition, solveTwoBone } from './ik';
 import { JOINT_LIMITS, applyLimits, boneDirection, clampRotation } from './limits';
 import { copySide, mirrorPose } from './mirror';
 import { PoseSkeleton } from './skeleton';
+import { BUILTIN_POSES, blendPoses, defaultSkeleton, euler, randomPose, seededRandom } from './library';
+import { poseThumbnailSvg } from './thumbnail';
 
 const skel = new PoseSkeleton(restPose(FEMALE_PROPORTIONS));
 
@@ -97,5 +99,44 @@ describe('mirror and hands', () => {
       // Palm faces down in the T-pose: a fist moves the fingertips down.
       expect(tip[1]).toBeLessThan(flat[1] - 0.02);
     }
+  });
+});
+
+describe('pose library', () => {
+  const skel = defaultSkeleton();
+
+  it('ships built-in poses within the joint limits', () => {
+    for (const p of BUILTIN_POSES) {
+      for (const q of Object.values(p.pose)) expect(q.every(Number.isFinite)).toBe(true);
+      expect(applyLimits(skel, p.pose).correction, p.name).toBeLessThan(0.05);
+    }
+    expect(new Set(BUILTIN_POSES.map((p) => p.id)).size).toBe(BUILTIN_POSES.length);
+  });
+
+  it('blends poses by weight', () => {
+    const bent = { leftLowerLeg: euler(80, 0, 0) };
+    expect(qangle(blendPoses([{ pose: bent, weight: 1 }, { pose: {}, weight: 0 }]).leftLowerLeg!, bent.leftLowerLeg)).toBeLessThan(1e-9);
+    expect(qangle(blendPoses([{ pose: bent, weight: 1 }, { pose: {}, weight: 1 }]).leftLowerLeg!, euler(40, 0, 0))).toBeLessThan(1e-6);
+    expect(qangle(blendPoses([{ pose: bent, weight: 3 }, { pose: {}, weight: 1 }]).leftLowerLeg!, euler(60, 0, 0))).toBeLessThan(0.02);
+    expect(blendPoses([])).toEqual({});
+  });
+
+  it('makes random poses within limits, keeping locked regions', () => {
+    const base = BUILTIN_POSES.find((p) => p.id === 'builtin:walking')!.pose;
+    const a = randomPose(base, { amount: 1, locks: ['legs'], random: seededRandom(7), skeleton: skel });
+    const b = randomPose(base, { amount: 1, locks: ['legs'], random: seededRandom(7), skeleton: skel });
+    expect(a).toEqual(b);
+    expect(a.leftUpperLeg).toEqual(base.leftUpperLeg);
+    expect(a.rightLowerLeg).toEqual(base.rightLowerLeg);
+    expect(qangle(a.leftUpperArm!, base.leftUpperArm!)).toBeGreaterThan(1e-3);
+    expect(applyLimits(skel, a).correction).toBeLessThan(1e-6);
+    const none = randomPose({}, { amount: 0, locks: ['hands'], random: seededRandom(3), skeleton: skel });
+    for (const q of Object.values(none)) expect(qangle(q, [0, 0, 0, 1])).toBeLessThan(1e-9);
+  });
+
+  it('draws a thumbnail', () => {
+    const svg = poseThumbnailSvg(BUILTIN_POSES[0]!.pose);
+    expect(svg.startsWith('<svg')).toBe(true);
+    expect((svg.match(/<path/g) ?? []).length).toBeGreaterThan(10);
   });
 });
