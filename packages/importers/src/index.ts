@@ -9,3 +9,4 @@ export * from './materials';
 export * from './poses';
 export * from './optimiseClient';
 export * from './content';
+export { parseVarMeta, parseLook } from './vam/vam';

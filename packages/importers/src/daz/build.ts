@@ -406,6 +406,8 @@ function buildGeometry(
     triPoly.push(...triPolyByMaterial[m]!);
   });
   geometry.setIndex(index);
+  // Source vertex of each vertex (vertices are split at UV seams), for morphs applied later (VaM looks).
+  geometry.userData.sourceVertex = Int32Array.from(src.map((x) => x.v));
   return { geometry, triPoly: Int32Array.from(triPoly) };
 }
 

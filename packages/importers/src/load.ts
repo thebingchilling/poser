@@ -19,6 +19,7 @@ import { VOXLoader, buildMesh } from 'three/addons/loaders/VOXLoader.js';
 import { MissingContentError, VirtualFilesSource, contentSources } from './content';
 import { buildDaz } from './daz/build';
 import { DsonResolver, parseDson } from './daz/dson';
+import { buildVamLook, parseLook, parseVarMeta } from './vam/vam';
 import type { VirtualFiles } from './files';
 import type { ModelFormat } from './formats';
 
@@ -27,6 +28,8 @@ export interface LoadedModel {
   animations: AnimationClip[];
   /** Canonical (VRM humanoid) bone name → node name, for VRM files. */
   vrmHumanoid?: Record<string, string>;
+  /** Creator and licence from the file or its package (VaM meta.json), for the wizard's details. */
+  meta?: { creator?: string; license?: string };
   warnings: string[];
 }
 
@@ -145,6 +148,19 @@ async function parse(vfs: VirtualFiles, path: string, format: ModelFormat, manag
       warnings.push(...built.warnings);
       return { root: built.root, animations: [], warnings };
     }
+    case 'vap':
+    case 'vamscene': {
+      const look = parseLook(text());
+      const built = await buildVamLook(look, [new VirtualFilesSource(vfs), ...contentSources()]);
+      warnings.push(...built.warnings);
+      // The package's meta.json sits at the top of the unpacked .var.
+      const metaPath = vfs.paths.find((p) => p.split('/')[0] === path.split('/')[0] && /(^|\/)meta\.json$/i.test(p) && p.split('/').length <= 2);
+      const meta = metaPath ? parseVarMeta(await vfs.get(metaPath)!.text()) : undefined;
+      if (meta?.dependencies.length) warnings.push(`This package depends on ${meta.dependencies.length} other packages; drop them too if parts are missing.`);
+      return { root: built.root, animations: [], warnings, meta: meta && { creator: meta.creator, license: meta.license } };
+    }
+    case 'vamitem':
+      throw new Error('VaM clothing and hair (.vam/.vab) are VaM’s own binary format and can’t be read yet. Please send a sample package so support can be added.');
     case '3ds':
       return { root: new TDSLoader(manager).parse(buffer, ''), animations: [], warnings };
     case '3mf':

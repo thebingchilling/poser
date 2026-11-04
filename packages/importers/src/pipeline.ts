@@ -45,6 +45,8 @@ export function defaultChoices(p: PreparedImport): ImportChoices {
     normalisation: p.analysis.normalisation,
     rigMap: p.analysis.rig?.map,
     quality: 'balanced',
+    ...(p.loaded.meta?.creator ? { creator: p.loaded.meta.creator } : {}),
+    ...(p.loaded.meta?.license ? { license: p.loaded.meta.license } : {}),
   };
 }
 

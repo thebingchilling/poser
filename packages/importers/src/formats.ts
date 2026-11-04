@@ -2,7 +2,8 @@
 export type ModelFormat =
   | 'gltf' | 'glb' | 'vrm' | 'fbx' | 'obj' | 'dae' | 'stl' | 'ply'
   | '3ds' | '3mf' | 'amf' | 'usd' | 'usda' | 'usdc' | 'usdz' | 'lwo' | 'kmz' | 'md2' | 'vtk' | 'vtp' | 'vox'
-  | 'duf' | 'dsf';
+  | 'duf' | 'dsf'
+  | 'vap' | 'vamscene' | 'vamitem';
 export type PoseFormat = 'bvh' | 'vrma' | 'pose-json';
 export type ImageFormat = 'image' | 'hdr';
 
@@ -40,7 +41,14 @@ export function classifyFile(path: string): FileRole {
     case 'vrma':
       return { kind: 'pose', format: 'vrma' };
     case 'json':
-      return path.toLowerCase().endsWith('.pose.json') ? { kind: 'pose', format: 'pose-json' } : { kind: 'other' };
+      if (path.toLowerCase().endsWith('.pose.json')) return { kind: 'pose', format: 'pose-json' };
+      // VaM scenes (Saves/scene/…json) hold people with their looks.
+      if (/(^|\/)saves\/scene\//i.test(path)) return { kind: 'model', format: 'vamscene' };
+      return { kind: 'other' };
+    case 'vap':
+      return { kind: 'model', format: 'vap' };
+    case 'vam':
+      return { kind: 'model', format: 'vamitem' };
     case 'png':
     case 'jpg':
     case 'jpeg':
