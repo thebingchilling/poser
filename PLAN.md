@@ -216,7 +216,7 @@ The whole interface follows **Material Design 3 (MD3)**: its components, color s
 | OBJ + MTL | 1 | Props, Marvelous Designer garments | Auto-detect mm/cm scale |
 | VRM 0.x / 1.0 | 1 | Figures | Spring-bone settings carried over |
 | DAE, STL, PLY | 1 | Props | |
-| 3DS, 3MF, AMF, USD/USDZ, VRML, LightWave LWO, KMZ, MD2, VTK, MagicaVoxel VOX | 1 | Props (and rigged figures where the format has skinning) | Through three.js loaders; checked under the app's Content Security Policy |
+| 3DS, 3MF, AMF, USD/USDZ, LightWave LWO, KMZ, MD2, VTK, MagicaVoxel VOX | 1 | Props (and rigged figures where the format has skinning) | Through three.js loaders; checked under the app's Content Security Policy |
 | Images (PNG/JPG/WebP/TIFF), HDR/EXR | 1 | Textures, environment lighting | |
 | BVH / VRMA (single frame), our pose JSON | 1 | Poses | |
 | Marvelous Designer XML sidecar | 2 | Fabric properties | |
@@ -980,7 +980,7 @@ Each phase ends with something usable. Week estimates assume one full-time devel
 
 #### Phase 1: import anything (added by the owner)
 Import any model, including native Daz and VaM content, in Phase 1 (moved from Phase 3).
-- [ ] More generic formats through three.js loaders: 3DS, 3MF, AMF, USD/USDZ, VRML, LightWave, KMZ, MD2, VTK, MagicaVoxel (each checked under the CSP)
+- [x] More generic formats through three.js loaders: 3DS, 3MF, AMF, USD/USDZ, LightWave, KMZ, MD2, VTK, MagicaVoxel, all checked under the CSP. VRML is left out: its parser library compiles code at runtime, which the CSP blocks
 - [ ] Library folders: the user grants access to a folder (Daz content library, VaM install, a models folder) with the File System Access API; the handle is remembered, files are read on demand, and the folder is indexed and re-scanned
 - [ ] Daz `.duf/.dsf` reader: figures (geometry, UVs, skeleton from centre/end points and orientations, skin weights), applied shape morphs, materials (Iray Uber base colour, normal, roughness/glossiness, cut-out opacity), conforming clothing and hair, poses; corrective (JCM) morphs and rigging that follows morphs come after the first version
 - [ ] VaM `.var` and install-folder reader: package metadata, licence and dependencies; looks and scene people (morph values, clothing, hair, textures); VaM morphs applied to Genesis 2 from the Daz library; clothing and hair geometry (VaM's own binary formats, to be worked out from sample files)

@@ -1,5 +1,7 @@
 /** Supported import formats (PLAN.md section 4.2). */
-export type ModelFormat = 'gltf' | 'glb' | 'vrm' | 'fbx' | 'obj' | 'dae' | 'stl' | 'ply';
+export type ModelFormat =
+  | 'gltf' | 'glb' | 'vrm' | 'fbx' | 'obj' | 'dae' | 'stl' | 'ply'
+  | '3ds' | '3mf' | 'amf' | 'usd' | 'usda' | 'usdc' | 'usdz' | 'lwo' | 'kmz' | 'md2' | 'vtk' | 'vtp' | 'vox';
 export type PoseFormat = 'bvh' | 'vrma' | 'pose-json';
 export type ImageFormat = 'image' | 'hdr';
 
@@ -16,6 +18,19 @@ export function classifyFile(path: string): FileRole {
     case 'dae':
     case 'stl':
     case 'ply':
+    case '3ds':
+    case '3mf':
+    case 'amf':
+    case 'usd':
+    case 'usda':
+    case 'usdc':
+    case 'usdz':
+    case 'lwo':
+    case 'kmz':
+    case 'md2':
+    case 'vtk':
+    case 'vtp':
+    case 'vox':
       return { kind: 'model', format: ext };
     case 'bvh':
       return { kind: 'pose', format: 'bvh' };

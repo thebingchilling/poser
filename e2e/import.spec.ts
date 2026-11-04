@@ -37,6 +37,10 @@ test.describe('import', () => {
     { file: ['elf.dae'], kind: 'Prop', name: 'elf' },
     { file: ['slotted_disk.stl'], kind: 'Prop', name: 'slotted disk' },
     { file: ['dolphins.ply'], kind: 'Prop', name: 'dolphins' },
+    { file: ['portalgun.3ds'], kind: 'Prop', name: 'portalgun' },
+    { file: ['saeukkang.usdz'], kind: 'Prop', name: 'saeukkang' },
+    { file: ['cube_gears.3mf'], kind: 'Prop', name: 'cube gears' },
+    { file: ['monu10.vox'], kind: 'Prop', name: 'monu10' },
   ];
 
   for (const c of cases) {

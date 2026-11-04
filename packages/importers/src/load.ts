@@ -1,5 +1,5 @@
 import { VRMLoaderPlugin, VRMUtils, type VRM } from '@pixiv/three-vrm';
-import { Group, LoadingManager, Mesh, MeshStandardMaterial, type AnimationClip, type Object3D } from 'three';
+import { Group, LoadingManager, Mesh, MeshStandardMaterial, type AnimationClip, type BufferGeometry, type Object3D } from 'three';
 import { ColladaLoader } from 'three/addons/loaders/ColladaLoader.js';
 import { FBXLoader } from 'three/addons/loaders/FBXLoader.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
@@ -7,6 +7,15 @@ import { MTLLoader } from 'three/addons/loaders/MTLLoader.js';
 import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
 import { PLYLoader } from 'three/addons/loaders/PLYLoader.js';
 import { STLLoader } from 'three/addons/loaders/STLLoader.js';
+import { TDSLoader } from 'three/addons/loaders/TDSLoader.js';
+import { ThreeMFLoader } from 'three/addons/loaders/3MFLoader.js';
+import { AMFLoader } from 'three/addons/loaders/AMFLoader.js';
+import { USDLoader } from 'three/addons/loaders/USDLoader.js';
+import { LWOLoader } from 'three/addons/loaders/LWOLoader.js';
+import { KMZLoader } from 'three/addons/loaders/KMZLoader.js';
+import { MD2Loader } from 'three/addons/loaders/MD2Loader.js';
+import { VTKLoader } from 'three/addons/loaders/VTKLoader.js';
+import { VOXLoader, buildMesh } from 'three/addons/loaders/VOXLoader.js';
 import type { VirtualFiles } from './files';
 import type { ModelFormat } from './formats';
 
@@ -58,6 +67,13 @@ export async function loadModel(vfs: VirtualFiles, path: string, format: ModelFo
   return model;
 }
 
+function plainMesh(geometry: BufferGeometry): Group {
+  const material = new MeshStandardMaterial({ color: 0xbcbcbc, roughness: 0.7, vertexColors: geometry.hasAttribute('color') });
+  const g = new Group();
+  g.add(new Mesh(geometry, material));
+  return g;
+}
+
 async function parse(vfs: VirtualFiles, path: string, format: ModelFormat, manager: LoadingManager, warnings: string[]): Promise<LoadedModel> {
   const blob = vfs.get(path);
   if (!blob) throw new Error(`File not found: ${path}`);
@@ -105,12 +121,43 @@ async function parse(vfs: VirtualFiles, path: string, format: ModelFormat, manag
       return { root: collada.scene, animations: collada.scene.animations ?? [], warnings };
     }
     case 'stl':
-    case 'ply': {
-      const geometry = format === 'stl' ? new STLLoader(manager).parse(buffer) : new PLYLoader(manager).parse(buffer);
-      geometry.computeVertexNormals();
-      const material = new MeshStandardMaterial({ color: 0xbcbcbc, roughness: 0.7, vertexColors: geometry.hasAttribute('color') });
+    case 'ply':
+    case 'vtk':
+    case 'vtp': {
+      const geometry = format === 'stl' ? new STLLoader(manager).parse(buffer) : format === 'ply' ? new PLYLoader(manager).parse(buffer) : new VTKLoader(manager).parse(buffer, '');
+      if (!geometry.hasAttribute('normal')) geometry.computeVertexNormals();
+      return { root: plainMesh(geometry), animations: [], warnings };
+    }
+    case '3ds':
+      return { root: new TDSLoader(manager).parse(buffer, ''), animations: [], warnings };
+    case '3mf':
+      return { root: new ThreeMFLoader(manager).parse(buffer), animations: [], warnings };
+    case 'amf':
+      return { root: new AMFLoader(manager).parse(buffer), animations: [], warnings };
+    case 'usd':
+    case 'usda':
+    case 'usdc':
+    case 'usdz':
+      return { root: new USDLoader(manager).parse(buffer, ''), animations: [], warnings };
+    case 'lwo': {
+      const lwo = new LWOLoader(manager).parse(buffer, '', path.split('/').pop()!.replace(/\.lwo$/i, ''));
       const g = new Group();
-      g.add(new Mesh(geometry, material));
+      for (const m of lwo.meshes) g.add(m);
+      return { root: g, animations: [], warnings };
+    }
+    case 'kmz':
+      return { root: new KMZLoader(manager).parse(buffer).scene, animations: [], warnings };
+    case 'md2': {
+      // Quake-style models: keyframe animation, no skeleton; kept as a prop in its first frame.
+      const geometry = new MD2Loader(manager).parse(buffer);
+      geometry.morphAttributes = {};
+      return { root: plainMesh(geometry), animations: [], warnings };
+    }
+    case 'vox': {
+      const result = new VOXLoader(manager).parse(buffer) as unknown as { chunks: Parameters<typeof buildMesh>[0][] };
+      const g = new Group();
+      // MagicaVoxel units are voxels; one voxel = 1 cm until the wizard's units say otherwise.
+      for (const chunk of result.chunks) g.add(buildMesh(chunk));
       return { root: g, animations: [], warnings };
     }
   }
