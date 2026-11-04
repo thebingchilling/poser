@@ -4,7 +4,7 @@ A web app that is a **realistic, physics-based NSFW figure modeller and anatomy 
 
 > **Website only, private use:** a browser app for personal use and a few invited users. Not published publicly and not paid. Requires **Chrome**. Runs on Windows, macOS, Android, and iPhone/iPad through one installable website (PWA): full quality on PCs and laptops, reduced by default on mobile, with GPU auto-detection and crash fallbacks (section 3.5).
 >
-> **Status:** building. Phase 0 (Foundation) and all six risky-tech prototypes are in place and waiting for device testing (docs/device-testing.md, Settings › Diagnostics › Prototypes); Phase 1 is next.
+> **Status:** building. Phase 0 (Foundation), the six risky-tech prototypes, and Phase 1 (Import and posing MVP) are in place. Waiting on the owner: device testing (docs/device-testing.md, Settings › Diagnostics › Prototypes), a real Daz Genesis 8 FBX import for the Phase 1 "Done when", and MakeHuman exports to bundle. Phase 2 (Physics and cloth) is next.
 >
 > **Primary focus: female figures.** Female anatomy is built first and to the highest standard; male anatomy is fully supported but comes second (section 10).
 
