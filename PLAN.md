@@ -216,11 +216,12 @@ The whole interface follows **Material Design 3 (MD3)**: its components, color s
 | OBJ + MTL | 1 | Props, Marvelous Designer garments | Auto-detect mm/cm scale |
 | VRM 0.x / 1.0 | 1 | Figures | Spring-bone settings carried over |
 | DAE, STL, PLY | 1 | Props | |
+| 3DS, 3MF, AMF, USD/USDZ, VRML, LightWave LWO, KMZ, MD2, VTK, MagicaVoxel VOX | 1 | Props (and rigged figures where the format has skinning) | Through three.js loaders; checked under the app's Content Security Policy |
 | Images (PNG/JPG/WebP/TIFF), HDR/EXR | 1 | Textures, environment lighting | |
 | BVH / VRMA (single frame), our pose JSON | 1 | Poses | |
 | Marvelous Designer XML sidecar | 2 | Fabric properties | |
-| Daz `.duf` / `.dsf` (library folder) | 3 | Figures, morphs, clothing (incl. dForce), hair, poses, materials | Gzipped JSON; reads the user's installed content |
-| VaM `.var` and install folder | 3 | Looks, morphs, clothing, hair, textures | Needs the user's VaM install for the base mesh |
+| Daz `.duf` / `.dsf` (library folder) | 1 (moved from 3) | Figures, morphs, clothing (incl. dForce), hair, poses, materials | Gzipped JSON; reads the user's installed content |
+| VaM `.var` and install folder | 1 (moved from 3) | Looks, morphs, clothing, hair, textures | VaM's base figure is Genesis 2 Female/Male; its mesh comes from the user's Daz library (VaM's own copy is inside Unity asset bundles) |
 
 ### 4.3 Import wizard
 1. **Detect:** identify the format and what the file is (figure, garment, hair, morph pack, prop, pose, environment) from its contents: bone names, mesh shape, folder path, Daz/VaM metadata.
@@ -977,6 +978,15 @@ Each phase ends with something usable. Week estimates assume one full-time devel
   4. ~~**Mesh and texture optimisation in workers:**~~ *Done*. decimation and texture downscaling by quality level, and pruning unused morphs, run off the main thread during import.
   5. ~~**Default base figure**~~ *Done* (see below).
 
+#### Phase 1: import anything (added by the owner)
+Import any model, including native Daz and VaM content, in Phase 1 (moved from Phase 3).
+- [ ] More generic formats through three.js loaders: 3DS, 3MF, AMF, USD/USDZ, VRML, LightWave, KMZ, MD2, VTK, MagicaVoxel (each checked under the CSP)
+- [ ] Library folders: the user grants access to a folder (Daz content library, VaM install, a models folder) with the File System Access API; the handle is remembered, files are read on demand, and the folder is indexed and re-scanned
+- [ ] Daz `.duf/.dsf` reader: figures (geometry, UVs, skeleton from centre/end points and orientations, skin weights), applied shape morphs, materials (Iray Uber base colour, normal, roughness/glossiness, cut-out opacity), conforming clothing and hair, poses; corrective (JCM) morphs and rigging that follows morphs come after the first version
+- [ ] VaM `.var` and install-folder reader: package metadata, licence and dependencies; looks and scene people (morph values, clothing, hair, textures); VaM morphs applied to Genesis 2 from the Daz library; clothing and hair geometry (VaM's own binary formats, to be worked out from sample files)
+- **Needs from the owner:** sample Daz content (a Genesis 8/9 figure with clothing and hair) and VaM packages, since Claude's environment has none; Daz and VaM content stays on the owner's device and is never committed.
+- **Done when:** a Genesis 9 figure with a dForce dress, and a VaM look with clothing, load straight from the user's folders with no Blender step.
+
 #### Default base figure (done)
 *Built:* `tools/base-figure/` (fetch-source.mjs pins the official MPFB 2.0.0-a2 zip by SHA-256 and extracts the CC0 data used; build.mjs writes `apps/web/public/builtin/base-female.glb` and `base-male.glb`, 1.4 MB each, 27.7k triangles, 1.59 m and 1.73 m). Differences from the plan below: the rest pose stays MakeHuman's A-pose (the retargeter straightens it, as for any A-pose import); morphs are weight, muscle, bust (female), waist, hips, and shoulders, without height (it moves joints, so it needs a skeleton refit later); no compression was needed for size; eyes, teeth, and tongue are plain materials. New scenes start with the base female; Safe Mode, or a failed load, shows the mannequin instead.
 
@@ -1017,14 +1027,12 @@ One default body, in a female and a male version, built by us so the app looks l
 - [ ] Balance overlay (center of gravity)
 - **Done when:** a female figure Settles into an imported chair with thighs compressing on the seat, her breasts rest correctly when she lies down or leans forward, and a bra, shirt, and skirt fit and drape realistically.
 
-### Phase 3: Native Daz and VaM (about 6 weeks)
-- [ ] Library folders with indexing and re-scan
-- [ ] Daz `.duf/.dsf` reader: figures, shape morphs, corrective morphs, wardrobe (including dForce settings), hair, materials, poses
-- [ ] VaM `.var` and install-folder reader: looks, morphs, clothing, hair, textures, licenses, dependencies
+### Phase 3: Garment fitting and characters (about 4 weeks)
+*The native Daz and VaM readers moved to Phase 1 at the owner's request ("Phase 1: import anything" below).*
 - [ ] Garment auto-fit between figures
 - [ ] Character mixer (blend shapes between figures of the same base)
 - [ ] Cloth self-collision, multiple garment layers, cloth on props (a sheet on a bed)
-- **Done when:** a Genesis 9 figure with a dForce dress, and a VaM look with clothing, load straight from the user's folders with no Blender step.
+- **Done when:** a Genesis 8 outfit fits a Genesis 9 figure and a MakeHuman figure, and two characters of the same base blend with sliders.
 
 ### Phase 4: Face, hands, feet, muscles, and body states (about 7 weeks)
 - [ ] Pose, hands, and expression from photo or webcam (MediaPipe)
