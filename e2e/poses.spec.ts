@@ -22,8 +22,11 @@ test('pose library: apply, blend, random, export and re-import', async ({ page }
   await expect(page.getByRole('tab', { name: 'Library' })).toHaveAttribute('aria-selected', 'true');
   // Select the figure by clicking its chest.
   const vp = (await page.getByLabel('3D viewport').boundingBox())!;
-  await page.mouse.click(vp.x + vp.width * 0.5, vp.y + vp.height * 0.36);
-  await expect(page.getByRole('button', { name: 'Save pose' })).toBeEnabled();
+  // The base figure loads in the background; click until the click selects it.
+  await expect(async () => {
+    await page.mouse.click(vp.x + vp.width * 0.5, vp.y + vp.height * 0.36);
+    await expect(page.getByRole('button', { name: 'Save pose' })).toBeEnabled({ timeout: 1000 });
+  }).toPass({ timeout: 20_000 });
 
   await page.getByRole('button', { name: 'Kneeling', exact: true }).click();
   await page.keyboard.press('Control+z');

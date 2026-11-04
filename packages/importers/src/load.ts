@@ -16,6 +16,9 @@ import { KMZLoader } from 'three/addons/loaders/KMZLoader.js';
 import { MD2Loader } from 'three/addons/loaders/MD2Loader.js';
 import { VTKLoader } from 'three/addons/loaders/VTKLoader.js';
 import { VOXLoader, buildMesh } from 'three/addons/loaders/VOXLoader.js';
+import { MissingContentError, VirtualFilesSource, contentSources } from './content';
+import { buildDaz } from './daz/build';
+import { DsonResolver, parseDson } from './daz/dson';
 import type { VirtualFiles } from './files';
 import type { ModelFormat } from './formats';
 
@@ -127,6 +130,20 @@ async function parse(vfs: VirtualFiles, path: string, format: ModelFormat, manag
       const geometry = format === 'stl' ? new STLLoader(manager).parse(buffer) : format === 'ply' ? new PLYLoader(manager).parse(buffer) : new VTKLoader(manager).parse(buffer, '');
       if (!geometry.hasAttribute('normal')) geometry.computeVertexNormals();
       return { root: plainMesh(geometry), animations: [], warnings };
+    }
+    case 'duf':
+    case 'dsf': {
+      const main = parseDson(new Uint8Array(buffer));
+      const resolver = new DsonResolver([new VirtualFilesSource(vfs), ...contentSources()], { [path]: main });
+      const built = await buildDaz(path, main, resolver);
+      let hasMesh = false;
+      built.root.traverse((o) => (hasMesh ||= o instanceof Mesh));
+      // Without the figure itself there is nothing to import: ask for the content library.
+      if (!hasMesh && built.missing.length) throw new MissingContentError(built.missing, 'daz');
+      if (!hasMesh) throw new Error(built.warnings[0] ?? 'This Daz file has no figure or prop to import.');
+      if (built.missing.length) warnings.push(`${built.missing.length} library files weren't found (for example ${built.missing[0]!.split('/').pop()}); the import uses what was available.`);
+      warnings.push(...built.warnings);
+      return { root: built.root, animations: [], warnings };
     }
     case '3ds':
       return { root: new TDSLoader(manager).parse(buffer, ''), animations: [], warnings };

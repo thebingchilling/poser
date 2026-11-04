@@ -1,7 +1,8 @@
 /** Supported import formats (PLAN.md section 4.2). */
 export type ModelFormat =
   | 'gltf' | 'glb' | 'vrm' | 'fbx' | 'obj' | 'dae' | 'stl' | 'ply'
-  | '3ds' | '3mf' | 'amf' | 'usd' | 'usda' | 'usdc' | 'usdz' | 'lwo' | 'kmz' | 'md2' | 'vtk' | 'vtp' | 'vox';
+  | '3ds' | '3mf' | 'amf' | 'usd' | 'usda' | 'usdc' | 'usdz' | 'lwo' | 'kmz' | 'md2' | 'vtk' | 'vtp' | 'vox'
+  | 'duf' | 'dsf';
 export type PoseFormat = 'bvh' | 'vrma' | 'pose-json';
 export type ImageFormat = 'image' | 'hdr';
 
@@ -31,6 +32,8 @@ export function classifyFile(path: string): FileRole {
     case 'vtk':
     case 'vtp':
     case 'vox':
+    case 'duf':
+    case 'dsf':
       return { kind: 'model', format: ext };
     case 'bvh':
       return { kind: 'pose', format: 'bvh' };
@@ -58,7 +61,9 @@ export function classifyFile(path: string): FileRole {
  * wizard runs once per item). Textures and material files ride along.
  */
 export function importableItems(paths: string[]): { path: string; role: FileRole }[] {
-  const items = paths.map((path) => ({ path, role: classifyFile(path) })).filter((x) => x.role.kind === 'model' || x.role.kind === 'pose');
+  let items = paths.map((path) => ({ path, role: classifyFile(path) })).filter((x) => x.role.kind === 'model' || x.role.kind === 'pose');
+  // Daz: scenes (.duf) are what get imported; the .dsf assets they use come along as dependencies.
+  if (items.some((x) => x.role.kind === 'model' && x.role.format === 'duf')) items = items.filter((x) => !(x.role.kind === 'model' && x.role.format === 'dsf'));
   // A .gltf and its .bin, or an .obj and .mtl, are one item: only the main file is listed.
   return items.sort((a, b) => a.path.localeCompare(b.path));
 }

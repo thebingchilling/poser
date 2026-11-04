@@ -10,6 +10,7 @@ import { PoseLibraryPanel, PoseMixPanel } from './PoseLibrary';
 import { RenderWorkspace } from './RenderWorkspace';
 import { ObjectsWorkspace } from './ObjectsWorkspace';
 import { MeasurementsPanel } from './Measurements';
+import { ContentFoldersSection } from './ContentFolders';
 import { useLibrary } from '../state/library';
 import { addAssetToScene, addBuiltinFigure, captureScreenshot, removeFigure, removeProp } from '../actions';
 import { editProject, useActiveScene } from '../state/project';
@@ -79,7 +80,7 @@ function LibraryWorkspace() {
         <Button variant="tonal" icon="upload" onClick={() => void startImport(false)}>Import files</Button>
         <Button variant="text" icon="folder_open" onClick={() => void startImport(true)}>Import a folder</Button>
       </div>
-      <p className="hint">Or drag files, folders, or zips anywhere onto the app. glTF, FBX, OBJ, VRM, Collada, STL, PLY, 3DS, 3MF, AMF, USD, LightWave, KMZ, MD2, VTK, and MagicaVoxel.</p>
+      <p className="hint">Or drag files, folders, or zips anywhere onto the app. Daz scenes (.duf), glTF, FBX, OBJ, VRM, Collada, STL, PLY, 3DS, 3MF, AMF, USD, LightWave, KMZ, MD2, VTK, and MagicaVoxel.</p>
       <Button variant="text" icon="info" onClick={() => useUi.getState().set({ dazGuideOpen: true })}>How to export from Daz</Button>
       <TextField label="Search" value={query} onChange={(e) => setQuery(e.target.value)} />
       <div className="chip-row">
@@ -93,6 +94,7 @@ function LibraryWorkspace() {
           <AssetCard key={a.id} asset={a} />
         ))}
       </div>
+      <ContentFoldersSection />
       <ListSubheader>Built-in figures</ListSubheader>
       <div className="card-grid">
         {Object.keys(BASE_FIGURES).map((id) => (

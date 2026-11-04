@@ -26,6 +26,7 @@ import {
 } from '../actions';
 import { SettingsDialog } from '../dialogs/SettingsDialog';
 import { DazGuideDialog } from '../dialogs/DazGuideDialog';
+import { useContentFolders } from '../state/contentFolders';
 import { filesFromDataTransfer } from '../import/collectFiles';
 import { ImportWizard } from '../import/ImportWizard';
 import { startImport } from '../import/startImport';
@@ -51,6 +52,13 @@ function useUndoRedo() {
     if (label) snackbar({ text: `Redid: ${label}`, duration: 2000 });
   };
   return { canUndo, canRedo, doUndo, doRedo };
+}
+
+/** Library folders granted in earlier sessions (Daz content, VaM). */
+function useContentFolderBoot() {
+  useEffect(() => {
+    void useContentFolders.getState().load();
+  }, []);
 }
 
 function useShortcuts(doUndo: () => void, doRedo: () => void) {
@@ -134,6 +142,7 @@ function TopBar({ compact }: { compact: boolean }) {
   const projectName = useProject((s) => s.project.name);
   const { canUndo, canRedo, doUndo, doRedo } = useUndoRedo();
   useShortcuts(doUndo, doRedo);
+  useContentFolderBoot();
   const snackbar = useSnackbar();
   const openSettings = () => useUi.getState().set({ settingsOpen: true });
   const capture = () => captureScreenshot().then(() => snackbar('Screenshot saved'), (e: Error) => snackbar(e.message));

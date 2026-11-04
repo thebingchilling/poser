@@ -8,3 +8,4 @@ export * from './pipeline';
 export * from './materials';
 export * from './poses';
 export * from './optimiseClient';
+export * from './content';
