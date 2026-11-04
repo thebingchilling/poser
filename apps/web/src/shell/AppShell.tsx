@@ -164,8 +164,8 @@ function WorkspaceFab({ workspace }: { workspace: WorkspaceId }) {
         <Menu
           label="Add figure"
           items={[
-            { label: 'Female figure', icon: 'female', onSelect: () => addBuiltinFigure('builtin:female') },
-            { label: 'Male figure', icon: 'male', onSelect: () => addBuiltinFigure('builtin:male') },
+            { label: 'Female figure', icon: 'female', onSelect: () => addBuiltinFigure('builtin:base-female') },
+            { label: 'Male figure', icon: 'male', onSelect: () => addBuiltinFigure('builtin:base-male') },
           ]}
           trigger={<Fab icon="person_add">Add figure</Fab>}
         />

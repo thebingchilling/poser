@@ -888,7 +888,7 @@ poser/
   packages/interaction/  attachments, hold/place, toys, body-opening channels, latex
   packages/rope/         rope solver, wrap tool, tie templates, knots, load overlay
   packages/marks/        skin marks, aging over time
-  assets/builtin/        default base figures (built from the CC0 MakeHuman base mesh), optional HDRIs
+  apps/web/public/builtin/ default base figures (built from the CC0 MakeHuman base mesh), owner-supplied MakeHuman exports
   tools/base-figure/     build script that makes the base figures
   assets/anatomy/        generated female and male anatomy templates
   tools/blender/         anatomy and FACS generation scripts
@@ -954,7 +954,7 @@ Each phase ends with something usable. Week estimates assume one full-time devel
 - [x] Quality levels, GPU auto-detection and benchmark, adaptive quality, memory manager (benchmark thresholds to be tuned on real devices)
 - [x] Crash handling: GPU device-lost recovery, Safe Mode after a crash, WebGL2 compatibility mode (also used automatically when WebGPU exists but fails a startup self-test)
 - [ ] **Verify WebGPU in Chrome on iOS** on a real device
-- [x] Built-in female and male figures: procedural mannequins on the canonical rig, as placeholders. *Planned:* replaced by our own default base figures built from the CC0 MakeHuman base mesh (Phase 1, base figure); other bodies are imported
+- [x] Built-in female and male figures: now the default base figures built from the CC0 MakeHuman base mesh (Phase 1, base figure); the procedural mannequins remain as the Safe Mode fallback; other bodies are imported
 - [x] Rough placeholder anatomy (simple skeleton, muscle, and fat volumes) for the early prototypes
 - **Done when:** the app opens with a figure, the user can orbit it, and the scene saves and reloads.
 
@@ -975,9 +975,11 @@ Each phase ends with something usable. Week estimates assume one full-time devel
   2. ~~**Reference image overlay and camera match:**~~ *Done* (Render workspace; the photo is kept for the session only). a semi-transparent photo over the viewport or behind the scene, with a draggable horizon line, lens, and camera height so the floor and figure match the photo's perspective.
   3. ~~**Daz export guide:**~~ *Done* (Library and import wizard). step-by-step in-app help for Daz Studio → FBX (Genesis 8) and Diffeomorphic → Blender → glTF (Genesis 9), opened from the Library and the import wizard.
   4. ~~**Mesh and texture optimisation in workers:**~~ *Done*. decimation and texture downscaling by quality level, and pruning unused morphs, run off the main thread during import.
-  5. **Default base figure** (replaces the procedural mannequins; see below).
+  5. ~~**Default base figure**~~ *Done* (see below).
 
-#### Default base figure (plan)
+#### Default base figure (done)
+*Built:* `tools/base-figure/` (fetch-source.mjs pins the official MPFB 2.0.0-a2 zip by SHA-256 and extracts the CC0 data used; build.mjs writes `apps/web/public/builtin/base-female.glb` and `base-male.glb`, 1.4 MB each, 27.7k triangles, 1.59 m and 1.73 m). Differences from the plan below: the rest pose stays MakeHuman's A-pose (the retargeter straightens it, as for any A-pose import); morphs are weight, muscle, bust (female), waist, hips, and shoulders, without height (it moves joints, so it needs a skeleton refit later); no compression was needed for size; eyes, teeth, and tongue are plain materials. New scenes start with the base female; Safe Mode, or a failed load, shows the mannequin instead.
+
 One default body, in a female and a male version, built by us so the app looks like a real figure before anything is imported. It is the only body we make; everything else is imported.
 
 - **Source:** the MakeHuman base mesh, its shape targets, and its default skeleton with skin weights, all CC0. Taken from the official MakeHuman asset repository at a pinned version, checked into `tools/base-figure/` with their license notes. No third-party add-on assets (skins, hair, clothes).
@@ -990,7 +992,7 @@ One default body, in a female and a male version, built by us so the app looks l
   6. Simple PBR skin material (base colour, roughness), with no photo textures in v1; detail comes later with the skin work (sections 16 and 18).
   7. Write `assets/builtin/base-female.glb` and `base-male.glb` (target under 4 MB each, Draco or meshopt compressed), plus a rig map and license file.
 - **In the app:** the built-in figures load through the normal imported-figure path (`ImportedFigure` with the canonical rig map), so posing, IK, limits, morphs, study modes, and measurements behave exactly as for imports. New scenes start with the base female.
-- **Owner-supplied MakeHuman figures:** the owner will also send MakeHuman/MPFB exports (stock assets only, Game engine skeleton, GLB with textures ≤ 2048 px, under 25 MB per file for Cloudflare Pages). They are bundled in `assets/builtin/` as extra built-in figures with their CC0 license noted, and load through the same imported-figure path.
+- **Owner-supplied MakeHuman figures:** the owner will also send MakeHuman/MPFB exports (stock assets only, Game engine skeleton, GLB with textures ≤ 2048 px, under 25 MB per file for Cloudflare Pages). They are bundled in `apps/web/public/builtin/` as extra built-in figures with their CC0 license noted, and load through the same imported-figure path.
 - **Mannequins:** retired from new scenes; their code stays only as the Safe Mode fallback (no GLB loading) and for the GPU prototypes.
 - **Anatomy:** the MakeHuman base mesh has no detailed genitals; it stays neutral, and anatomy comes from the in-house anatomy work (section 9) like on any imported figure.
 - **Checks:** unit tests that the GLB loads, every canonical bone is present and weighted, and rest-pose joint heights fall in human ranges; a browser screenshot test of both versions in a few library poses.

@@ -47,6 +47,12 @@ export class ImportedFigure implements PosableFigure {
     }
   }
 
+  /** From GLB bytes (built-in figures fetched from the app's own files, tests). */
+  static async parse(data: ArrayBuffer, rig?: AssetRigInfo): Promise<ImportedFigure> {
+    const gltf = await new GLTFLoader().parseAsync(data, '');
+    return new ImportedFigure(gltf.scene, rig);
+  }
+
   static async load(model: Blob, rig?: AssetRigInfo): Promise<ImportedFigure> {
     const url = URL.createObjectURL(model);
     try {

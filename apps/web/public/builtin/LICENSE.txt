@@ -1,0 +1,4 @@
+base-female.glb and base-male.glb are built by tools/base-figure/build.mjs from MakeHuman core assets
+(base mesh, shape targets, default skin weights), which are CC0:
+https://static.makehumancommunity.org/about/license.html
+The built figures are likewise CC0.

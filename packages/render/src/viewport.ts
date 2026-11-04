@@ -27,6 +27,7 @@ import {
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { TransformControls } from 'three/addons/controls/TransformControls.js';
 import { ImportedFigure } from './figure/imported';
+import { baseFigureRig, baseFigureUrl, isBaseFigure } from './figure/baseFigures';
 import { BUILTIN_FIGURES, FigureObject, type AnatomyLayer, type BuiltinFigureId } from './figure/mannequin';
 import type { PosableFigure } from './figure/types';
 import { PoseTools } from './posing/poseTools';
@@ -51,6 +52,8 @@ export interface ViewportOptions {
   /** Use three.js's WebGL2 backend (compatibility mode, PLAN.md section 3.5). */
   forceWebGL?: boolean;
   onDeviceLost?: (event: DeviceLostEvent) => void;
+  /** Show the simple mannequins instead of loading the base figures (Safe Mode). */
+  simpleFigures?: boolean;
 }
 
 const VIEW_DIRECTIONS: Record<ViewName, [number, number, number]> = {
@@ -99,6 +102,7 @@ export class Viewport {
   private skinOpacity = 1;
   private layerVisibility: Record<AnatomyLayer, boolean> = { skin: true, fat: false, muscle: false, skeleton: false };
   private disposed = false;
+  private readonly simpleFigures: boolean;
   private study: StudyMode = 'normal';
   private notan: NotanPass | null = null;
   private lastModel: SceneModel | null = null;
@@ -122,6 +126,7 @@ export class Viewport {
     options: ViewportOptions,
   ) {
     this.quality = options.quality;
+    this.simpleFigures = options.simpleFigures ?? false;
     this.backend = (renderer.backend as { isWebGPUBackend?: boolean }).isWebGPUBackend ? 'webgpu' : 'webgl2';
     this.scene.background = this.backgroundColor;
 
@@ -345,7 +350,16 @@ export class Viewport {
         entry = undefined;
       }
       if (!entry) {
-        if (fig.assetId in BUILTIN_FIGURES) {
+        if (isBaseFigure(fig.assetId) && this.simpleFigures) {
+          entry = this.addFigureObject(fig.id, fig.assetId, new FigureObject(mannequinFor(fig.assetId)));
+        } else if (isBaseFigure(fig.assetId)) {
+          this.loadFigure(fig.id, fig.assetId, async () => {
+            const res = await fetch(baseFigureUrl(fig.assetId));
+            if (!res.ok) throw new Error(`Couldn't load the built-in figure (${res.status})`);
+            return ImportedFigure.parse(await res.arrayBuffer(), baseFigureRig(fig.assetId));
+          });
+          continue;
+        } else if (fig.assetId in BUILTIN_FIGURES) {
           entry = this.addFigureObject(fig.id, fig.assetId, new FigureObject(fig.assetId as BuiltinFigureId));
         } else {
           this.loadImported(fig.id, fig.assetId);
@@ -394,15 +408,33 @@ export class Viewport {
 
   /** Loads an imported model in the background, then shows it with the latest scene state. */
   private loadImported(figureId: string, assetId: string): void {
-    if (this.loading.get(figureId) === assetId || !this.assetLoader) return;
+    const loader = this.assetLoader;
+    if (!loader) return;
+    this.loadFigure(figureId, assetId, async () => {
+      const asset = await loader(assetId);
+      return asset ? ImportedFigure.load(asset.model, asset.rig) : null;
+    });
+  }
+
+  private loadFigure(figureId: string, assetId: string, create: () => Promise<PosableFigure | null>): void {
+    if (this.loading.get(figureId) === assetId) return;
     this.loading.set(figureId, assetId);
-    this.assetLoader(assetId)
-      .then(async (asset) => {
-        if (!asset || this.disposed || this.loading.get(figureId) !== assetId) return;
-        const object = await ImportedFigure.load(asset.model, asset.rig);
+    create()
+      .catch((err: unknown) => {
+        // A built-in figure that fails to load falls back to its mannequin, so the scene still works.
+        if (!isBaseFigure(assetId)) throw err;
+        for (const l of this.errorListeners) l(figureId, err);
+        return new FigureObject(mannequinFor(assetId));
+      })
+      .then((object) => {
+        if (!object) return;
+        if (this.disposed || this.loading.get(figureId) !== assetId) {
+          object.dispose();
+          return;
+        }
         this.loading.delete(figureId);
         const fig = this.lastFigures.find((f) => f.id === figureId);
-        if (!fig || fig.assetId !== assetId || this.disposed) {
+        if (!fig || fig.assetId !== assetId) {
           object.dispose();
           return;
         }
@@ -764,4 +796,9 @@ export class Viewport {
 /** Vertical field of view (degrees) for a 35mm-equivalent focal length (24 mm frame height). */
 export function fovFor(focal: number): number {
   return (2 * Math.atan(12 / focal) * 180) / Math.PI;
+}
+
+/** The simple mannequin that stands in for a base figure (Safe Mode, or if it fails to load). */
+function mannequinFor(assetId: string): BuiltinFigureId {
+  return assetId === 'builtin:base-male' ? 'builtin:male' : 'builtin:female';
 }

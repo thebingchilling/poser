@@ -7,3 +7,4 @@ export * from './posing/poseTools';
 export * from './study';
 export * from './props/materials';
 export * from './figure/measure';
+export * from './figure/baseFigures';

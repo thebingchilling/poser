@@ -32,7 +32,7 @@ export type CanonicalPose = Record<string, Quat>;
 export interface Figure {
   id: string;
   name: string;
-  /** Library asset id, or a built-in id such as `builtin:female`. */
+  /** Library asset id, or a built-in id such as `builtin:base-female` (or the older mannequins, `builtin:female`). */
   assetId: string;
   transform: Transform;
   pose: CanonicalPose;

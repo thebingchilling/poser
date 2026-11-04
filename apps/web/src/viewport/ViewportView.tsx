@@ -61,7 +61,8 @@ export function ViewportView() {
       ui.set({ qualityDrop: ui.qualityDrop + 1, viewportGeneration: ui.viewportGeneration + 1 });
       snackbar('The graphics device was reset. Quality lowered one level.');
     };
-    const create = (webgl: boolean) => Viewport.create({ canvas, quality: QUALITY_SETTINGS[qualityRef.current], forceWebGL: webgl, onDeviceLost });
+    const create = (webgl: boolean) =>
+      Viewport.create({ canvas, quality: QUALITY_SETTINGS[qualityRef.current], forceWebGL: webgl, onDeviceLost, simpleFigures: useUi.getState().safeMode });
     const start = async (): Promise<Viewport> => {
       if (forceWebGL) return create(true);
       // WebGPU that exists but fails on first use goes to compatibility mode.

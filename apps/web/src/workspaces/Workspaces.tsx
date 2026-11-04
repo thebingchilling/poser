@@ -1,5 +1,5 @@
 import { activeScene, type AssetRecord, type Light, type Project } from '@poser/core';
-import { BUILTIN_FIGURES, type AnatomyLayer, type BuiltinFigureId } from '@poser/render';
+import { BASE_FIGURES, BASE_FIGURE_NAMES, type AnatomyLayer } from '@poser/render';
 import { AssistChip, Button, Card, Divider, FilterChip, IconButton, ListItem, ListSubheader, Menu, SegmentedButtons, Slider, Switch, Tabs, TextField, useSnackbar, type IconName } from '@poser/ui';
 import { useEffect, useState } from 'react';
 import { HAND_PRESET_LABELS, type HandPreset } from '@poser/posing';
@@ -95,10 +95,10 @@ function LibraryWorkspace() {
       </div>
       <ListSubheader>Built-in figures</ListSubheader>
       <div className="card-grid">
-        {(Object.keys(BUILTIN_FIGURES) as BuiltinFigureId[]).map((id) => (
+        {Object.keys(BASE_FIGURES).map((id) => (
           <Card key={id} variant="filled" className="asset-card">
-            <span className="asset-card__title">{BUILTIN_FIGURES[id].name}</span>
-            <span className="asset-card__meta">Placeholder mannequin · {BUILTIN_FIGURES[id].proportions.height.toFixed(2)} m</span>
+            <span className="asset-card__title">{BASE_FIGURE_NAMES[id]}</span>
+            <span className="asset-card__meta">Base figure · {BASE_FIGURES[id]!.height.toFixed(2)} m · CC0 (MakeHuman)</span>
             <Button variant="tonal" icon="person_add" onClick={() => addBuiltinFigure(id)}>
               Add to scene
             </Button>
@@ -134,7 +134,7 @@ function SceneWorkspace() {
       {scene.figures.map((f) => (
         <ListItem
           key={f.id}
-          icon={f.assetId === 'builtin:male' ? 'male' : 'female'}
+          icon={/male$/.test(f.assetId) && !/female$/.test(f.assetId) ? 'male' : 'female'}
           headline={f.name}
           selected={f.id === selected}
           onClick={() => set({ selectedFigureId: f.id, inspectorOpen: true })}

@@ -24,8 +24,8 @@ export const ANATOMY_LAYERS: readonly AnatomyLayer[] = ['skin', 'fat', 'muscle',
 export type BuiltinFigureId = 'builtin:female' | 'builtin:male';
 
 export const BUILTIN_FIGURES: Record<BuiltinFigureId, { name: string; proportions: BodyProportions; sex: 'female' | 'male' }> = {
-  'builtin:female': { name: 'Female figure', proportions: FEMALE_PROPORTIONS, sex: 'female' },
-  'builtin:male': { name: 'Male figure', proportions: MALE_PROPORTIONS, sex: 'male' },
+  'builtin:female': { name: 'Female mannequin', proportions: FEMALE_PROPORTIONS, sex: 'female' },
+  'builtin:male': { name: 'Male mannequin', proportions: MALE_PROPORTIONS, sex: 'male' },
 };
 
 interface SegmentSpec {

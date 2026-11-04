@@ -46,7 +46,7 @@ export function createScene(name = 'Scene 1'): Scene {
   return {
     id: createId('scene'),
     name,
-    figures: [createFigure('builtin:female', 'Female figure')],
+    figures: [createFigure('builtin:base-female', 'Female figure')],
     props: [],
     lights: defaultLights(),
     cameras: [],

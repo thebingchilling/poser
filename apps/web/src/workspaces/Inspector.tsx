@@ -1,3 +1,4 @@
+import { BASE_FIGURES } from '@poser/render';
 import { activeScene, type Figure, type Project } from '@poser/core';
 import { Slider, Tabs, TextField } from '@poser/ui';
 import { jointLabel } from '@poser/render';
@@ -70,13 +71,14 @@ function PoseTab({ figure }: { figure: Figure }) {
   );
 }
 
-/** Morph sliders for imported figures (PLAN.md section 6). */
+/** Morph sliders for imported and base figures (PLAN.md section 6). */
 function BodyTab({ figure }: { figure: Figure }) {
   const asset = useLibrary((s) => s.assets.find((a) => a.id === figure.assetId));
   const [query, setQuery] = useState('');
-  if (!asset) return <Later phase={4} what="Body shape controls for the built-in figures" />;
-  if (!asset.morphs.length) return <p className="hint">This figure has no morphs (shape keys).</p>;
-  const shown = asset.morphs.filter((m) => m.toLowerCase().includes(query.trim().toLowerCase())).slice(0, 60);
+  const morphs = asset?.morphs ?? BASE_FIGURES[figure.assetId]?.morphs;
+  if (!morphs) return <Later phase={4} what="Body shape controls for the mannequins" />;
+  if (!morphs.length) return <p className="hint">This figure has no morphs (shape keys).</p>;
+  const shown = morphs.filter((m) => m.toLowerCase().includes(query.trim().toLowerCase())).slice(0, 60);
   const edit = (name: string, value: number) =>
     editProject(
       'Change morph',
@@ -88,7 +90,7 @@ function BodyTab({ figure }: { figure: Figure }) {
     );
   return (
     <>
-      {asset.morphs.length > 8 && <TextField label={`Search ${asset.morphs.length} morphs`} value={query} onChange={(e) => setQuery(e.target.value)} />}
+      {morphs.length > 12 && <TextField label={`Search ${morphs.length} morphs`} value={query} onChange={(e) => setQuery(e.target.value)} />}
       {shown.map((m) => (
         <Slider key={m} label={m} value={figure.morphValues[m] ?? 0} min={0} max={1} step={0.01} displayScale={100} unit="%" onChange={(v) => edit(m, v)} />
       ))}

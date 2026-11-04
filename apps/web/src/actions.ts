@@ -1,5 +1,5 @@
 import { activeScene, createFigure, createProject, createProp, deleteProject, loadProject, saveProject, type AssetRecord, type Project } from '@poser/core';
-import { BUILTIN_FIGURES, type BuiltinFigureId } from '@poser/render';
+import { BASE_FIGURE_NAMES } from '@poser/render';
 import { POSER_EXTENSION, POSER_MIME, exportPoserFile, importPoserFile, poserFileName } from '@poser/platform';
 import { crashGuard } from './platformServices';
 import { currentProject, editProject, projectStore } from './state/project';
@@ -14,13 +14,14 @@ export function redo(): string | null {
   return projectStore.getState().redo();
 }
 
-export function addBuiltinFigure(id: BuiltinFigureId): void {
-  const def = BUILTIN_FIGURES[id];
-  const fig = createFigure(id, def.name);
+/** Adds a built-in base figure (`builtin:base-female` or `builtin:base-male`). */
+export function addBuiltinFigure(id: string): void {
+  const name = BASE_FIGURE_NAMES[id] ?? 'Figure';
+  const fig = createFigure(id, name);
   const count = activeScene(currentProject()).figures.length;
   // Place new figures side by side, about a metre apart.
   fig.transform.position = [count === 0 ? 0 : (count % 2 ? 1 : -1) * Math.ceil(count / 2) * 0.9, 0, 0];
-  editProject(`Add ${def.name.toLowerCase()}`, (p) => {
+  editProject(`Add ${name.toLowerCase()}`, (p) => {
     activeScene(p as Project).figures.push(fig);
   });
   useUi.getState().set({ selectedFigureId: fig.id });
