@@ -5,7 +5,7 @@ import { Box3, Bone, Matrix4, Mesh, Quaternion, SkinnedMesh, Vector3, type Objec
  * Inspects a loaded model (PLAN.md section 4.3): what it is, its skeleton in
  * the bind pose, rig detection, morphs, size, and likely units and up axis.
  */
-export type AssetKind = 'figure' | 'prop' | 'garment';
+export type AssetKind = 'figure' | 'prop' | 'garment' | 'hair';
 
 export interface ModelAnalysis {
   kind: AssetKind;

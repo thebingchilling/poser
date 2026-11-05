@@ -27,20 +27,20 @@ export function addBuiltinFigure(id: string): void {
   useUi.getState().set({ selectedFigureId: fig.id });
 }
 
-/** Adds a Library asset to the scene: figures beside the others, props in front. */
-export function addAssetToScene(asset: AssetRecord): void {
+/** Adds a Library asset to the scene: figures beside the others, props in front, or at `at` (a floor point) when dropped there. */
+export function addAssetToScene(asset: AssetRecord, at?: [number, number, number]): void {
   const scene = activeScene(currentProject());
   if (asset.kind === 'figure') {
     const fig = createFigure(asset.id, asset.name);
     const count = scene.figures.length;
-    fig.transform.position = [count === 0 ? 0 : (count % 2 ? 1 : -1) * Math.ceil(count / 2) * 0.9, 0, 0];
+    fig.transform.position = at ?? [count === 0 ? 0 : (count % 2 ? 1 : -1) * Math.ceil(count / 2) * 0.9, 0, 0];
     editProject(`Add ${asset.name}`, (p) => {
       activeScene(p as Project).figures.push(fig);
     });
     useUi.getState().set({ selectedFigureId: fig.id });
   } else {
     const prop = createProp(asset.id, asset.name);
-    prop.transform.position = [0, 0, 0.8];
+    prop.transform.position = at ?? [0, 0, 0.8];
     editProject(`Add ${asset.name}`, (p) => {
       activeScene(p as Project).props.push(prop);
     });

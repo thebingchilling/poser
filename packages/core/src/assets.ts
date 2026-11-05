@@ -6,7 +6,7 @@ import { deleteAsset as deleteAssetFiles, readAssetFile, writeAssetFile } from '
  * Library assets (PLAN.md section 19). The record lives in IndexedDB; the
  * processed model (a normalised GLB) lives in OPFS under assets/<id>/.
  */
-export type AssetKind = 'figure' | 'prop' | 'garment' | 'pose' | 'environment';
+export type AssetKind = 'figure' | 'prop' | 'garment' | 'hair' | 'pose' | 'environment';
 
 export interface AssetRigInfo {
   /** Rig kind label (daz-g8, mixamo, vrm, ...). */

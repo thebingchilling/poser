@@ -1,6 +1,6 @@
-import { activeScene, type AssetRecord, type Light, type Project } from '@poser/core';
+import { activeScene, updateAsset, type AssetRecord, type Light, type Project } from '@poser/core';
 import { BASE_FIGURES, BASE_FIGURE_NAMES, type AnatomyLayer } from '@poser/render';
-import { AssistChip, Button, Card, Divider, FilterChip, IconButton, ListItem, ListSubheader, Menu, SegmentedButtons, Slider, Switch, Tabs, TextField, useSnackbar, type IconName } from '@poser/ui';
+import { AssistChip, Button, Card, Dialog, Divider, FilterChip, IconButton, ListItem, ListSubheader, Menu, SegmentedButtons, Slider, Switch, Tabs, TextField, useSnackbar, type IconName } from '@poser/ui';
 import { useEffect, useState } from 'react';
 import { HAND_PRESET_LABELS, type HandPreset } from '@poser/posing';
 import { EFFECTORS, jointLabel } from '@poser/render';
@@ -9,6 +9,7 @@ import { startImport } from '../import/startImport';
 import { PoseLibraryPanel, PoseMixPanel } from './PoseLibrary';
 import { RenderWorkspace } from './RenderWorkspace';
 import { ObjectsWorkspace } from './ObjectsWorkspace';
+import { goToCameraBookmark } from './staging';
 import { MeasurementsPanel } from './Measurements';
 import { ContentFoldersSection } from './ContentFolders';
 import { useLibrary } from '../state/library';
@@ -17,6 +18,7 @@ import { editProject, useActiveScene } from '../state/project';
 import { useUi, type WorkspaceId } from '../state/ui';
 import { setView, viewportRef } from '../viewport/ViewportView';
 import { WORKSPACES } from '../shell/workspaces';
+import { ASSET_DRAG_TYPE } from '../dragTypes';
 
 function ComingInPhase({ phase, what }: { phase: number; what: string }) {
   return (
@@ -31,22 +33,64 @@ const LIBRARY_FILTERS: { kind: AssetRecord['kind'] | 'all'; label: string; icon:
   { kind: 'all', label: 'All', icon: 'library_books' },
   { kind: 'figure', label: 'Figures', icon: 'person' },
   { kind: 'garment', label: 'Clothing', icon: 'layers' },
+  { kind: 'hair', label: 'Hair', icon: 'face' },
   { kind: 'prop', label: 'Props', icon: 'category' },
   { kind: 'pose', label: 'Poses', icon: 'accessibility_new' },
   { kind: 'environment', label: 'Environments', icon: 'wb_sunny' },
 ];
 
+/** Kind of a Library item, as shown on its card. */
+const KIND_LABEL: Record<AssetRecord['kind'], string> = { figure: 'Figure', prop: 'Prop', garment: 'Clothing', hair: 'Hair', pose: 'Pose', environment: 'Environment light' };
+
+function TagsDialog({ asset, onClose }: { asset: AssetRecord; onClose: () => void }) {
+  const [text, setText] = useState(asset.tags.join(', '));
+  const refresh = useLibrary((s) => s.refresh);
+  const save = async () => {
+    const tags = [...new Set(text.split(',').map((t) => t.trim()).filter(Boolean))];
+    await updateAsset(asset.id, { tags });
+    await refresh();
+    onClose();
+  };
+  return (
+    <Dialog
+      open
+      onOpenChange={(o) => !o && onClose()}
+      title={`Tags for ${asset.name}`}
+      icon="edit"
+      actions={
+        <>
+          <Button variant="text" onClick={onClose}>Cancel</Button>
+          <Button onClick={() => void save()}>Save</Button>
+        </>
+      }
+    >
+      <TextField label="Tags" supporting="Separate with commas; search finds them" value={text} autoFocus onChange={(e) => setText(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && void save()} />
+    </Dialog>
+  );
+}
+
 function AssetCard({ asset }: { asset: AssetRecord }) {
   const remove = useLibrary((s) => s.remove);
   const snackbar = useSnackbar();
+  const [editingTags, setEditingTags] = useState(false);
   return (
-    <Card variant="filled" className="asset-card">
+    <Card
+      variant="filled"
+      className="asset-card"
+      draggable
+      onDragStart={(e: React.DragEvent) => {
+        e.dataTransfer.setData(ASSET_DRAG_TYPE, asset.id);
+        e.dataTransfer.effectAllowed = 'copy';
+      }}
+      title="Drag into the view to add it there"
+    >
       {asset.thumbnail && <img className="asset-card__thumb" src={asset.thumbnail} alt="" draggable={false} />}
       <span className="asset-card__title">{asset.name}</span>
       <span className="asset-card__meta">
-        {asset.kind === 'figure' ? `Figure · ${asset.size[1].toFixed(2)} m` : asset.kind === 'garment' ? 'Clothing' : asset.kind === 'pose' ? 'Pose' : asset.kind === 'environment' ? 'Environment light' : 'Prop'}
+        {asset.kind === 'figure' ? `Figure · ${asset.size[1].toFixed(2)} m` : KIND_LABEL[asset.kind]}
         {asset.license ? ` · ${asset.license}` : ''}
       </span>
+      {asset.tags.length > 0 && <span className="asset-card__meta">{asset.tags.join(' · ')}</span>}
       <div className="asset-card__actions">
         {asset.kind === 'environment' ? (
           <Button variant="tonal" icon="lightbulb" onClick={() => useAsEnvironment(asset)}>
@@ -63,10 +107,14 @@ function AssetCard({ asset }: { asset: AssetRecord }) {
         )}
         <Menu
           label={`${asset.name} actions`}
-          items={[{ label: 'Delete from Library', icon: 'delete', danger: true, onSelect: () => remove(asset.id).then(() => snackbar(`Deleted ${asset.name}`)) }]}
+          items={[
+            { label: 'Edit tags', icon: 'edit', onSelect: () => setEditingTags(true) },
+            { label: 'Delete from Library', icon: 'delete', danger: true, onSelect: () => remove(asset.id).then(() => snackbar(`Deleted ${asset.name}`)) },
+          ]}
           trigger={<IconButton icon="more_vert" label={`More actions for ${asset.name}`} />}
         />
       </div>
+      {editingTags && <TagsDialog asset={asset} onClose={() => setEditingTags(false)} />}
     </Card>
   );
 }
@@ -85,7 +133,8 @@ function LibraryWorkspace() {
   useEffect(() => {
     if (!loaded) void refresh();
   }, [loaded, refresh]);
-  const shown = assets.filter((a) => (filter === 'all' || a.kind === filter) && a.name.toLowerCase().includes(query.trim().toLowerCase()));
+  const q = query.trim().toLowerCase();
+  const shown = assets.filter((a) => (filter === 'all' || a.kind === filter) && (a.name.toLowerCase().includes(q) || a.tags.some((t) => t.toLowerCase().includes(q))));
   return (
     <>
       <div className="button-wrap">
@@ -137,6 +186,11 @@ function SceneWorkspace() {
       const l = activeScene(p as Project).lights.find((x) => x.id === id);
       if (l) l.visible = visible;
     });
+  const toggleLock = (kind: 'figures' | 'props', id: string) =>
+    editProject('Lock or unlock', (p) => {
+      const item = activeScene(p as Project)[kind].find((x) => x.id === id);
+      if (item) item.locked = !item.locked;
+    });
   const setEnv = (key: 'floor' | 'grid', value: boolean) =>
     editProject(`${value ? 'Show' : 'Hide'} ${key}`, (p) => {
       activeScene(p as Project).environment[key] = value;
@@ -157,6 +211,9 @@ function SceneWorkspace() {
               <Button variant="text" icon={f.visible ? 'visibility' : 'visibility_off'} onClick={() => toggleFigure(f.id, !f.visible)}>
                 {f.visible ? 'Hide' : 'Show'}
               </Button>
+              <Button variant="text" icon={f.locked ? 'lock' : 'lock_open'} onClick={() => toggleLock('figures', f.id)}>
+                {f.locked ? 'Unlock' : 'Lock'}
+              </Button>
               <Menu
                 label={`${f.name} actions`}
                 items={[{ label: 'Remove from scene', icon: 'delete', danger: true, onSelect: () => removeFigure(f.id) }]}
@@ -173,11 +230,16 @@ function SceneWorkspace() {
           icon="category"
           headline={p.name}
           trailing={
+            <>
+            <Button variant="text" icon={p.locked ? 'lock' : 'lock_open'} onClick={() => toggleLock('props', p.id)}>
+              {p.locked ? 'Unlock' : 'Lock'}
+            </Button>
             <Menu
               label={`${p.name} actions`}
               items={[{ label: 'Remove from scene', icon: 'delete', danger: true, onSelect: () => removeProp(p.id) }]}
               trigger={<IconButton icon="more_vert" label={`More actions for ${p.name}`} />}
             />
+            </>
           }
         />
       ))}
@@ -193,6 +255,11 @@ function SceneWorkspace() {
             </Button>
           }
         />
+      ))}
+      <ListSubheader>Cameras</ListSubheader>
+      {scene.cameras.length === 0 && <p className="hint">No saved views yet (Render › Camera › Save this view).</p>}
+      {scene.cameras.map((c) => (
+        <ListItem key={c.id} icon="videocam" headline={c.name} supporting={c.focalLength === null ? 'Orthographic' : `${c.focalLength} mm`} onClick={() => goToCameraBookmark(c)} />
       ))}
       <ListSubheader>Environment</ListSubheader>
       <Switch label="Floor" checked={scene.environment.floor} onChange={(v) => setEnv('floor', v)} />

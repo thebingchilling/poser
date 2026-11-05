@@ -984,7 +984,7 @@ Items from sections 3, 6, 18 that the checklist above didn't spell out (turnarou
 - [x] Posing (section 6): gizmo in local, parent, or world space; IK effectors for hips, chest, and head plus a gaze target, with FABRIK for the spine and neck and pins respected; joint-limit presets Realistic, Flexible, Unlimited; handles turn orange near a limit and red past it. The hips handle moves the whole figure with pinned hands and feet held in place; a final full-body balance pass comes with the balance work in Phase 2
 - [x] Lighting (section 18): movable lights with gizmos; HDRI environment lighting from the user's files and a few bundled CC0 ones (Poly Haven studio and open sky, 1K); PBR Neutral tone mapping for HDR lighting
 - [x] Capture (section 18): PNG at any resolution with a transparent-background option (handles, gizmos, and guides left out); proportion grid in head units (eight equal heads of the standing height)
-- [ ] Library and Scene (section 3.2): filter chips for Hair, Morphs, and Environments, tags, drag an asset into the viewport to add it; scene tree with lock toggles and cameras
+- [x] Library and Scene (section 3.2): filter chips for Hair and Environments (Morphs comes when morph packs become Library assets, with the character tools), tags (edit, search), drag an asset into the viewport to add it (figures and props land where dropped, poses go to the figure under the pointer, HDRIs light the scene); scene tree with lock toggles and saved camera views
 - [ ] First run (section 3.3): a short tour
 
 #### Phase 1: import anything (added by the owner)

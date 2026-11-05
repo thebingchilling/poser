@@ -9,6 +9,10 @@ import { useSettings } from '../state/settings';
 import { useEffectiveQuality, useUi } from '../state/ui';
 import { LIMIT_SCALE } from '@poser/posing';
 import { ViewCube } from './ViewCube';
+import { ASSET_DRAG_TYPE } from '../dragTypes';
+import { useLibrary } from '../state/library';
+import { addAssetToScene } from '../actions';
+import { applyPoseSelected } from '../workspaces/posing';
 
 /** Shared handle so toolbar actions (capture, frame, views) reach the viewport. */
 export const viewportRef: { current: Viewport | null } = { current: null };
@@ -242,9 +246,11 @@ export function ViewportView() {
   const limitPreset = useUi((s) => s.limitPreset);
   const gizmoSpace = useUi((s) => s.gizmoSpace);
   const pins = useProject((s) => activeScene(s.project).figures.find((f) => f.id === selectedFigureId)?.pins);
+  // A locked figure keeps its selection but shows no pose handles.
+  const locked = useProject((s) => !!activeScene(s.project).figures.find((f) => f.id === selectedFigureId)?.locked);
   useEffect(() => {
-    viewport?.poseTools.setState({ figureId: selectedFigureId, joint: selectedJoint, mode: poseMode, limitScale: LIMIT_SCALE[limitPreset], pins: pins ?? {}, space: gizmoSpace });
-  }, [viewport, selectedFigureId, selectedJoint, poseMode, limitPreset, gizmoSpace, pins]);
+    viewport?.poseTools.setState({ figureId: locked ? null : selectedFigureId, joint: selectedJoint, mode: poseMode, limitScale: LIMIT_SCALE[limitPreset], pins: pins ?? {}, space: gizmoSpace });
+  }, [viewport, selectedFigureId, selectedJoint, poseMode, limitPreset, gizmoSpace, pins, locked]);
 
   // Adaptive quality (PLAN.md section 3.5, step 4).
   useEffect(() => {
@@ -261,7 +267,24 @@ export function ViewportView() {
 
   return (
     <div className="viewport">
-      <canvas ref={canvasRef} className="viewport__canvas" aria-label="3D viewport" tabIndex={0} />
+      <canvas
+        ref={canvasRef}
+        className="viewport__canvas"
+        aria-label="3D viewport"
+        tabIndex={0}
+        onDragOver={(e) => {
+          if (e.dataTransfer.types.includes(ASSET_DRAG_TYPE)) {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'copy';
+          }
+        }}
+        onDrop={(e) => {
+          const id = e.dataTransfer.getData(ASSET_DRAG_TYPE);
+          if (!id || !viewport) return;
+          e.preventDefault();
+          void dropAsset(viewport, id, e.clientX, e.clientY).then((msg) => msg && snackbar(msg));
+        }}
+      />
       {reference && referenceMode === 'over' && <img className="viewport__reference" src={reference.url} alt="" style={{ opacity: referenceOpacity }} />}
       {overlay !== 'none' && <CompositionOverlay kind={overlay} />}
       {cameraMatch && <HorizonGuide horizon={horizon} />}
@@ -325,4 +348,27 @@ function HorizonGuide({ horizon }: { horizon: number }) {
       <span>Horizon</span>
     </div>
   );
+}
+
+/** Library items dragged into the view: figures and props land on the floor there; poses go to the figure under the pointer; HDRIs light the scene. */
+async function dropAsset(viewport: Viewport, assetId: string, x: number, y: number): Promise<string | null> {
+  const asset = useLibrary.getState().assets.find((a) => a.id === assetId);
+  if (!asset) return null;
+  if (asset.kind === 'pose') {
+    const figureId = viewport.figureAt(x, y);
+    if (!figureId) return 'Drop a pose onto a figure';
+    useUi.getState().set({ selectedFigureId: figureId });
+    applyPoseSelected(asset.pose ?? {}, `Pose: ${asset.name}`);
+    return null;
+  }
+  if (asset.kind === 'environment') {
+    editProject(`Environment light: ${asset.name}`, (p) => {
+      const env = activeScene(p as Project).environment;
+      env.hdri = { source: asset.id, intensity: env.hdri?.intensity ?? 0.6, background: env.hdri?.background ?? true, rotation: env.hdri?.rotation ?? 0 };
+    });
+    return null;
+  }
+  if (asset.kind === 'garment') return 'Dressing figures arrives in Phase 2';
+  addAssetToScene(asset, viewport.floorPointAt(x, y) ?? undefined);
+  return null;
 }

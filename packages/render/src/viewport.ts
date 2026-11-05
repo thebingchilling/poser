@@ -997,6 +997,34 @@ export class Viewport {
     }
   }
 
+  // ---------- Dropping things into the view ----------
+
+  private rayAt(clientX: number, clientY: number): Raycaster {
+    const rect = this.canvas.getBoundingClientRect();
+    const ray = new Raycaster();
+    ray.setFromCamera(new Vector2(((clientX - rect.left) / rect.width) * 2 - 1, -((clientY - rect.top) / rect.height) * 2 + 1), this.camera);
+    return ray;
+  }
+
+  /** Where a screen point meets the floor (y = 0), or null if it's above the horizon. */
+  floorPointAt(clientX: number, clientY: number): [number, number, number] | null {
+    const ray = this.rayAt(clientX, clientY).ray;
+    if (Math.abs(ray.direction.y) < 1e-6) return null;
+    const t = -ray.origin.y / ray.direction.y;
+    if (t <= 0) return null;
+    const p = ray.origin.clone().addScaledVector(ray.direction, t);
+    return [p.x, 0, p.z];
+  }
+
+  /** The figure (not prop) under a screen point. */
+  figureAt(clientX: number, clientY: number): string | null {
+    const roots = [...this.figures.entries()].filter(([, f]) => f.object.poseSkeleton && f.object.root.visible).map(([id, f]) => ((f.object.root.userData.figureId = id), f.object.root));
+    const hit = this.rayAt(clientX, clientY).intersectObjects(roots, true)[0];
+    let o: Object3D | null = hit?.object ?? null;
+    while (o && !o.userData.figureId) o = o.parent;
+    return (o?.userData.figureId as string | undefined) ?? null;
+  }
+
   // ---------- Proportion grid (PLAN.md section 18: anatomy overlays) ----------
 
   private readonly guides = new Group();

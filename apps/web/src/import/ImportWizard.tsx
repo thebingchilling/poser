@@ -78,6 +78,7 @@ function ModelStep({ prepared, onDone, onSkip }: { prepared: PreparedImport; onD
           { value: 'figure', label: 'Figure', icon: 'person', disabled: !a.rig },
           { value: 'prop', label: 'Prop', icon: 'category' },
           { value: 'garment', label: 'Clothing', icon: 'layers', disabled: !a.skinned },
+          { value: 'hair', label: 'Hair', icon: 'face' },
         ]}
       />
       <p className="hint">
