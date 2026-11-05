@@ -105,6 +105,18 @@ export interface Environment {
   lighting?: string;
   /** Time-of-day sun settings (when lighting is 'sun'). */
   sun?: SunSettings;
+  /** Image-based lighting from an HDRI (PLAN.md section 18). */
+  hdri?: HdriSettings | null;
+}
+
+export interface HdriSettings {
+  /** `builtin:studio`, `builtin:sky`, or a Library environment asset id. */
+  source: string;
+  intensity: number;
+  /** Shown behind the scene too, not just lighting it. */
+  background: boolean;
+  /** Turn about the vertical, degrees. */
+  rotation: number;
 }
 
 export interface Scene {

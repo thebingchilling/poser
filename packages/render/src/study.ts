@@ -61,12 +61,14 @@ export class NotanPass {
       // Compare on a roughly perceptual scale (the pass is linear).
       const l = luminance(c).pow(1 / 2.2);
       const two = step(t, l);
-      // Three values: shadow below the split, light well above it, mid grey (0.21 linear ≈ 50% on screen) between.
-      const three = step(t, l).mul(0.21).add(step(t.add(0.25), l).mul(0.79));
+      // Three values: shadow below the split, light well above it, mid grey between.
+      const three = step(t, l).mul(0.5).add(step(t.add(0.25), l).mul(0.5));
       const v = levels.equal(2).select(two, three);
       return vec4(vec3(v), 1);
     })();
     this.pipeline = new RenderPipeline(renderer, output);
+    // The values are already what the screen should show: no tone mapping or colour conversion.
+    this.pipeline.outputColorTransform = false;
   }
 
   setLevels(levels: 2 | 3): void {

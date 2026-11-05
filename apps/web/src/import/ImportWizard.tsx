@@ -9,6 +9,7 @@ import { useLibrary } from '../state/library';
 import { useImport } from './importStore';
 import { useUi } from '../state/ui';
 import { PoseStep } from './PoseStep';
+import { EnvironmentStep } from './EnvironmentStep';
 import { MissingContent } from './MissingContent';
 
 const REQUIRED: [string, string][] = [
@@ -219,7 +220,7 @@ export function ImportWizard() {
     setMissing(null);
     setDazPose(false);
     if (!vfs || !item) return;
-    if (item.role.kind === 'pose') return;
+    if (item.role.kind === 'pose' || item.role.kind === 'image') return;
     if (item.role.kind !== 'model') {
       setError('This file type can’t be imported.');
       return;
@@ -259,8 +260,9 @@ export function ImportWizard() {
   return (
     <Dialog open onOpenChange={(o) => !o && close()} title={title} icon="download" large>
       {(item.role.kind === 'pose' || dazPose) && <PoseStep key={item.path} vfs={vfs} path={item.path} onDone={next} />}
+      {item.role.kind === 'image' && <EnvironmentStep key={item.path} vfs={vfs} path={item.path} onDone={next} />}
       {missing && <MissingContent error={missing} onRetry={() => setAttempt((n) => n + 1)} onSkip={next} />}
-      {item.role.kind !== 'pose' && !dazPose && !prepared && !error && !missing && (
+      {item.role.kind === 'model' && !dazPose && !prepared && !error && !missing && (
         <>
           <LinearProgress label="Reading file" />
           <p className="hint">Reading the file and looking at its skeleton…</p>

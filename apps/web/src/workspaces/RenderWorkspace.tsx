@@ -1,7 +1,9 @@
-import { activeScene, DEFAULT_SUN, LIGHTING_PRESETS, type LightingPresetId, type Light, type Project, type SunSettings } from '@poser/core';
+import { activeScene, DEFAULT_SUN, LIGHTING_PRESETS, type HdriSettings, type LightingPresetId, type Light, type Project, type SunSettings } from '@poser/core';
 import { STUDY_MODE_LABELS, type StudyMode } from '@poser/render';
 import { Button, FilterChip, IconButton, ListItem, ListSubheader, Menu, Slider, Switch, useSnackbar } from '@poser/ui';
 import { captureScreenshot } from '../actions';
+import { startImport } from '../import/startImport';
+import { useLibrary } from '../state/library';
 import { editProject, useActiveScene } from '../state/project';
 import { useUi } from '../state/ui';
 import { setView } from '../viewport/ViewportView';
@@ -57,9 +59,8 @@ export function RenderWorkspace() {
       </div>
       <p className="hint">{lighting === 'sun' ? 'Sun and sky from the time, season, and place.' : (LIGHTING_PRESETS[lighting as LightingPresetId]?.description ?? 'Custom lighting.')} Lights are placed around the selected figure.</p>
       {lighting === 'sun' && <SunControls sun={scene.environment.sun ?? DEFAULT_SUN} />}
-      {scene.lights.map((l) => (
-        <Slider key={l.id} label={l.name} value={l.intensity} min={0} max={l.type === 'ambient' || l.type === 'hemisphere' ? 3 : 6} step={0.05} onChange={(v) => setIntensity(l, v)} disabled={!l.visible} />
-      ))}
+      <LightList lights={scene.lights} setIntensity={setIntensity} />
+      <EnvironmentLight />
 
       <ListSubheader>Camera</ListSubheader>
       <div className="chip-row">
@@ -115,6 +116,95 @@ export function RenderWorkspace() {
       <Button variant="tonal" icon="photo_camera" onClick={() => captureScreenshot().then(() => snackbar('Screenshot saved'), (e: Error) => snackbar(e.message))}>
         Save screenshot
       </Button>
+    </>
+  );
+}
+
+/** Lights: pick one to move it with the gizmo in the view, or change its strength and colour. */
+function LightList({ lights, setIntensity }: { lights: Light[]; setIntensity: (l: Light, v: number) => void }) {
+  const selected = useUi((s) => s.selectedLightId);
+  const set = useUi((s) => s.set);
+  const edit = (light: Light, label: string, patch: Partial<Light>, key?: string) =>
+    editProject(
+      label,
+      (p) => {
+        const scene = activeScene(p as Project);
+        const l = scene.lights.find((x) => x.id === light.id);
+        if (!l) return;
+        Object.assign(l, patch);
+        scene.environment.lighting = 'custom';
+      },
+      key ? { coalesceKey: key } : undefined,
+    );
+  return (
+    <>
+      <p className="hint">Click a light (or its yellow handle in the view) to move it with the arrows.</p>
+      {lights.map((l) => {
+        const movable = l.type !== 'ambient' && l.type !== 'hemisphere';
+        const isSel = selected === l.id;
+        return (
+          <div key={l.id}>
+            <ListItem
+              icon={movable ? 'lightbulb' : 'wb_sunny'}
+              headline={l.name}
+              supporting={movable ? (l.castShadow ? 'Casts shadows' : 'Directional') : 'Fills the whole scene'}
+              selected={isSel}
+              onClick={() => set({ selectedLightId: isSel ? null : l.id })}
+            />
+            <Slider label={`${l.name} strength`} value={l.intensity} min={0} max={movable ? 6 : 3} step={0.05} onChange={(v) => setIntensity(l, v)} disabled={!l.visible} />
+            {isSel && (
+              <div className="button-wrap">
+                <label className="color-field">
+                  <input type="color" value={l.color} onChange={(e) => edit(l, 'Light colour', { color: e.target.value }, `light-color-${l.id}`)} />
+                  <span>Colour</span>
+                </label>
+                {movable && <Switch label="Shadows" checked={l.castShadow} onChange={(v) => edit(l, v ? 'Light shadows on' : 'Light shadows off', { castShadow: v })} />}
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </>
+  );
+}
+
+const BUILTIN_HDRIS: { id: string; label: string }[] = [
+  { id: 'builtin:studio', label: 'Studio' },
+  { id: 'builtin:sky', label: 'Open sky' },
+];
+
+/** Image-based lighting from an HDRI (PLAN.md section 18): bundled CC0 ones or the user's own from the Library. */
+function EnvironmentLight() {
+  const scene = useActiveScene();
+  const assets = useLibrary((s) => s.assets);
+  const library = assets.filter((a) => a.kind === 'environment');
+  const hdri = scene.environment.hdri ?? null;
+  const update = (next: HdriSettings | null, label: string, key?: string) =>
+    editProject(
+      label,
+      (p) => {
+        activeScene(p as Project).environment.hdri = next;
+      },
+      key ? { coalesceKey: key } : undefined,
+    );
+  const choose = (source: string | null) => update(source ? { source, intensity: hdri?.intensity ?? 0.6, background: hdri?.background ?? false, rotation: hdri?.rotation ?? 0 } : null, source ? 'Environment light' : 'Environment light off');
+  return (
+    <>
+      <p className="hint">Environment light (HDRI)</p>
+      <div className="chip-row">
+        <FilterChip label="None" selected={!hdri} onToggle={() => choose(null)} />
+        {[...BUILTIN_HDRIS, ...library.map((a) => ({ id: a.id, label: a.name }))].map((h) => (
+          <FilterChip key={h.id} label={h.label} selected={hdri?.source === h.id} onToggle={() => choose(h.id)} />
+        ))}
+      </div>
+      {hdri && (
+        <>
+          <Slider label="Environment strength" value={hdri.intensity} min={0} max={3} step={0.05} onChange={(v) => update({ ...hdri, intensity: v }, 'Environment strength', 'hdri-intensity')} />
+          <Slider label="Turn" value={hdri.rotation} min={0} max={359} step={1} unit="°" onChange={(v) => update({ ...hdri, rotation: v }, 'Turn environment', 'hdri-rotation')} />
+          <Switch label="Show as background" checked={hdri.background} onChange={(v) => update({ ...hdri, background: v }, v ? 'Show environment' : 'Hide environment')} />
+        </>
+      )}
+      <Button variant="text" icon="upload" onClick={() => void startImport(false, undefined, '.hdr,.exr')}>Load your own HDRI</Button>
     </>
   );
 }

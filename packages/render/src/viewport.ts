@@ -1,4 +1,4 @@
-import type { AssetRigInfo, CanonicalPose, Figure, Light, Prop, Scene as SceneModel } from '@poser/core';
+import type { AssetRigInfo, CanonicalPose, Figure, HdriSettings, Light, Prop, Scene as SceneModel } from '@poser/core';
 import type { QualitySettings } from '@poser/platform';
 import {
   AmbientLight,
@@ -16,6 +16,15 @@ import {
   Quaternion,
   Scene,
   Spherical,
+  NeutralToneMapping,
+  Line,
+  LineBasicMaterial,
+  BufferGeometry,
+  SphereGeometry,
+  MeshBasicMaterial,
+  Raycaster,
+  Vector2,
+  EquirectangularReflectionMapping,
   SRGBColorSpace,
   ShadowNodeMaterial,
   TextureLoader,
@@ -26,6 +35,8 @@ import {
 } from 'three/webgpu';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { TransformControls } from 'three/addons/controls/TransformControls.js';
+import { HDRLoader } from 'three/addons/loaders/HDRLoader.js';
+import { EXRLoader } from 'three/addons/loaders/EXRLoader.js';
 import { ImportedFigure } from './figure/imported';
 import { baseFigureRig, baseFigureUrl, isBaseFigure } from './figure/baseFigures';
 import { BUILTIN_FIGURES, FigureObject, type AnatomyLayer, type BuiltinFigureId } from './figure/mannequin';
@@ -185,6 +196,15 @@ export class Viewport {
     this.propGizmo.addEventListener('change', () => this.invalidate());
     this.scene.add(this.propGizmo.getHelper());
 
+    this.lightHandles.visible = false;
+    this.scene.add(this.lightHandles);
+    let down: { x: number; y: number } | null = null;
+    canvas.addEventListener('pointerdown', (e) => (down = { x: e.clientX, y: e.clientY }));
+    canvas.addEventListener('pointerup', (e) => {
+      if (down && Math.hypot(e.clientX - down.x, e.clientY - down.y) < 5) this.pickLight(e);
+      down = null;
+    });
+
     this.resizeObserver = new ResizeObserver(() => this.resize());
     this.resizeObserver.observe(canvas);
     this.applyQuality();
@@ -205,6 +225,8 @@ export class Viewport {
     renderer.onDeviceLost = (info) => options.onDeviceLost?.({ api: info.api, message: info.message, reason: info.reason });
     await renderer.init();
     renderer.shadowMap.enabled = true;
+    // HDR lighting (HDRIs, strong lights) needs tone mapping; PBR Neutral keeps colours faithful.
+    renderer.toneMapping = NeutralToneMapping;
     return new Viewport(renderer, options.canvas, options);
   }
 
@@ -229,7 +251,77 @@ export class Viewport {
     this.floor.material = photo ? this.shadowCatcher : this.floorMaterial;
     this.grid.visible = this.matchGrid || (photo ? false : (stage.grid ?? model.environment.grid));
     this.backgroundColor.copy(stage.background ?? new Color(model.environment.background));
-    this.scene.background = photo ? this.refTexture : this.backgroundColor;
+    // Background: a study mode's own, then the reference photo, then the HDRI if shown, then the colour.
+    const hdri = model.environment.hdri;
+    const hdriBackground = !stage.background && hdri?.background && this.hdriTexture;
+    this.scene.background = photo ? this.refTexture : hdriBackground ? this.hdriTexture : this.backgroundColor;
+    this.applyHdri(hdri ?? null);
+  }
+
+  // ---------- HDRI environment lighting (PLAN.md section 18) ----------
+
+  /** Supplies HDRI files saved in the Library (environment assets). */
+  hdriLoader: ((assetId: string) => Promise<{ blob: Blob; name: string } | null>) | null = null;
+  private hdriTexture: Texture | null = null;
+  private hdriSource: string | null = null;
+
+  private applyHdri(settings: HdriSettings | null): void {
+    if (!settings) {
+      if (this.hdriSource !== null) {
+        this.hdriSource = null;
+        this.hdriTexture?.dispose();
+        this.hdriTexture = null;
+      }
+      this.scene.environment = null;
+      return;
+    }
+    const s = this.scene as Scene & { environmentIntensity: number; environmentRotation: { y: number }; backgroundRotation: { y: number } };
+    s.environmentIntensity = settings.intensity;
+    s.environmentRotation.y = (settings.rotation * Math.PI) / 180;
+    s.backgroundRotation.y = (settings.rotation * Math.PI) / 180;
+    if (settings.source === this.hdriSource) {
+      this.scene.environment = this.hdriTexture;
+      return;
+    }
+    this.hdriSource = settings.source;
+    const source = settings.source;
+    void this.loadHdri(source)
+      .then((tex) => {
+        if (this.hdriSource !== source || this.disposed) {
+          tex?.dispose();
+          return;
+        }
+        this.hdriTexture?.dispose();
+        this.hdriTexture = tex;
+        if (this.lastModel) this.applyStage(this.lastModel);
+        this.invalidate();
+      })
+      .catch(() => {
+        // Lighting falls back to the lights alone.
+        if (this.hdriSource === source) this.hdriSource = null;
+      });
+  }
+
+  private async loadHdri(source: string): Promise<Texture | null> {
+    let blob: Blob | null = null;
+    let name = '';
+    if (source.startsWith('builtin:')) {
+      name = `${source.slice(8)}.hdr`;
+      const res = await fetch(`${import.meta.env?.BASE_URL ?? '/'}builtin/hdri/${name}`);
+      if (res.ok) blob = await res.blob();
+    } else if (this.hdriLoader) {
+      const found = await this.hdriLoader(source);
+      if (found) ({ blob, name } = found);
+    }
+    if (!blob) return null;
+    const url = URL.createObjectURL(blob);
+    try {
+      const tex = /\.exr$/i.test(name) ? await new EXRLoader().loadAsync(url) : await new HDRLoader().loadAsync(url);
+      tex.mapping = EquirectangularReflectionMapping;
+      return tex;
+    } finally {
+      URL.revokeObjectURL(url);
+    }
   }
 
   // ---------- Reference photo and camera match (PLAN.md section 17.7) ----------
@@ -519,6 +611,94 @@ export class Viewport {
         this.lights.delete(id);
       }
     }
+    this.syncLightHandles(lights);
+  }
+
+  // ---------- Light handles (PLAN.md section 18: movable lights with gizmos) ----------
+
+  private readonly lightHandles = new Group();
+  private readonly lightHandleMeshes = new Map<string, { handle: Mesh; line: Line }>();
+  private lightGizmo: TransformControls | null = null;
+  private selectedLight: string | null = null;
+  private lightDragId = 0;
+  /** Called while a light is dragged (one coalesce key per drag). */
+  onLightMove: ((lightId: string, position: [number, number, number], coalesceKey: string) => void) | null = null;
+  /** Called when a light handle is clicked. */
+  onLightSelect: ((lightId: string) => void) | null = null;
+
+  private syncLightHandles(lights: Light[]): void {
+    const seen = new Set<string>();
+    for (const l of lights) {
+      if (l.type === 'ambient' || l.type === 'hemisphere') continue;
+      seen.add(l.id);
+      let h = this.lightHandleMeshes.get(l.id);
+      if (!h) {
+        const handle = new Mesh(new SphereGeometry(0.08, 16, 12), new MeshBasicMaterial({ color: 0xffe08a, depthTest: false, transparent: true, opacity: 0.9 }));
+        handle.renderOrder = 999;
+        handle.userData.lightId = l.id;
+        const line = new Line(new BufferGeometry(), new LineBasicMaterial({ color: 0xffe08a, transparent: true, opacity: 0.5, depthTest: false }));
+        this.lightHandles.add(handle, line);
+        h = { handle, line };
+        this.lightHandleMeshes.set(l.id, h);
+      }
+      h.handle.position.set(...l.transform.position);
+      const target = l.target ?? [0, 0.9, 0];
+      h.line.geometry.setFromPoints([new Vector3(...l.transform.position), new Vector3(...target)]);
+      (h.handle.material as MeshBasicMaterial).color.set(l.id === this.selectedLight ? 0xffffff : l.visible ? 0xffe08a : 0x777777);
+    }
+    for (const [id, h] of [...this.lightHandleMeshes]) {
+      if (seen.has(id)) continue;
+      this.lightHandles.remove(h.handle, h.line);
+      h.handle.geometry.dispose();
+      h.line.geometry.dispose();
+      this.lightHandleMeshes.delete(id);
+    }
+    this.attachLightGizmo();
+  }
+
+  /** Shows light handles (in the Render workspace) and a move gizmo on the selected light. */
+  setLightHandles(visible: boolean, selectedId: string | null): void {
+    this.lightHandles.visible = visible;
+    this.selectedLight = visible ? selectedId : null;
+    for (const [id, h] of this.lightHandleMeshes) (h.handle.material as MeshBasicMaterial).color.set(id === this.selectedLight ? 0xffffff : 0xffe08a);
+    this.attachLightGizmo();
+    this.invalidate();
+  }
+
+  private attachLightGizmo(): void {
+    if (!this.lightGizmo) {
+      const g = new TransformControls(this.camera, this.canvas);
+      g.setSize(0.8);
+      g.addEventListener('dragging-changed', (e) => {
+        const dragging = !!(e as unknown as { value: boolean }).value;
+        this.controls.enabled = !dragging;
+        if (dragging) this.lightDragId++;
+      });
+      g.addEventListener('objectChange', () => {
+        const o = g.object;
+        if (!o || !this.selectedLight) return;
+        this.onLightMove?.(this.selectedLight, o.position.toArray(), `light-drag-${this.lightDragId}`);
+      });
+      g.addEventListener('change', () => this.invalidate());
+      this.scene.add(g.getHelper());
+      this.lightGizmo = g;
+    }
+    const h = this.selectedLight ? this.lightHandleMeshes.get(this.selectedLight) : undefined;
+    if (h && this.lightHandles.visible) {
+      if (this.lightGizmo.object !== h.handle) this.lightGizmo.attach(h.handle);
+    } else this.lightGizmo.detach();
+  }
+
+  private pickLight(e: PointerEvent): boolean {
+    if (!this.lightHandles.visible) return false;
+    const rect = this.canvas.getBoundingClientRect();
+    const ndc = new Vector2(((e.clientX - rect.left) / rect.width) * 2 - 1, -((e.clientY - rect.top) / rect.height) * 2 + 1);
+    const ray = new Raycaster();
+    ray.setFromCamera(ndc, this.camera);
+    const hit = ray.intersectObjects([...this.lightHandleMeshes.values()].map((h) => h.handle), false)[0];
+    if (!hit) return false;
+    this.onLightSelect?.(hit.object.userData.lightId as string);
+    return true;
   }
 
   /** The posing skeleton of a figure (null for props or until loaded). */
@@ -642,6 +822,7 @@ export class Viewport {
     this.controls.object = this.camera;
     this.poseTools.setCamera(this.camera);
     this.propGizmo.camera = this.camera;
+    if (this.lightGizmo) this.lightGizmo.camera = this.camera;
     this.setViewHeight(height);
     this.onProjectionChange();
     this.invalidate();

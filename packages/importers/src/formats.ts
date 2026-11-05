@@ -69,7 +69,8 @@ export function classifyFile(path: string): FileRole {
  * wizard runs once per item). Textures and material files ride along.
  */
 export function importableItems(paths: string[]): { path: string; role: FileRole }[] {
-  let items = paths.map((path) => ({ path, role: classifyFile(path) })).filter((x) => x.role.kind === 'model' || x.role.kind === 'pose');
+  // HDR images import as environments (image-based lighting); ordinary images are textures that ride along.
+  let items = paths.map((path) => ({ path, role: classifyFile(path) })).filter((x) => x.role.kind === 'model' || x.role.kind === 'pose' || (x.role.kind === 'image' && x.role.format === 'hdr'));
   // Daz: scenes (.duf) are what get imported; the .dsf assets they use come along as dependencies.
   if (items.some((x) => x.role.kind === 'model' && x.role.format === 'duf')) items = items.filter((x) => !(x.role.kind === 'model' && x.role.format === 'dsf'));
   // A .gltf and its .bin, or an .obj and .mtl, are one item: only the main file is listed.

@@ -33,6 +33,7 @@ const LIBRARY_FILTERS: { kind: AssetRecord['kind'] | 'all'; label: string; icon:
   { kind: 'garment', label: 'Clothing', icon: 'layers' },
   { kind: 'prop', label: 'Props', icon: 'category' },
   { kind: 'pose', label: 'Poses', icon: 'accessibility_new' },
+  { kind: 'environment', label: 'Environments', icon: 'wb_sunny' },
 ];
 
 function AssetCard({ asset }: { asset: AssetRecord }) {
@@ -43,11 +44,15 @@ function AssetCard({ asset }: { asset: AssetRecord }) {
       {asset.thumbnail && <img className="asset-card__thumb" src={asset.thumbnail} alt="" draggable={false} />}
       <span className="asset-card__title">{asset.name}</span>
       <span className="asset-card__meta">
-        {asset.kind === 'figure' ? `Figure · ${asset.size[1].toFixed(2)} m` : asset.kind === 'garment' ? 'Clothing' : asset.kind === 'pose' ? 'Pose' : 'Prop'}
+        {asset.kind === 'figure' ? `Figure · ${asset.size[1].toFixed(2)} m` : asset.kind === 'garment' ? 'Clothing' : asset.kind === 'pose' ? 'Pose' : asset.kind === 'environment' ? 'Environment light' : 'Prop'}
         {asset.license ? ` · ${asset.license}` : ''}
       </span>
       <div className="asset-card__actions">
-        {asset.kind === 'pose' ? (
+        {asset.kind === 'environment' ? (
+          <Button variant="tonal" icon="lightbulb" onClick={() => useAsEnvironment(asset)}>
+            Use
+          </Button>
+        ) : asset.kind === 'pose' ? (
           <Button variant="tonal" icon="accessibility_new" onClick={() => applyPoseSelected(asset.pose ?? {}, `Pose: ${asset.name}`) || snackbar('Select a figure first')}>
             Apply
           </Button>
@@ -64,6 +69,13 @@ function AssetCard({ asset }: { asset: AssetRecord }) {
       </div>
     </Card>
   );
+}
+
+function useAsEnvironment(asset: AssetRecord): void {
+  editProject(`Environment light: ${asset.name}`, (p) => {
+    const env = activeScene(p as Project).environment;
+    env.hdri = { source: asset.id, intensity: env.hdri?.intensity ?? 0.6, background: env.hdri?.background ?? true, rotation: env.hdri?.rotation ?? 0 };
+  });
 }
 
 function LibraryWorkspace() {

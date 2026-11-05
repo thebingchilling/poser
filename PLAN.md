@@ -982,7 +982,7 @@ Each phase ends with something usable. Week estimates assume one full-time devel
 Items from sections 3, 6, 18 that the checklist above didn't spell out (turnaround sheets and gesture drawing stay in Phase 9).
 - [x] Daz pose presets (.duf) import as poses; Daz corrective morphs (JCMs) carried into the figure and driven by the pose (synthetic tests; to check on real Genesis content)
 - [x] Posing (section 6): gizmo in local, parent, or world space; IK effectors for hips, chest, and head plus a gaze target, with FABRIK for the spine and neck and pins respected; joint-limit presets Realistic, Flexible, Unlimited; handles turn orange near a limit and red past it. The hips handle moves the whole figure with pinned hands and feet held in place; a final full-body balance pass comes with the balance work in Phase 2
-- [ ] Lighting (section 18): movable lights with gizmos; HDRI environment lighting from the user's files and a few bundled CC0 ones
+- [x] Lighting (section 18): movable lights with gizmos; HDRI environment lighting from the user's files and a few bundled CC0 ones (Poly Haven studio and open sky, 1K); PBR Neutral tone mapping for HDR lighting
 - [ ] Capture (section 18): PNG at any resolution with a transparent-background option; proportion grid in head units
 - [ ] Library and Scene (section 3.2): filter chips for Hair, Morphs, and Environments, tags, drag an asset into the viewport to add it; scene tree with lock toggles and cameras
 - [ ] First run (section 3.3): a short tour

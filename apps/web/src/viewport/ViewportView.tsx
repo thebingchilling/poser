@@ -1,4 +1,4 @@
-import { activeScene, getAsset, readAssetModel, type Project } from '@poser/core';
+import { activeScene, getAsset, readAssetModel, type Project, readAssetFile } from '@poser/core';
 import { AdaptiveQualityController, QUALITY_SETTINGS, logError, webgpuSelfTest } from '@poser/platform';
 import { Viewport, type ViewName } from '@poser/render';
 import { useSnackbar } from '@poser/ui';
@@ -95,6 +95,26 @@ export function ViewportView() {
           const [record, model] = await Promise.all([getAsset(assetId), readAssetModel(assetId)]);
           return record && model ? { model, rig: record.rig } : null;
         };
+        created.hdriLoader = async (assetId) => {
+          const record = await getAsset(assetId);
+          const name = record?.files[0];
+          const blob = name ? await readAssetFile(assetId, name) : null;
+          return blob && name ? { blob, name } : null;
+        };
+        created.onLightSelect = (lightId) => useUi.getState().set({ selectedLightId: lightId });
+        created.onLightMove = (lightId, position, coalesceKey) => {
+          editProject(
+            'Move light',
+            (p) => {
+              const scene = activeScene(p as Project);
+              const l = scene.lights.find((x) => x.id === lightId);
+              if (!l) return;
+              l.transform.position = position;
+              scene.environment.lighting = 'custom';
+            },
+            { coalesceKey },
+          );
+        };
         created.poseTools.onSelect = (figureId, joint) => {
           const ui = useUi.getState();
           const scene = activeScene(projectStore.getState().project);
@@ -180,6 +200,13 @@ export function ViewportView() {
   useEffect(() => {
     viewport?.selectProp(selectedPropId, propGizmo);
   }, [viewport, selectedPropId, propGizmo]);
+
+  const workspace = useUi((s) => s.workspace);
+  const workspaceOpen = useUi((s) => s.workspaceOpen);
+  const selectedLightId = useUi((s) => s.selectedLightId);
+  useEffect(() => {
+    viewport?.setLightHandles(workspace === 'render' && workspaceOpen, selectedLightId);
+  }, [viewport, workspace, workspaceOpen, selectedLightId]);
 
   useEffect(() => {
     viewport?.setStudyMode(studyMode, notanThreshold);

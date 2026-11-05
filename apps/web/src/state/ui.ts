@@ -16,6 +16,8 @@ interface UiState {
   /** Selected canonical joint on the selected figure. */
   selectedJoint: string | null;
   selectedPropId: string | null;
+  /** Light selected in the Render workspace (shows its move gizmo). */
+  selectedLightId: string | null;
   propGizmo: 'translate' | 'rotate';
   /** FK rotates joints; IK drags hands and feet (PLAN.md section 6). */
   poseMode: 'fk' | 'ik';
@@ -66,6 +68,7 @@ export const useUi = create<UiState>()((set, get) => ({
   selectedFigureId: null,
   selectedJoint: null,
   selectedPropId: null,
+  selectedLightId: null,
   propGizmo: 'translate',
   poseMode: 'fk',
   limitPreset: 'realistic',
