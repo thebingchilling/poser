@@ -1,5 +1,5 @@
 import type { CanonicalPose, Vec3 } from '@poser/core';
-import { LIMBS, applyLimits, solveTwoBone, type Effector } from '@poser/posing';
+import { LIMBS, applyLimits, limitStatus, lookAt, solveChain, solveTwoBone, type Effector } from '@poser/posing';
 import type { Q, V3 } from '@poser/rig';
 import {
   Camera,
@@ -29,6 +29,14 @@ for (const s of ['left', 'right']) {
 }
 export const EFFECTORS = Object.keys(LIMBS) as Effector[];
 
+/** Handles that move with IK in "move" mode (PLAN.md section 6): hands and feet, hips, chest, head, and the gaze target. */
+export const IK_HANDLES = [...EFFECTORS, 'hips', 'upperChest', 'head', 'gaze'];
+
+/** Spine and neck chains for the chest and head handles. */
+const CHAINS: Record<string, string[]> = { upperChest: ['spine', 'chest'], head: ['upperChest', 'neck'] };
+
+export type GizmoSpace = 'local' | 'parent' | 'world';
+
 export type PoseMode = 'fk' | 'ik';
 
 export interface PoseEdit {
@@ -38,14 +46,18 @@ export interface PoseEdit {
   label: string;
   /** Edits during one drag share a key so they undo as one step. */
   coalesceKey: string;
+  /** New figure position (scene space) when the hips handle moves the whole figure. */
+  position?: Vec3;
 }
 
 export interface PoseToolsState {
   figureId: string | null;
   joint: string | null;
   mode: PoseMode;
-  limits: boolean;
+  /** How far joint limits are widened (1 = realistic; Infinity = unlimited). */
+  limitScale: number;
   pins: Record<string, Vec3>;
+  space: GizmoSpace;
 }
 
 const toVec = (v: V3) => new Vector3(v[0], v[1], v[2]);
@@ -61,7 +73,9 @@ export class PoseTools {
   private readonly proxy = new Object3D();
   private readonly handles = new Map<string, Mesh>();
   private readonly raycaster = new Raycaster();
-  private state: PoseToolsState = { figureId: null, joint: null, mode: 'fk', limits: true, pins: {} };
+  private state: PoseToolsState = { figureId: null, joint: null, mode: 'fk', limitScale: 1, pins: {}, space: 'local' };
+  /** Where the drag started: the gizmo's orientation, the joint's world rotation (figure space), the figure's position. */
+  private dragStart: { proxy: Quaternion; joint: Q; rootPos: Vector3; hips: Vector3 } | null = null;
   private figure: PosableFigure | null = null;
   private pose: CanonicalPose = {};
   private dragId = 0;
@@ -70,7 +84,10 @@ export class PoseTools {
     joint: new MeshBasicMaterial({ color: 0x9be7ff, depthTest: false, transparent: true, opacity: 0.9 }),
     finger: new MeshBasicMaterial({ color: 0xc8f0ff, depthTest: false, transparent: true, opacity: 0.8 }),
     effector: new MeshBasicMaterial({ color: 0xffd36e, depthTest: false, transparent: true, opacity: 0.95 }),
-    pinned: new MeshBasicMaterial({ color: 0xff6b6b, depthTest: false, transparent: true, opacity: 0.95 }),
+    pinned: new MeshBasicMaterial({ color: 0xc58cff, depthTest: false, transparent: true, opacity: 0.95 }),
+    near: new MeshBasicMaterial({ color: 0xffa040, depthTest: false, transparent: true, opacity: 0.95 }),
+    past: new MeshBasicMaterial({ color: 0xff4a4a, depthTest: false, transparent: true, opacity: 0.95 }),
+    gaze: new MeshBasicMaterial({ color: 0x8cffb0, depthTest: false, transparent: true, opacity: 0.9 }),
     selected: new MeshBasicMaterial({ color: 0xffffff, depthTest: false }),
   };
 
@@ -102,7 +119,10 @@ export class PoseTools {
     this.controls.addEventListener('dragging-changed', (e) => {
       this.dragging = !!(e as unknown as { value: boolean }).value;
       this.orbit.enabled = !this.dragging;
-      if (this.dragging) this.dragId++;
+      if (this.dragging) {
+        this.dragId++;
+        this.recordDragStart();
+      }
     });
     this.controls.addEventListener('objectChange', () => this.onGizmoChange());
     this.controls.addEventListener('change', () => this.invalidate());
@@ -141,6 +161,7 @@ export class PoseTools {
     const positions = fig.poseSkeleton.positions(this.pose);
     const m = this.worldMatrix();
     const scale = fig.height / 1.68;
+    const status = limitStatus(fig.poseSkeleton, this.pose);
     for (const joint of [...MAIN_JOINTS, ...FINGER_JOINTS]) {
       const p = positions.get(joint);
       if (!p) continue;
@@ -154,28 +175,76 @@ export class PoseTools {
       }
       const isEffector = (EFFECTORS as string[]).includes(joint);
       const isFinger = FINGER_JOINTS.includes(joint);
+      const limit = status.get(joint);
       h.material =
-        joint === this.state.joint ? this.materials.selected : this.state.pins[joint] ? this.materials.pinned : isEffector ? this.materials.effector : isFinger ? this.materials.finger : this.materials.joint;
+        joint === this.state.joint
+          ? this.materials.selected
+          : this.state.pins[joint]
+            ? this.materials.pinned
+            : limit
+              ? this.materials[limit]
+              : isEffector
+                ? this.materials.effector
+                : isFinger
+                  ? this.materials.finger
+                  : this.materials.joint;
       h.scale.setScalar((isEffector ? 0.02 : isFinger ? 0.006 : 0.013) * scale);
       h.position.copy(toVec(p).applyMatrix4(m));
       h.visible = true;
     }
+    // The gaze target, in move mode: in front of the eyes, where they look.
+    if (this.state.mode === 'ik') {
+      let g = this.handles.get('gaze');
+      if (!g) {
+        g = new Mesh(new SphereGeometry(1, 10, 8), this.materials.gaze);
+        g.renderOrder = 1000;
+        g.userData.joint = 'gaze';
+        this.handles.set('gaze', g);
+        this.group.add(g);
+      }
+      const gp = this.gazePoint();
+      if (gp) {
+        g.material = this.state.joint === 'gaze' ? this.materials.selected : this.materials.gaze;
+        g.scale.setScalar(0.018 * scale);
+        g.position.copy(toVec(gp).applyMatrix4(m));
+        g.visible = true;
+      }
+    }
+  }
+
+  /** Half a metre in front of the eyes along the head's look direction (figure space). */
+  private gazePoint(): V3 | null {
+    const skel = this.figure?.poseSkeleton;
+    if (!skel) return null;
+    const P = skel.positions(this.pose);
+    const l = P.get('leftEye');
+    const r = P.get('rightEye');
+    const head = P.get('head');
+    if (!head) return null;
+    const mid: V3 = l && r ? [(l[0] + r[0]) / 2, (l[1] + r[1]) / 2, (l[2] + r[2]) / 2] : [head[0], head[1] + 0.1, head[2]];
+    const q = skel.worldRotations(this.pose).get(l ? 'leftEye' : 'head')!;
+    const f = new Vector3(0, 0, 1).applyQuaternion(new Quaternion(q[0], q[1], q[2], q[3]));
+    return [mid[0] + f.x * 0.5, mid[1] + f.y * 0.5, mid[2] + f.z * 0.5];
   }
 
   private placeGizmo(): void {
     const fig = this.figure;
     const joint = this.state.joint;
     const helper = this.controls.getHelper();
-    if (!fig?.poseSkeleton || !joint || !fig.poseSkeleton.rest[joint]) {
+    const isGaze = joint === 'gaze';
+    if (!fig?.poseSkeleton || !joint || (!isGaze && !fig.poseSkeleton.rest[joint]) || (isGaze && this.state.mode !== 'ik')) {
       this.controls.enabled = false;
       helper.visible = false;
       return;
     }
-    const ik = this.state.mode === 'ik' && (EFFECTORS as string[]).includes(joint);
+    const ik = this.state.mode === 'ik' && IK_HANDLES.includes(joint);
     this.controls.setMode(ik ? 'translate' : 'rotate');
-    this.controls.setSpace(ik ? 'world' : 'local');
-    const pos = fig.poseSkeleton.positions(this.pose).get(joint)!;
-    const rot = fig.poseSkeleton.worldRotations(this.pose).get(joint)!;
+    this.controls.setSpace(ik || this.state.space === 'world' ? 'world' : 'local');
+    const skel = fig.poseSkeleton;
+    const pos = isGaze ? this.gazePoint()! : skel.positions(this.pose).get(joint)!;
+    // Local space turns about the joint's own axes; parent space about its parent's.
+    const parent = this.state.space === 'parent' ? skel.parentOf(joint) : null;
+    const rot = isGaze ? ([0, 0, 0, 1] as Q) : skel.worldRotations(this.pose).get(parent ?? joint)!;
     const rootQ = new Quaternion();
     fig.root.getWorldQuaternion(rootQ);
     this.proxy.position.copy(toVec(pos).applyMatrix4(this.worldMatrix()));
@@ -185,38 +254,71 @@ export class PoseTools {
     helper.visible = true;
   }
 
+  private recordDragStart(): void {
+    const fig = this.figure;
+    const joint = this.state.joint;
+    if (!fig?.poseSkeleton || !joint) return;
+    const W = joint === 'gaze' ? ([0, 0, 0, 1] as Q) : fig.poseSkeleton.worldRotations(this.pose).get(joint)!;
+    const hips = fig.poseSkeleton.positions(this.pose).get('hips')!;
+    this.dragStart = { proxy: this.proxy.quaternion.clone(), joint: W, rootPos: fig.root.position.clone(), hips: toVec(hips).applyMatrix4(this.worldMatrix()) };
+  }
+
   private onGizmoChange(): void {
     const fig = this.figure;
     const id = this.state.figureId;
     const joint = this.state.joint;
-    if (!fig?.poseSkeleton || !id || !joint || !this.dragging) return;
+    const start = this.dragStart;
+    if (!fig?.poseSkeleton || !id || !joint || !this.dragging || !start) return;
     const skel = fig.poseSkeleton;
     const inv = new Matrix4().copy(this.worldMatrix()).invert();
-    let pose: CanonicalPose;
+    let pose: CanonicalPose = this.pose;
     let label: string;
+    let position: Vec3 | undefined;
     const pins = { ...this.state.pins };
+    const rootQ = new Quaternion();
+    fig.root.getWorldQuaternion(rootQ);
     if (this.controls.mode === 'translate') {
       const target = this.proxy.position.clone().applyMatrix4(inv);
-      pose = solveTwoBone(skel, this.pose, joint as Effector, [target.x, target.y, target.z]).pose;
-      if (pins[joint]) pins[joint] = [target.x, target.y, target.z];
-      label = 'Move ' + jointLabel(joint);
+      const t: V3 = [target.x, target.y, target.z];
+      if (joint === 'hips') {
+        // The hips carry the whole figure; pinned hands and feet stay where they are in the scene.
+        const moveWorld = this.proxy.position.clone().sub(start.hips);
+        const newRoot = start.rootPos.clone().add(moveWorld);
+        const moveFigure = moveWorld.clone().applyQuaternion(rootQ.clone().invert()).divide(fig.root.scale);
+        const before = new Vector3().copy(fig.root.position).sub(start.rootPos).applyQuaternion(rootQ.clone().invert()).divide(fig.root.scale);
+        for (const k of Object.keys(pins)) {
+          const pin = pins[k]!;
+          pins[k] = [pin[0] - (moveFigure.x - before.x), pin[1] - (moveFigure.y - before.y), pin[2] - (moveFigure.z - before.z)];
+        }
+        fig.root.position.copy(newRoot);
+        fig.root.updateMatrixWorld(true);
+        position = [newRoot.x, newRoot.y, newRoot.z];
+      } else if (joint === 'gaze') pose = lookAt(skel, this.pose, t);
+      else if (CHAINS[joint]) pose = solveChain(skel, this.pose, CHAINS[joint]!, joint, t);
+      else {
+        pose = solveTwoBone(skel, this.pose, joint as Effector, t).pose;
+        if (pins[joint]) pins[joint] = t;
+      }
+      label = joint === 'gaze' ? 'Move gaze' : 'Move ' + jointLabel(joint);
     } else {
-      const rootQ = new Quaternion();
-      fig.root.getWorldQuaternion(rootQ);
-      const w = rootQ.invert().multiply(this.proxy.quaternion);
-      const world: Q = [w.x, w.y, w.z, w.w];
-      pose = { ...this.pose, [joint]: skel.localFor(this.pose, joint, world) };
+      // The turn since the drag started, applied to the joint's rotation then (works in any gizmo space).
+      const deltaWorld = this.proxy.quaternion.clone().multiply(start.proxy.clone().invert());
+      const deltaFigure = rootQ.clone().invert().multiply(deltaWorld).multiply(rootQ);
+      const j0 = new Quaternion(start.joint[0], start.joint[1], start.joint[2], start.joint[3]);
+      const w = deltaFigure.multiply(j0);
+      pose = { ...this.pose, [joint]: skel.localFor(this.pose, joint, [w.x, w.y, w.z, w.w]) };
       label = 'Rotate ' + jointLabel(joint);
     }
-    if (this.state.limits) pose = applyLimits(skel, pose).pose;
+    if (Number.isFinite(this.state.limitScale)) pose = applyLimits(skel, pose, this.state.limitScale).pose;
     // Pinned hands and feet stay where they were held.
     for (const [eff, target] of Object.entries(pins)) {
       if (eff === joint && this.controls.mode === 'translate') continue;
       pose = solveTwoBone(skel, pose, eff as Effector, target as V3).pose;
     }
     this.pose = pose;
+    this.state = { ...this.state, pins };
     this.updateHandles();
-    this.onEdit?.({ figureId: id, pose, pins, label, coalesceKey: `pose-drag-${this.dragId}` });
+    this.onEdit?.({ figureId: id, pose, pins, label, coalesceKey: `pose-drag-${this.dragId}`, ...(position ? { position } : {}) });
   }
 
   private attachPointer(): void {
@@ -286,5 +388,7 @@ export class PoseTools {
 
 /** "leftUpperArm" → "left upper arm". */
 export function jointLabel(joint: string): string {
+  if (joint === 'gaze') return 'gaze';
+  if (joint === 'upperChest') return 'chest';
   return joint.replace(/([A-Z])/g, ' $1').toLowerCase();
 }

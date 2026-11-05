@@ -53,6 +53,7 @@ const DEG = 180 / Math.PI;
 function PoseTab({ figure }: { figure: Figure }) {
   const joint = useUi((s) => s.selectedJoint);
   if (!joint) return <p className="hint">Select a joint (click a handle on the figure) to fine-tune it.</p>;
+  if (joint === 'gaze') return <p className="hint">Drag the gaze target to aim the eyes; the head turns part of the way.</p>;
   const q = figure.pose[joint] ?? [0, 0, 0, 1];
   const e = new Euler().setFromQuaternion(new Quaternion(q[0], q[1], q[2], q[3]), 'XYZ');
   const set = (axis: 'x' | 'y' | 'z', deg: number) => {

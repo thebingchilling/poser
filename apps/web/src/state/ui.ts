@@ -1,6 +1,7 @@
 import type { QualityLevel } from '@poser/core';
 import { stepQuality, type GpuInfo } from '@poser/platform';
 import type { AnatomyLayer, RendererBackend, StudyMode } from '@poser/render';
+import { LIMIT_SCALE, type LimitPreset } from '@poser/posing';
 import { create } from 'zustand';
 import { useSettings } from './settings';
 
@@ -18,7 +19,10 @@ interface UiState {
   propGizmo: 'translate' | 'rotate';
   /** FK rotates joints; IK drags hands and feet (PLAN.md section 6). */
   poseMode: 'fk' | 'ik';
-  jointLimits: boolean;
+  /** Joint-limit preset (PLAN.md section 6). */
+  limitPreset: LimitPreset;
+  /** Rotation gizmo space. */
+  gizmoSpace: 'local' | 'parent' | 'world';
   /** Pose workspace tab. */
   poseTab: 'adjust' | 'library' | 'mix';
   mode: SimMode;
@@ -64,7 +68,8 @@ export const useUi = create<UiState>()((set, get) => ({
   selectedPropId: null,
   propGizmo: 'translate',
   poseMode: 'fk',
-  jointLimits: true,
+  limitPreset: 'realistic',
+  gizmoSpace: 'local',
   poseTab: 'adjust',
   mode: 'pose',
   studyMode: 'normal',
@@ -105,4 +110,9 @@ export function useEffectiveQuality(): QualityLevel {
   const safe = useUi((s) => s.safeMode);
   if (safe) return 'low';
   return stepQuality(override ?? detected ?? 'high', -drop);
+}
+
+/** How far joint limits are widened for the current preset (Infinity = unlimited). */
+export function limitScale(): number {
+  return LIMIT_SCALE[useUi.getState().limitPreset];
 }

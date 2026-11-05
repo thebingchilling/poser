@@ -79,12 +79,23 @@ function wrap(a: number): number {
   return Math.atan2(Math.sin(a), Math.cos(a));
 }
 
+/** Joint-limit presets (PLAN.md section 6): how far the clinical ranges are widened. */
+export type LimitPreset = 'realistic' | 'flexible' | 'unlimited';
+export const LIMIT_SCALE: Record<LimitPreset, number> = { realistic: 1, flexible: 1.3, unlimited: Infinity };
+
+/** A limit with its ranges scaled about the same centre (bend, side, and roll). */
+export function scaleLimit(limit: JointLimit, k: number): JointLimit {
+  return { ...limit, range: limit.range * k, side: limit.side * k, twist: limit.twist * k };
+}
+
 /** Applies all joint limits to a pose; returns the pose and the largest correction (radians). */
-export function applyLimits(skel: PoseSkeleton, pose: CanonicalPose): { pose: CanonicalPose; correction: number } {
+export function applyLimits(skel: PoseSkeleton, pose: CanonicalPose, scale = 1): { pose: CanonicalPose; correction: number } {
+  if (!Number.isFinite(scale)) return { pose, correction: 0 };
   const out: CanonicalPose = { ...pose };
   let correction = 0;
   for (const [bone, q] of Object.entries(pose)) {
-    const limit = JOINT_LIMITS[bone];
+    const base = JOINT_LIMITS[bone];
+    const limit = base && scale !== 1 ? scaleLimit(base, scale) : base;
     const dir = boneDirection(skel, bone);
     if (!limit || !dir) continue;
     const c = clampRotation(q, limit, dir);
@@ -92,6 +103,23 @@ export function applyLimits(skel: PoseSkeleton, pose: CanonicalPose): { pose: Ca
     out[bone] = c;
   }
   return { pose: out, correction };
+}
+
+/**
+ * How close each joint is to its realistic limit: "past" if the realistic
+ * range would change it, "near" if it's in the last tenth of the range
+ * (PLAN.md section 6: handles turn orange near a limit and red past it).
+ */
+export function limitStatus(skel: PoseSkeleton, pose: CanonicalPose): Map<string, 'near' | 'past'> {
+  const out = new Map<string, 'near' | 'past'>();
+  for (const [bone, q] of Object.entries(pose)) {
+    const limit = JOINT_LIMITS[bone];
+    const dir = boneDirection(skel, bone);
+    if (!limit || !dir) continue;
+    if (qangle(clampRotation(q, limit, dir), q) > 0.01) out.set(bone, 'past');
+    else if (qangle(clampRotation(q, scaleLimit(limit, 0.9), dir), q) > 0.005) out.set(bone, 'near');
+  }
+  return out;
 }
 
 /** Rest direction of a bone (toward its first child) in the figure's T-pose. */

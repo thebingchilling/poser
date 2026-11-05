@@ -110,3 +110,70 @@ export function effectorPosition(skel: PoseSkeleton, pose: CanonicalPose, effect
 export function rotateVector(q: Q, v: V3): V3 {
   return qrot(q, v);
 }
+
+/**
+ * Spine and neck IK (PLAN.md section 6): FABRIK moves the chain's joints so
+ * its end reaches `target` (figure space), then each bone is turned, from
+ * the root out, to point at its new child position. `chain` lists the bones
+ * from the root; `end` is the joint the user drags.
+ */
+export function solveChain(skel: PoseSkeleton, pose: CanonicalPose, chain: string[], end: string, target: V3, iterations = 12): CanonicalPose {
+  const joints = [...chain, end];
+  const P = skel.positions(pose);
+  const pts = joints.map((j) => P.get(j)!);
+  if (pts.some((p) => !p)) return pose;
+  const lengths = pts.slice(1).map((p, i) => vlen(vsub(p, pts[i]!)));
+  const root = pts[0]!;
+  const total = lengths.reduce((a, b) => a + b, 0);
+  const lerpTo = (a: V3, b: V3, len: number): V3 => {
+    const d = vsub(b, a);
+    const l = vlen(d) || 1;
+    return [a[0] + (d[0] / l) * len, a[1] + (d[1] / l) * len, a[2] + (d[2] / l) * len];
+  };
+  if (vlen(vsub(target, root)) >= total) {
+    // Out of reach: straighten toward the target.
+    for (let i = 1; i < pts.length; i++) pts[i] = lerpTo(pts[i - 1]!, target, lengths[i - 1]!);
+  } else {
+    for (let it = 0; it < iterations; it++) {
+      pts[pts.length - 1] = target;
+      for (let i = pts.length - 2; i >= 0; i--) pts[i] = lerpTo(pts[i + 1]!, pts[i]!, lengths[i]!);
+      pts[0] = root;
+      for (let i = 1; i < pts.length; i++) pts[i] = lerpTo(pts[i - 1]!, pts[i]!, lengths[i - 1]!);
+      if (vlen(vsub(pts[pts.length - 1]!, target)) < 1e-4) break;
+    }
+  }
+  let next: CanonicalPose = { ...pose };
+  chain.forEach((bone, i) => {
+    const now = skel.positions(next);
+    const from = vsub(now.get(joints[i + 1]!)!, now.get(bone)!);
+    const to = vsub(pts[i + 1]!, now.get(bone)!);
+    const W = skel.worldRotations(next).get(bone)!;
+    next = { ...next, [bone]: skel.localFor(next, bone, qnorm(qmul(fromTo(from, to), W))) };
+  });
+  return next;
+}
+
+/**
+ * Gaze (PLAN.md section 6): the eyes turn to look at `target` (up to about
+ * 35°), and the head turns part of the way (`headShare`) so wide looks
+ * aren't all eyes. Eyes look along +Z in the rest pose.
+ */
+export function lookAt(skel: PoseSkeleton, pose: CanonicalPose, target: V3, headShare = 0.4): CanonicalPose {
+  let next: CanonicalPose = { ...pose };
+  const turn = (bone: string, share: number, maxAngle: number) => {
+    const P = skel.positions(next).get(bone);
+    if (!P) return;
+    const W = skel.worldRotations(next).get(bone)!;
+    const forward = qrot(W, [0, 0, 1]);
+    const want = vsub(target, P);
+    let q = fromTo(forward, want);
+    // Scale the turn by share, and cap it.
+    const angle = 2 * Math.acos(Math.min(1, Math.abs(q[3])));
+    const k = Math.min(share, angle > 1e-6 ? maxAngle / angle : share);
+    q = qnorm([q[0] * k, q[1] * k, q[2] * k, 1 - (1 - q[3]) * k]);
+    next = { ...next, [bone]: skel.localFor(next, bone, qnorm(qmul(q, W))) };
+  };
+  turn('head', headShare, 1.0);
+  for (const eye of ['leftEye', 'rightEye']) turn(eye, 1, 0.6);
+  return next;
+}

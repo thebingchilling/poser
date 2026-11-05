@@ -193,7 +193,8 @@ function PoseAdjustPanel() {
   const selectedId = useUi((s) => s.selectedFigureId);
   const joint = useUi((s) => s.selectedJoint);
   const mode = useUi((s) => s.poseMode);
-  const limits = useUi((s) => s.jointLimits);
+  const limitPreset = useUi((s) => s.limitPreset);
+  const space = useUi((s) => s.gizmoSpace);
   const set = useUi((s) => s.set);
   const scene = useActiveScene();
   const snackbar = useSnackbar();
@@ -217,11 +218,39 @@ function PoseAdjustPanel() {
         onChange={(m) => set({ poseMode: m })}
         segments={[
           { value: 'fk', label: 'Rotate joints', icon: '3d_rotation' },
-          { value: 'ik', label: 'Move hands & feet', icon: 'open_with' },
+          { value: 'ik', label: 'Move (IK)', icon: 'open_with' },
         ]}
       />
-      <p className="hint">{mode === 'ik' ? 'Select a hand or foot (yellow handles) and drag the arrows; the limb follows.' : 'Select a joint and drag the rings to rotate it.'} Shortcut: Q.</p>
-      <Switch label="Joint limits" supporting="Keep joints within natural ranges" checked={limits} onChange={(v) => set({ jointLimits: v })} />
+      <p className="hint">
+        {mode === 'ik'
+          ? 'Drag a hand or foot (yellow), the hips (moves the whole figure; pinned feet stay put), the chest or head (bends the spine or neck), or the green gaze target (the eyes and head follow).'
+          : 'Select a joint and drag the rings to rotate it.'}{' '}
+        Shortcut: Q.
+      </p>
+      {mode === 'fk' && (
+        <SegmentedButtons
+          label="Rotate about"
+          value={space}
+          onChange={(v) => set({ gizmoSpace: v })}
+          segments={[
+            { value: 'local', label: 'Joint' },
+            { value: 'parent', label: 'Parent' },
+            { value: 'world', label: 'World' },
+          ]}
+        />
+      )}
+      <ListSubheader>Joint limits</ListSubheader>
+      <SegmentedButtons
+        label="Joint limits"
+        value={limitPreset}
+        onChange={(v) => set({ limitPreset: v })}
+        segments={[
+          { value: 'realistic', label: 'Realistic' },
+          { value: 'flexible', label: 'Flexible' },
+          { value: 'unlimited', label: 'Unlimited' },
+        ]}
+      />
+      <p className="hint">Handles turn orange near a natural limit and red past it.</p>
       <div className="button-wrap">
         <Button variant="tonal" icon="lock" disabled={!isEffector} onClick={() => togglePinSelected() || snackbar('Select a hand or foot to pin it')}>
           {pinned ? 'Unpin' : 'Pin'}

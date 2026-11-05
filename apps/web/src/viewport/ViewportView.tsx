@@ -7,6 +7,7 @@ import { crashGuard, memoryManager } from '../platformServices';
 import { editProject, projectStore, useProject } from '../state/project';
 import { useSettings } from '../state/settings';
 import { useEffectiveQuality, useUi } from '../state/ui';
+import { LIMIT_SCALE } from '@poser/posing';
 import { ViewCube } from './ViewCube';
 
 /** Shared handle so toolbar actions (capture, frame, views) reach the viewport. */
@@ -123,6 +124,7 @@ export function ViewportView() {
               if (!f) return;
               f.pose = edit.pose;
               if (edit.pins) f.pins = edit.pins;
+              if (edit.position) f.transform.position = edit.position;
             },
             { coalesceKey: edit.coalesceKey },
           );
@@ -203,11 +205,12 @@ export function ViewportView() {
   const selectedFigureId = useUi((s) => s.selectedFigureId);
   const selectedJoint = useUi((s) => s.selectedJoint);
   const poseMode = useUi((s) => s.poseMode);
-  const jointLimits = useUi((s) => s.jointLimits);
+  const limitPreset = useUi((s) => s.limitPreset);
+  const gizmoSpace = useUi((s) => s.gizmoSpace);
   const pins = useProject((s) => activeScene(s.project).figures.find((f) => f.id === selectedFigureId)?.pins);
   useEffect(() => {
-    viewport?.poseTools.setState({ figureId: selectedFigureId, joint: selectedJoint, mode: poseMode, limits: jointLimits, pins: pins ?? {} });
-  }, [viewport, selectedFigureId, selectedJoint, poseMode, jointLimits, pins]);
+    viewport?.poseTools.setState({ figureId: selectedFigureId, joint: selectedJoint, mode: poseMode, limitScale: LIMIT_SCALE[limitPreset], pins: pins ?? {}, space: gizmoSpace });
+  }, [viewport, selectedFigureId, selectedJoint, poseMode, limitPreset, gizmoSpace, pins]);
 
   // Adaptive quality (PLAN.md section 3.5, step 4).
   useEffect(() => {

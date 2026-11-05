@@ -1,8 +1,8 @@
-import { FEMALE_PROPORTIONS, axisAngle, qangle, restPose, vlen, vsub, type CanonicalPose, type V3 } from '@poser/rig';
+import { FEMALE_PROPORTIONS, axisAngle, qangle, restPose, vlen, vnorm, vsub, type CanonicalPose, type V3 } from '@poser/rig';
 import { describe, expect, it } from 'vitest';
 import { handPose } from './hands';
-import { effectorPosition, solveTwoBone } from './ik';
-import { JOINT_LIMITS, applyLimits, boneDirection, clampRotation } from './limits';
+import { effectorPosition, lookAt, solveChain, solveTwoBone } from './ik';
+import { JOINT_LIMITS, LIMIT_SCALE, applyLimits, boneDirection, clampRotation, limitStatus } from './limits';
 import { copySide, mirrorPose } from './mirror';
 import { PoseSkeleton } from './skeleton';
 import { BUILTIN_POSES, blendPoses, defaultSkeleton, euler, randomPose, seededRandom } from './library';
@@ -140,3 +140,53 @@ describe('pose library', () => {
     expect((svg.match(/<path/g) ?? []).length).toBeGreaterThan(10);
   });
 });
+
+describe('spine IK, gaze, and limit presets', () => {
+  const s = new PoseSkeleton(restPose(FEMALE_PROPORTIONS));
+
+  it('bends the spine so the upper chest reaches a target', () => {
+    const start = s.positions({}).get('upperChest')!;
+    const target: V3 = [start[0] + 0.06, start[1] - 0.03, start[2] + 0.1];
+    const pose = solveChain(s, {}, ['spine', 'chest'], 'upperChest', target);
+    expect(vlen(vsub(s.positions(pose).get('upperChest')!, target))).toBeLessThan(0.005);
+    // The hips didn't move.
+    expect(s.positions(pose).get('hips')).toEqual(s.positions({}).get('hips'));
+  });
+
+  it('looks at a target with the eyes and partly the head', () => {
+    const eye = s.positions({}).get('leftEye')!;
+    const target: V3 = [eye[0] + 0.3, eye[1], eye[2] + 1];
+    const pose = lookAt(s, {}, target);
+    const W = s.worldRotations(pose);
+    const dir = (q: [number, number, number, number]) => {
+      const v = vnorm(qrotTest(q, [0, 0, 1]));
+      return v;
+    };
+    const want = vnorm(vsub(target, s.positions(pose).get('leftEye')!));
+    const got = dir(W.get('leftEye')!);
+    expect(got[0] * want[0] + got[1] * want[1] + got[2] * want[2]).toBeGreaterThan(0.999);
+    // The head turned some of the way, not all.
+    const head = dir(W.get('head')!);
+    expect(head[0]).toBeGreaterThan(0.02);
+    expect(head[0]).toBeLessThan(want[0]);
+  });
+
+  it('widens limits for presets and reports joints near or past them', () => {
+    const elbow = { leftLowerArm: axisAngle([0, 1, 0], -2.6) };
+    expect(applyLimits(s, elbow).correction).toBeGreaterThan(0.01);
+    expect(applyLimits(s, elbow, LIMIT_SCALE.flexible).correction).toBeLessThan(applyLimits(s, elbow).correction);
+    expect(applyLimits(s, elbow, LIMIT_SCALE.unlimited).correction).toBe(0);
+    expect(limitStatus(s, elbow).get('leftLowerArm')).toBe('past');
+    expect(limitStatus(s, { leftLowerArm: axisAngle([0, 1, 0], -2.5) }).get('leftLowerArm')).toBe('near');
+    expect(limitStatus(s, { leftLowerArm: axisAngle([0, 1, 0], -1.2) }).has('leftLowerArm')).toBe(false);
+  });
+});
+
+function qrotTest(q: [number, number, number, number], v: V3): V3 {
+  const [x, y, z, w] = q;
+  const ix = w * v[0] + y * v[2] - z * v[1];
+  const iy = w * v[1] + z * v[0] - x * v[2];
+  const iz = w * v[2] + x * v[1] - y * v[0];
+  const iw = -x * v[0] - y * v[1] - z * v[2];
+  return [ix * w + iw * -x + iy * -z - iz * -y, iy * w + iw * -y + iz * -x - ix * -z, iz * w + iw * -z + ix * -y - iy * -x];
+}

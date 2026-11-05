@@ -4,7 +4,7 @@ import { applyHandPreset, applyLimits, copySide, mirrorPose, poseThumbnailUrl, r
 import { useLibrary } from '../state/library';
 import { viewportRef } from '../viewport/ViewportView';
 import { currentProject, editProject } from '../state/project';
-import { useUi } from '../state/ui';
+import { limitScale, useUi } from '../state/ui';
 
 /** Pose actions on the selected figure (PLAN.md section 6). All undoable. */
 export function selectedFigure(): Figure | undefined {
@@ -17,7 +17,7 @@ function editPose(label: string, recipe: (pose: CanonicalPose, fig: Figure) => C
   if (!fig) return;
   const skel = viewportFigureSkeleton(fig.id);
   let pose = recipe(fig.pose, fig);
-  if (skel && useUi.getState().jointLimits) pose = applyLimits(skel, pose).pose;
+  if (skel) pose = applyLimits(skel, pose, limitScale()).pose;
   // Keep pinned hands and feet where they are.
   if (skel) for (const [eff, target] of Object.entries(fig.pins ?? {})) pose = solveTwoBone(skel, pose, eff as Effector, target as [number, number, number]).pose;
   editProject(
@@ -74,7 +74,7 @@ export function applyPoseSelected(pose: CanonicalPose, label: string, coalesceKe
   const fig = selectedFigure();
   if (!fig) return false;
   const skel = viewportFigureSkeleton(fig.id);
-  const next = skel && useUi.getState().jointLimits ? applyLimits(skel, pose).pose : pose;
+  const next = skel ? applyLimits(skel, pose, limitScale()).pose : pose;
   const vp = viewportRef.current;
   const before = vp?.lowestPoint(fig.id) ?? null;
   const after = vp?.lowestPoint(fig.id, next) ?? null;
