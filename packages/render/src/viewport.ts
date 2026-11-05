@@ -16,6 +16,7 @@ import {
   Quaternion,
   Scene,
   Spherical,
+  LineSegments,
   NeutralToneMapping,
   Line,
   LineBasicMaterial,
@@ -197,7 +198,7 @@ export class Viewport {
     this.scene.add(this.propGizmo.getHelper());
 
     this.lightHandles.visible = false;
-    this.scene.add(this.lightHandles);
+    this.scene.add(this.lightHandles, this.guides);
     let down: { x: number; y: number } | null = null;
     canvas.addEventListener('pointerdown', (e) => (down = { x: e.clientX, y: e.clientY }));
     canvas.addEventListener('pointerup', (e) => {
@@ -219,8 +220,8 @@ export class Viewport {
       antialias: options.quality.antialias,
       forceWebGL: options.forceWebGL ?? false,
       powerPreference: 'high-performance',
-      // Keep the last frame readable for screenshot capture.
-      alpha: false,
+      // An alpha channel allows transparent-background captures; the scene background keeps the view opaque.
+      alpha: true,
     });
     renderer.onDeviceLost = (info) => options.onDeviceLost?.({ api: info.api, message: info.message, reason: info.reason });
     await renderer.init();
@@ -341,12 +342,12 @@ export class Viewport {
   }
 
   /** Crops the photo to fill the view without stretching (like CSS object-fit: cover). */
-  private fitBackground(): void {
+  private fitBackground(aspect?: number): void {
     const tex = this.refTexture;
     const img = tex?.image as { width?: number; height?: number } | undefined;
     if (!tex || !img?.width || !img.height) return;
     const imageAspect = img.width / img.height;
-    const viewAspect = this.aspect();
+    const viewAspect = aspect ?? this.aspect();
     if (viewAspect > imageAspect) {
       tex.repeat.set(1, imageAspect / viewAspect);
       tex.offset.set(0, (1 - tex.repeat.y) / 2);
@@ -461,6 +462,7 @@ export class Viewport {
       this.applyFigure(entry.object, fig);
     }
     for (const id of [...this.figures.keys()]) if (!seen.has(id)) this.removeFigure(id);
+    if (this.proportionFigure) this.updateProportionGrid();
     // A reloaded prop gets the gizmo back.
     const sel = this.selectedProp ? this.figures.get(this.selectedProp) : undefined;
     if (sel && this.propGizmo && this.propGizmo.object !== sel.object.root) this.selectProp(this.selectedProp, this.propGizmo.mode as 'translate' | 'rotate');
@@ -950,11 +952,92 @@ export class Viewport {
   }
 
   /** PNG of the current view at the canvas's resolution. */
-  async capture(): Promise<Blob> {
-    this.renderFrame();
-    return new Promise((resolve, reject) =>
-      this.canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('Capture failed'))), 'image/png'),
-    );
+  /**
+   * PNG of the view (PLAN.md section 18: capture), at the view's size or a
+   * chosen resolution, with handles, gizmos, and guides left out. A
+   * transparent background drops the backdrop and floor.
+   */
+  async capture(opts: { width?: number; height?: number; transparent?: boolean } = {}): Promise<Blob> {
+    const { clientWidth: vw, clientHeight: vh } = this.canvas;
+    const width = Math.round(opts.width ?? vw * this.renderer.getPixelRatio());
+    const height = Math.round(opts.height ?? vh * this.renderer.getPixelRatio());
+    const helpers: Object3D[] = [this.poseTools.group, this.poseTools.helper, this.propGizmo.getHelper(), this.lightHandles, this.guides, this.grid];
+    if (this.lightGizmo) helpers.push(this.lightGizmo.getHelper());
+    const wasVisible = helpers.map((h) => h.visible);
+    const background = this.scene.background;
+    const floorVisible = this.floor.visible;
+    const ratio = this.renderer.getPixelRatio();
+    helpers.forEach((h) => (h.visible = false));
+    if (opts.transparent) {
+      this.scene.background = null;
+      this.floor.visible = false;
+      this.renderer.setClearColor(0x000000, 0);
+    }
+    try {
+      // Render at the requested size (the frame keeps the view's framing; a different aspect widens or narrows it).
+      this.renderer.setPixelRatio(1);
+      this.renderer.setSize(width, height, false);
+      this.perspective.aspect = width / height;
+      this.perspective.updateProjectionMatrix();
+      const half = (this.ortho.top - this.ortho.bottom) / 2;
+      this.ortho.left = -half * (width / height);
+      this.ortho.right = half * (width / height);
+      this.ortho.updateProjectionMatrix();
+      this.fitBackground(width / height);
+      this.renderFrame();
+      return await new Promise<Blob>((resolve, reject) => this.canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('Capture failed'))), 'image/png'));
+    } finally {
+      helpers.forEach((h, i) => (h.visible = wasVisible[i]!));
+      this.scene.background = background;
+      this.floor.visible = floorVisible;
+      this.renderer.setClearColor(0x000000, 1);
+      this.renderer.setPixelRatio(ratio);
+      this.resize();
+      this.renderFrame();
+    }
+  }
+
+  // ---------- Proportion grid (PLAN.md section 18: anatomy overlays) ----------
+
+  private readonly guides = new Group();
+  private proportionFigure: string | null = null;
+
+  /**
+   * Horizontal lines dividing a figure's height into eight equal "heads"
+   * (the classic figure-drawing canon), behind the figure and facing the
+   * same way. Null hides it.
+   */
+  setProportionGrid(figureId: string | null): void {
+    this.proportionFigure = figureId;
+    this.updateProportionGrid();
+  }
+
+  private updateProportionGrid(): void {
+    for (const c of [...this.guides.children]) {
+      this.guides.remove(c);
+      (c as Line).geometry?.dispose();
+    }
+    const entry = this.proportionFigure ? this.figures.get(this.proportionFigure) : undefined;
+    if (!entry) return this.invalidate();
+    const root = entry.object.root;
+    // The figure's standing height (not the posed bounds, which raised arms would stretch).
+    const h = entry.object.height * root.scale.y;
+    const base = root.position.y;
+    const unit = h / 8;
+    const pts: Vector3[] = [];
+    const w = 0.45;
+    for (let i = 0; i <= 8; i++) {
+      const y = base + i * unit;
+      pts.push(new Vector3(-w, y, -0.25), new Vector3(w, y, -0.25));
+    }
+    pts.push(new Vector3(0, base, -0.25), new Vector3(0, base + h, -0.25));
+    const lines = new LineSegments(new BufferGeometry().setFromPoints(pts), new LineBasicMaterial({ color: 0x9be7ff, transparent: true, opacity: 0.6, depthTest: false }));
+    lines.renderOrder = 998;
+    // Placed at the figure, turned with it.
+    lines.position.set(root.position.x, 0, root.position.z);
+    lines.quaternion.copy(root.quaternion);
+    this.guides.add(lines);
+    this.invalidate();
   }
 
   /** Rough GPU memory estimate for the memory manager. */

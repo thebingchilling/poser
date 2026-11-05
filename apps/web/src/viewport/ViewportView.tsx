@@ -208,6 +208,13 @@ export function ViewportView() {
     viewport?.setLightHandles(workspace === 'render' && workspaceOpen, selectedLightId);
   }, [viewport, workspace, workspaceOpen, selectedLightId]);
 
+  const proportionGrid = useUi((s) => s.proportionGrid);
+  const gridFigure = useUi((s) => s.selectedFigureId);
+  const firstFigure = useProject((s) => activeScene(s.project).figures[0]?.id ?? null);
+  useEffect(() => {
+    viewport?.setProportionGrid(proportionGrid ? (gridFigure ?? firstFigure) : null);
+  }, [viewport, proportionGrid, gridFigure, firstFigure]);
+
   useEffect(() => {
     viewport?.setStudyMode(studyMode, notanThreshold);
   }, [viewport, studyMode, notanThreshold]);

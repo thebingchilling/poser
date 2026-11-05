@@ -32,6 +32,11 @@ interface UiState {
   studyMode: StudyMode;
   notanThreshold: number;
   overlay: 'none' | 'thirds' | 'golden';
+  /** Eight-heads proportion grid behind the selected figure. */
+  proportionGrid: boolean;
+  /** Capture size ('view' = the view at screen resolution) and background. */
+  captureSize: 'view' | '1920x1080' | '2560x1440' | '3840x2160' | '2048x2048' | '1080x1350' | '2160x3840';
+  captureTransparent: boolean;
   /** Lens focal length (35mm equivalent), or null for orthographic. */
   lens: number | null;
   /** Reference photo for this session (PLAN.md section 17.7). */
@@ -78,6 +83,9 @@ export const useUi = create<UiState>()((set, get) => ({
   studyMode: 'normal',
   notanThreshold: 0.35,
   overlay: 'none',
+  proportionGrid: false,
+  captureSize: 'view',
+  captureTransparent: false,
   lens: 50,
   reference: null,
   referenceMode: 'over',

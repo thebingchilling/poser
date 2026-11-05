@@ -10,6 +10,15 @@ import { setView } from '../viewport/ViewportView';
 import { addCameraBookmark, applyLightingPreset, goToCameraBookmark, removeCameraBookmark, setSun } from './staging';
 
 const LENSES = [24, 35, 50, 85, 135];
+const CAPTURE_SIZES: [ReturnType<typeof useUi.getState>['captureSize'], string][] = [
+  ['view', 'View size'],
+  ['1920x1080', '1920 × 1080'],
+  ['2560x1440', '2560 × 1440'],
+  ['3840x2160', '4K'],
+  ['2048x2048', 'Square 2048'],
+  ['1080x1350', 'Portrait 1080 × 1350'],
+  ['2160x3840', 'Tall 4K'],
+];
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
 function formatHour(h: number): string {
@@ -37,6 +46,9 @@ export function RenderWorkspace() {
   const threshold = useUi((s) => s.notanThreshold);
   const lens = useUi((s) => s.lens);
   const overlay = useUi((s) => s.overlay);
+  const proportionGrid = useUi((s) => s.proportionGrid);
+  const captureSize = useUi((s) => s.captureSize);
+  const captureTransparent = useUi((s) => s.captureTransparent);
   const set = useUi((s) => s.set);
   const lighting = scene.environment.lighting ?? 'studio';
   const setIntensity = (light: Light, value: number) =>
@@ -80,6 +92,7 @@ export function RenderWorkspace() {
         <FilterChip label="None" selected={overlay === 'none'} onToggle={() => set({ overlay: 'none' })} />
         <FilterChip label="Rule of thirds" icon="grid_on" selected={overlay === 'thirds'} onToggle={() => set({ overlay: 'thirds' })} />
         <FilterChip label="Golden ratio" icon="grid_on" selected={overlay === 'golden'} onToggle={() => set({ overlay: 'golden' })} />
+        <FilterChip label="Proportion grid (8 heads)" icon="straighten" selected={proportionGrid} onToggle={() => set({ proportionGrid: !proportionGrid })} />
       </div>
       <p className="hint">Saved views</p>
       {scene.cameras.map((c) => (
@@ -113,6 +126,13 @@ export function RenderWorkspace() {
       <ReferenceSection />
 
       <ListSubheader>Capture</ListSubheader>
+      <div className="chip-row">
+        {CAPTURE_SIZES.map(([value, label]) => (
+          <FilterChip key={value} label={label} selected={captureSize === value} onToggle={() => set({ captureSize: value })} />
+        ))}
+      </div>
+      <Switch label="Transparent background" supporting="No backdrop or floor, for compositing" checked={captureTransparent} onChange={(v) => set({ captureTransparent: v })} />
+      <p className="hint">Handles, gizmos, and guides are left out of the picture.</p>
       <Button variant="tonal" icon="photo_camera" onClick={() => captureScreenshot().then(() => snackbar('Screenshot saved'), (e: Error) => snackbar(e.message))}>
         Save screenshot
       </Button>

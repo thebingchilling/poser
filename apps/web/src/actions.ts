@@ -72,10 +72,13 @@ export function download(blob: Blob, name: string): void {
   setTimeout(() => URL.revokeObjectURL(url), 10_000);
 }
 
+/** Saves a PNG with the capture settings from the Render workspace. */
 export async function captureScreenshot(): Promise<void> {
   const vp = viewportRef.current;
   if (!vp) throw new Error('The viewport is not ready');
-  const blob = await vp.capture();
+  const { captureSize, captureTransparent } = useUi.getState();
+  const [w, h] = captureSize === 'view' ? [undefined, undefined] : captureSize.split('x').map(Number);
+  const blob = await vp.capture({ width: w, height: h, transparent: captureTransparent });
   const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
   download(blob, `poser-${stamp}.png`);
 }
