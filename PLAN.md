@@ -978,6 +978,15 @@ Each phase ends with something usable. Week estimates assume one full-time devel
   4. ~~**Mesh and texture optimisation in workers:**~~ *Done*. decimation and texture downscaling by quality level, and pruning unused morphs, run off the main thread during import.
   5. ~~**Default base figure**~~ *Done* (see below).
 
+#### Phase 1: the rest of the detailed sections
+Items from sections 3, 6, 18 that the checklist above didn't spell out (turnaround sheets and gesture drawing stay in Phase 9).
+- [ ] Daz pose presets (.duf) import as poses; Daz corrective morphs (JCMs) carried into the figure and driven by the pose
+- [ ] Posing (section 6): gizmo in local, parent, or world space; IK effectors for hips, chest, and head plus a gaze target, with FABRIK for the spine and neck and pins respected; joint-limit presets Realistic, Flexible, Unlimited; handles turn orange near a limit and red past it
+- [ ] Lighting (section 18): movable lights with gizmos; HDRI environment lighting from the user's files and a few bundled CC0 ones
+- [ ] Capture (section 18): PNG at any resolution with a transparent-background option; proportion grid in head units
+- [ ] Library and Scene (section 3.2): filter chips for Hair, Morphs, and Environments, tags, drag an asset into the viewport to add it; scene tree with lock toggles and cameras
+- [ ] First run (section 3.3): a short tour
+
 #### Phase 1: import anything (added by the owner)
 Import any model, including native Daz and VaM content, in Phase 1 (moved from Phase 3).
 - [x] More generic formats through three.js loaders: 3DS, 3MF, AMF, USD/USDZ, LightWave, KMZ, MD2, VTK, MagicaVoxel, all checked under the CSP. VRML is left out: its parser library compiles code at runtime, which the CSP blocks
