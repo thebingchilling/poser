@@ -978,14 +978,14 @@ Each phase ends with something usable. Week estimates assume one full-time devel
   4. ~~**Mesh and texture optimisation in workers:**~~ *Done*. decimation and texture downscaling by quality level, and pruning unused morphs, run off the main thread during import.
   5. ~~**Default base figure**~~ *Done* (see below).
 
-#### Phase 1: the rest of the detailed sections
+#### Phase 1: the rest of the detailed sections (done)
 Items from sections 3, 6, 18 that the checklist above didn't spell out (turnaround sheets and gesture drawing stay in Phase 9).
 - [x] Daz pose presets (.duf) import as poses; Daz corrective morphs (JCMs) carried into the figure and driven by the pose (synthetic tests; to check on real Genesis content)
 - [x] Posing (section 6): gizmo in local, parent, or world space; IK effectors for hips, chest, and head plus a gaze target, with FABRIK for the spine and neck and pins respected; joint-limit presets Realistic, Flexible, Unlimited; handles turn orange near a limit and red past it. The hips handle moves the whole figure with pinned hands and feet held in place; a final full-body balance pass comes with the balance work in Phase 2
 - [x] Lighting (section 18): movable lights with gizmos; HDRI environment lighting from the user's files and a few bundled CC0 ones (Poly Haven studio and open sky, 1K); PBR Neutral tone mapping for HDR lighting
 - [x] Capture (section 18): PNG at any resolution with a transparent-background option (handles, gizmos, and guides left out); proportion grid in head units (eight equal heads of the standing height)
 - [x] Library and Scene (section 3.2): filter chips for Hair and Environments (Morphs comes when morph packs become Library assets, with the character tools), tags (edit, search), drag an asset into the viewport to add it (figures and props land where dropped, poses go to the figure under the pointer, HDRIs light the scene); scene tree with lock toggles and saved camera views
-- [ ] First run (section 3.3): a short tour
+- [x] First run (section 3.3): a short tour (four skippable steps, shown once per device)
 
 #### Phase 1: import anything (added by the owner)
 Import any model, including native Daz and VaM content, in Phase 1 (moved from Phase 3).

@@ -8,6 +8,7 @@ async function start(page: Page) {
   if (await cont.isVisible()) await cont.click();
   await page.getByRole('button', { name: 'I am 18 or older' }).click();
   await page.getByRole('button', { name: 'Skip for now' }).click();
+  await page.getByRole('button', { name: 'Skip tour' }).click();
   await expect(page.getByLabel('3D viewport')).toBeVisible();
   // The quality notice would hold back the undo messages checked below.
   const notice = page.getByText(/Quality set to/);

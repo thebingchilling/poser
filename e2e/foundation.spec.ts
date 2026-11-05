@@ -29,6 +29,8 @@ async function start(page: Page) {
   await page.getByRole('button', { name: 'I am 18 or older' }).click();
   await expectPainted(page.getByRole('dialog', { name: 'Set an app lock?' }));
   await page.getByRole('button', { name: 'Skip for now' }).click();
+  await expectPainted(page.getByRole('dialog', { name: 'Pose the figure' }));
+  await page.getByRole('button', { name: 'Skip tour' }).click();
   await expect(page.getByLabel('3D viewport')).toBeVisible();
 }
 
@@ -105,6 +107,22 @@ test('Safe Mode after a crash mid-load', async ({ page }) => {
   await expectPainted(page.getByRole('dialog', { name: 'Safe Mode' }));
   await page.getByRole('button', { name: 'Open at low quality' }).click();
   await expect(page.getByText('Safe Mode: lowest quality after a crash.')).toBeVisible();
+});
+
+test('first-run tour steps through and is shown once', async ({ page }) => {
+  await page.goto('/');
+  await passBrowserGate(page);
+  await page.getByRole('button', { name: 'I am 18 or older' }).click();
+  await page.getByRole('button', { name: 'Skip for now' }).click();
+  for (const title of ['Pose the figure', 'Bring in your own', 'Light, frame, capture', 'Private by design']) {
+    await expect(page.getByRole('dialog', { name: title })).toBeVisible();
+    await page.getByRole('button', { name: title === 'Private by design' ? 'Start posing' : 'Next' }).click();
+  }
+  await expect(page.getByRole('dialog')).toBeHidden();
+  await page.reload();
+  await passBrowserGate(page);
+  await expect(page.getByLabel('3D viewport')).toBeVisible();
+  await expect(page.getByRole('dialog', { name: 'Pose the figure' })).toBeHidden();
 });
 
 test('app lock', async ({ page }) => {

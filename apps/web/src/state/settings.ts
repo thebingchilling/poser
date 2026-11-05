@@ -25,6 +25,8 @@ export interface DeviceSettings {
   autoLockMinutes: number;
   adultsConfirmed: boolean;
   firstRunDone: boolean;
+  /** The first-run tour was finished or skipped. */
+  tourDone: boolean;
   /** Back up to the chosen folder after edits (desktop Chrome). */
   autoBackup: boolean;
   /** Always use the WebGL2 compatibility renderer (for testing and problem devices). */
@@ -48,6 +50,7 @@ export const DEFAULT_SETTINGS: DeviceSettings = {
   autoLockMinutes: 5,
   adultsConfirmed: false,
   firstRunDone: false,
+  tourDone: false,
   autoBackup: true,
   forceCompatibility: false,
 };

@@ -15,6 +15,7 @@ import { SnackbarProvider, TooltipProvider, applyTheme, useSnackbar } from '@pos
 import { useEffect, useState } from 'react';
 import { AdultsNotice, LockScreen, UnsupportedBrowser } from './boot/Gates';
 import { SetLockDialog } from './boot/FirstRunLock';
+import { Tour } from './boot/Tour';
 import { runQualityDetection } from './boot/qualityDetection';
 import { SafeModeDialog, type SafeModeChoice } from './boot/SafeModeDialog';
 import { LOCK_KEY } from './dialogs/SettingsDialog';
@@ -99,6 +100,7 @@ function Main({ crash }: { crash: CrashCheck }) {
   const locked = useUi((s) => s.locked);
   const snackbar = useSnackbar();
   const [stage, setStage] = useState<Stage>('browser');
+  const tourDone = useSettings((s) => s.tourDone);
   const [browserOverride, setBrowserOverride] = useState(false);
   const [lock, setLock] = useState<LockRecord | null | undefined>(undefined);
   const [offerLock, setOfferLock] = useState(false);
@@ -197,6 +199,7 @@ function Main({ crash }: { crash: CrashCheck }) {
         <AppShell />
       </div>
       {lockScreen}
+      <Tour open={!offerLock && !tourDone && !lockScreen} />
       <SetLockDialog
         open={offerLock}
         firstRun
