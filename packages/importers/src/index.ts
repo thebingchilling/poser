@@ -10,3 +10,5 @@ export * from './poses';
 export * from './optimiseClient';
 export * from './content';
 export { parseVarMeta, parseLook } from './vam/vam';
+export { isDazPosePreset } from './daz/pose';
+export { parseDson } from './daz/dson';

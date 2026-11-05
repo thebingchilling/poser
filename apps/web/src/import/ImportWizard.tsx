@@ -1,5 +1,5 @@
 import type { AssetKind } from '@poser/core';
-import { MissingContentError, TRIANGLE_LIMITS, defaultChoices, finishImport, prepareImport, type ImportChoices, type ImportQuality, type ModelFormat, type PreparedImport } from '@poser/importers';
+import { MissingContentError, TRIANGLE_LIMITS, defaultChoices, isDazPosePreset, parseDson, finishImport, prepareImport, type ImportChoices, type ImportQuality, type ModelFormat, type PreparedImport } from '@poser/importers';
 import { RIG_LABELS, type RigKind } from '@poser/rig';
 import { Button, Dialog, LinearProgress, ListSubheader, SegmentedButtons, TextField, useSnackbar } from '@poser/ui';
 import { useEffect, useMemo, useState } from 'react';
@@ -9,7 +9,7 @@ import { useLibrary } from '../state/library';
 import { useImport } from './importStore';
 import { useUi } from '../state/ui';
 import { PoseStep } from './PoseStep';
-import { folderPickerSupported, useContentFolders } from '../state/contentFolders';
+import { MissingContent } from './MissingContent';
 
 const REQUIRED: [string, string][] = [
   ['hips', 'Hips'], ['spine', 'Spine'], ['chest', 'Chest'], ['head', 'Head'],
@@ -210,11 +210,14 @@ export function ImportWizard() {
   const [error, setError] = useState<string | null>(null);
   const [missing, setMissing] = useState<MissingContentError | null>(null);
   const [attempt, setAttempt] = useState(0);
+  /** A .duf that turned out to be a Daz pose preset goes to the pose step. */
+  const [dazPose, setDazPose] = useState(false);
 
   useEffect(() => {
     setPrepared(null);
     setError(null);
     setMissing(null);
+    setDazPose(false);
     if (!vfs || !item) return;
     if (item.role.kind === 'pose') return;
     if (item.role.kind !== 'model') {
@@ -222,17 +225,30 @@ export function ImportWizard() {
       return;
     }
     let cancelled = false;
-    prepareImport(vfs, item.path, item.role.format as ModelFormat).then(
-      (p) => !cancelled && setPrepared(p),
-      (err: unknown) => {
-        if (cancelled) return;
-        if (err instanceof MissingContentError) setMissing(err);
-        else {
-          logError(err, 'import');
-          setError(err instanceof Error ? err.message : String(err));
-        }
-      },
-    );
+    const format = item.role.format as ModelFormat;
+    const isPose =
+      format === 'duf'
+        ? vfs
+            .get(item.path)!
+            .arrayBuffer()
+            .then((b) => isDazPosePreset(parseDson(new Uint8Array(b))))
+            .catch(() => false)
+        : Promise.resolve(false);
+    void isPose.then((pose) => {
+      if (cancelled) return;
+      if (pose) return setDazPose(true);
+      prepareImport(vfs, item.path, format).then(
+        (p) => !cancelled && setPrepared(p),
+        (err: unknown) => {
+          if (cancelled) return;
+          if (err instanceof MissingContentError) setMissing(err);
+          else {
+            logError(err, 'import');
+            setError(err instanceof Error ? err.message : String(err));
+          }
+        },
+      );
+    });
     return () => {
       cancelled = true;
     };
@@ -242,9 +258,9 @@ export function ImportWizard() {
   const title = `Import ${item.path.split('/').pop()}${items.length > 1 ? ` (${index + 1} of ${items.length})` : ''}`;
   return (
     <Dialog open onOpenChange={(o) => !o && close()} title={title} icon="download" large>
-      {item.role.kind === 'pose' && <PoseStep key={item.path} vfs={vfs} path={item.path} onDone={next} />}
+      {(item.role.kind === 'pose' || dazPose) && <PoseStep key={item.path} vfs={vfs} path={item.path} onDone={next} />}
       {missing && <MissingContent error={missing} onRetry={() => setAttempt((n) => n + 1)} onSkip={next} />}
-      {item.role.kind !== 'pose' && !prepared && !error && !missing && (
+      {item.role.kind !== 'pose' && !dazPose && !prepared && !error && !missing && (
         <>
           <LinearProgress label="Reading file" />
           <p className="hint">Reading the file and looking at its skeleton…</p>
@@ -260,43 +276,5 @@ export function ImportWizard() {
       )}
       {prepared && <ModelStep key={item.path} prepared={prepared} onDone={next} onSkip={next} />}
     </Dialog>
-  );
-}
-
-/** A Daz scene or VaM look whose library files aren't reachable: grant the folder, then try again. */
-function MissingContent({ error, onRetry, onSkip }: { error: MissingContentError; onRetry: () => void; onSkip: () => void }) {
-  const { folders, add, grantAll } = useContentFolders();
-  const needsGrant = folders.some((f) => !f.granted);
-  const what = error.library === 'daz' ? 'Daz content library' : 'VaM folder';
-  return (
-    <>
-      <p>{error.message}</p>
-      <p className="hint">
-        {error.library === 'daz'
-          ? 'Choose the folder that holds “data” and “Runtime” (in Daz Studio: Edit › Preferences › Content › Content Directory Manager). Poser reads only the files a scene needs.'
-          : 'Choose your VaM folder (the one with “AddonPackages”).'}
-      </p>
-      <ul className="hint">
-        {error.paths.slice(0, 5).map((p) => (
-          <li key={p}>{p}</li>
-        ))}
-        {error.paths.length > 5 && <li>…and {error.paths.length - 5} more</li>}
-      </ul>
-      <div className="button-wrap">
-        <Button variant="text" onClick={onSkip}>Skip</Button>
-        {needsGrant && (
-          <Button variant="tonal" icon="lock_open" onClick={() => void grantAll().then(onRetry)}>
-            Allow access to your folders
-          </Button>
-        )}
-        {folderPickerSupported() ? (
-          <Button icon="folder_open" onClick={() => void add(error.library).then((f) => f && onRetry())}>
-            Choose your {what}
-          </Button>
-        ) : (
-          <p className="hint">This browser can’t open folders; drop the needed folders onto the app along with the file instead.</p>
-        )}
-      </div>
-    </>
   );
 }

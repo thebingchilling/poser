@@ -1,9 +1,10 @@
-import { importPoseFile, type ImportedPose, type VirtualFiles } from '@poser/importers';
+import { MissingContentError, VirtualFilesSource, contentSources, importPoseFile, type ImportedPose, type VirtualFiles } from '@poser/importers';
 import { logError } from '@poser/platform';
 import { poseThumbnailUrl } from '@poser/posing';
 import { Button, LinearProgress, Slider, TextField, useSnackbar } from '@poser/ui';
 import { useEffect, useState } from 'react';
 import { useUi } from '../state/ui';
+import { MissingContent } from './MissingContent';
 import { applyPoseSelected, savePoseToLibrary } from '../workspaces/posing';
 
 /**
@@ -17,28 +18,35 @@ export function PoseStep({ vfs, path, onDone }: { vfs: VirtualFiles; path: strin
   const [result, setResult] = useState<(ImportedPose & { name: string }) | null>(null);
   const [name, setName] = useState('');
   const [error, setError] = useState<string | null>(null);
-  const format = path.toLowerCase().endsWith('.bvh') ? 'bvh' : path.toLowerCase().endsWith('.vrma') ? 'vrma' : 'pose-json';
+  const [missing, setMissing] = useState<MissingContentError | null>(null);
+  const [attempt, setAttempt] = useState(0);
+  const lower = path.toLowerCase();
+  const format = lower.endsWith('.bvh') ? 'bvh' : lower.endsWith('.vrma') ? 'vrma' : lower.endsWith('.duf') ? 'daz-pose' : 'pose-json';
 
   useEffect(() => {
     const blob = vfs.get(path);
     if (!blob) return setError('The file is missing.');
     let cancelled = false;
-    importPoseFile(path, blob, frame).then(
+    setMissing(null);
+    importPoseFile(path, blob, frame, [new VirtualFilesSource(vfs), ...contentSources()]).then(
       (r) => {
         if (cancelled) return;
         setResult(r);
         setName((n) => n || r.name);
       },
       (err: unknown) => {
+        if (cancelled) return;
+        if (err instanceof MissingContentError) return setMissing(err);
         logError(err, 'import');
-        if (!cancelled) setError(err instanceof Error ? err.message : String(err));
+        setError(err instanceof Error ? err.message : String(err));
       },
     );
     return () => {
       cancelled = true;
     };
-  }, [vfs, path, frame]);
+  }, [vfs, path, frame, attempt]);
 
+  if (missing) return <MissingContent error={missing} onRetry={() => setAttempt((n) => n + 1)} onSkip={onDone} />;
   if (error)
     return (
       <>

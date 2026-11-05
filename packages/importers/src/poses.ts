@@ -15,6 +15,9 @@ import {
   type SourceBone,
   type V3,
 } from '@poser/rig';
+import type { ContentSource } from './content';
+import { parseDson } from './daz/dson';
+import { dazPoseToCanonical } from './daz/pose';
 
 /**
  * Pose files (PLAN.md sections 4.2 and 6): BVH and VRMA single frames, and
@@ -476,9 +479,13 @@ export function parsePoseJson(text: string): { name: string; pose: CanonicalPose
 }
 
 /** Reads any supported pose file (by its name's extension). */
-export async function importPoseFile(fileName: string, data: Blob, frame = 0): Promise<ImportedPose & { name: string }> {
+export async function importPoseFile(fileName: string, data: Blob, frame = 0, sources: ContentSource[] = []): Promise<ImportedPose & { name: string }> {
   const lower = fileName.toLowerCase();
   const base = (fileName.split('/').pop() ?? fileName).replace(/(\.pose)?\.[^.]+$/i, '');
+  if (lower.endsWith('.duf')) {
+    const r = await dazPoseToCanonical(parseDson(new Uint8Array(await data.arrayBuffer())), sources);
+    return { name: base, pose: r.pose, frameCount: 1, frame: 0, coverage: 1, warnings: [`Read with ${r.figure}'s joints from your Daz library.`, ...r.warnings] };
+  }
   if (lower.endsWith('.bvh')) return { name: base, ...bvhToPose(await data.text(), frame) };
   if (lower.endsWith('.vrma') || lower.endsWith('.glb')) return { name: base, ...vrmaToPose(await data.arrayBuffer(), frame) };
   const { name, pose } = parsePoseJson(await data.text());
