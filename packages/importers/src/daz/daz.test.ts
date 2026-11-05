@@ -93,6 +93,19 @@ describe('Daz import', () => {
     expect([...names].sort()).toEqual(['Fig', 'abdomen', 'hip', 'shirtTail']);
   });
 
+  it('keeps corrective morphs as pose-driven targets, not baked into the shape', async () => {
+    const r = await build();
+    let body: SkinnedMesh | undefined;
+    r.root.traverse((o) => (body ??= o instanceof SkinnedMesh && o.name === 'Test Figure' ? o : undefined));
+    expect(Object.keys(body!.morphTargetDictionary!)).toEqual(['jcm:pJCMAbdomenBend']);
+    const stored = body!.userData.dazCorrectives as { drivers: { morph: string; ops: { bone?: string }[] }[]; bones: Record<string, unknown> };
+    expect(stored.drivers[0]!.morph).toBe('pJCMAbdomenBend');
+    expect(Object.keys(stored.bones)).toEqual(['abdomen']);
+    // At rest the corrective is off, so the top ring hasn't moved sideways.
+    const pos = body!.geometry.attributes.position!;
+    for (let i = 0; i < pos.count; i++) if (pos.getY(i) > 150) expect(Math.abs(pos.getX(i))).toBeCloseTo(10);
+  });
+
   it('reports missing library files', async () => {
     const files = library();
     delete files['data/Test Lib/Figure/UV.dsf'];

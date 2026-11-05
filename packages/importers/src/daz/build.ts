@@ -15,7 +15,7 @@ import {
   type Material,
 } from 'three';
 import { TIFFLoader } from 'three/addons/loaders/TIFFLoader.js';
-import { channelValue, evaluateFormulas, fragment, type DsonChannel, type DsonFile, type DsonFormula, type DsonGeometry, type DsonMaterial, type DsonNode, type DsonResolver } from './dson';
+import { channelValue, evaluateFormulas, formulaTarget, fragment, type DsonChannel, type DsonFile, type DsonFormula, type DsonGeometry, type DsonMaterial, type DsonNode, type DsonResolver } from './dson';
 
 /**
  * Builds a three.js model from a Daz scene (.duf) or figure asset (.dsf)
@@ -128,6 +128,28 @@ export async function buildDaz(mainPath: string, main: DsonFile, resolver: DsonR
     }
     const values = evaluateFormulas(formulas, dials);
 
+    // Corrective morphs (JCMs): driven by bone rotations, so they're kept as morph targets and evaluated while posing.
+    const morphIds = new Set(morphs.map((m) => m.id));
+    const drivers: CorrectiveDriver[] = [];
+    for (const f of formulas) {
+      const out = formulaTarget(f.output);
+      if (out.property !== 'value' || !morphIds.has(out.id)) continue;
+      if (!f.operations.some((o) => o.url && /\?rotation\/[xyz]$/.test(o.url))) continue;
+      drivers.push({
+        morph: out.id,
+        stage: f.stage === 'mult' ? 'mult' : 'sum',
+        ops: f.operations.map((o): CorrectiveOp => {
+          if (o.op !== 'push') return { op: o.op };
+          if (o.url === undefined) return { op: 'push', val: o.val };
+          const t = formulaTarget(o.url);
+          const rot = /^rotation\/([xyz])$/.exec(t.property);
+          // Other inputs (morph dials) are fixed at their rest values.
+          return rot ? { op: 'push', bone: t.id, axis: rot[1] as 'x' | 'y' | 'z' } : { op: 'push', val: values.get(`${t.id}?${t.property}`) ?? 0 };
+        }),
+      });
+    }
+    const corrective = new Set(drivers.map((d) => d.morph));
+
     // Skeleton: every bone in the figure asset, at its centre point plus formula shifts.
     const nodes = (assetFile.node_library ?? []).filter((n) => n.type === 'bone' || n.id === asset.id);
     const bones = new Map<string, Bone>();
@@ -176,7 +198,7 @@ export async function buildDaz(mainPath: string, main: DsonFile, resolver: DsonR
     const positions = geom.vertices.values.map((v) => [...v] as [number, number, number]);
     for (const m of morphs) {
       const v = values.get(`${m.id}?value`) ?? 0;
-      if (!v) continue;
+      if (!v || corrective.has(m.id)) continue;
       for (const [vi, dx, dy, dz] of m.deltas) {
         const p = positions[vi];
         if (!p) continue;
@@ -206,6 +228,8 @@ export async function buildDaz(mainPath: string, main: DsonFile, resolver: DsonR
     const { geometry, triPoly } = buildGeometry(geom, positions, uv?.item ?? null, weights);
     const materials = await Promise.all(geom.polygon_material_groups.values.map((name) => buildMaterial(name, geomInstId, assetFile, assetPath)));
 
+    if (drivers.length) addCorrectiveTargets(geometry, morphs.filter((m) => corrective.has(m.id)));
+
     let mesh: Mesh;
     if (skinMod?.skin) {
       const skinned = new SkinnedMesh(geometry, materials);
@@ -214,6 +238,18 @@ export async function buildDaz(mainPath: string, main: DsonFile, resolver: DsonR
       mesh = skinned;
     } else mesh = new Mesh(geometry, materials);
     mesh.name = inst.label ?? asset.label ?? asset.name ?? asset.id;
+    if (drivers.length) {
+      mesh.updateMorphTargets();
+      // Driving bones' Daz frames, so rotations can be measured the way the formulas expect.
+      const frames: DazCorrectives['bones'] = {};
+      for (const d of drivers)
+        for (const op of d.ops) {
+          if (!op.bone || frames[op.bone]) continue;
+          const n = nodes.find((x) => x.id === op.bone) as (DsonNode & { orientation?: DsonNode['center_point']; rotation_order?: string }) | undefined;
+          frames[op.bone] = { orientation: point(n?.orientation), order: n?.rotation_order ?? 'XYZ' };
+        }
+      mesh.userData.dazCorrectives = { bones: frames, drivers } satisfies DazCorrectives;
+    }
     const hidden = geom.graft?.hidden_polys?.values;
     return { instId, root: rootBone, bones, mesh, triPoly, hiddenPolys: follow && hidden ? hidden : undefined };
   }
@@ -318,6 +354,43 @@ export async function buildDaz(mainPath: string, main: DsonFile, resolver: DsonR
     if (colour) tex.colorSpace = SRGBColorSpace;
     return tex;
   }
+}
+
+// ---------- Corrective morphs ----------
+
+export interface CorrectiveOp {
+  op: string;
+  val?: number | number[];
+  bone?: string;
+  axis?: 'x' | 'y' | 'z';
+}
+
+export interface CorrectiveDriver {
+  /** Morph id; its morph target is named `jcm:<id>`. */
+  morph: string;
+  stage: 'sum' | 'mult';
+  ops: CorrectiveOp[];
+}
+
+/** Stored on the mesh (glTF extras): what drives each corrective, and the driving bones' Daz frames. */
+export interface DazCorrectives {
+  bones: Record<string, { orientation: [number, number, number]; order: string }>;
+  drivers: CorrectiveDriver[];
+}
+
+/** Adds corrective morphs as relative morph targets named `jcm:<id>` (hidden from the shape sliders). */
+function addCorrectiveTargets(geometry: BufferGeometry, morphs: { id: string; deltas: [number, number, number, number][] }[]): void {
+  const source = geometry.userData.sourceVertex as Int32Array;
+  const bySource = new Map<number, number[]>();
+  source.forEach((v, i) => bySource.set(v, [...(bySource.get(v) ?? []), i]));
+  geometry.morphAttributes.position = morphs.map((m) => {
+    const arr = new Float32Array(source.length * 3);
+    for (const [vi, dx, dy, dz] of m.deltas) for (const i of bySource.get(vi) ?? []) arr.set([dx, dy, dz], i * 3);
+    const attr = new BufferAttribute(arr, 3);
+    attr.name = `jcm:${m.id}`;
+    return attr;
+  });
+  geometry.morphTargetsRelative = true;
 }
 
 // ---------- Geometry helpers ----------

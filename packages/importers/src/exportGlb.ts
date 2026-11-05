@@ -18,6 +18,9 @@ export async function exportNormalisedGlb(root: Object3D, n: Normalisation, qual
   const warnings = prepareMaterials(root);
   root.traverse((o) => {
     if (o instanceof SkinnedMesh) o.skeleton.pose();
+    // Import-time helpers (e.g. Daz source-vertex maps) aren't part of the model.
+    const geo = (o as { geometry?: { userData: Record<string, unknown> } }).geometry;
+    if (geo) delete geo.userData.sourceVertex;
   });
   const wrapper = new Group();
   wrapper.name = 'Poser import';

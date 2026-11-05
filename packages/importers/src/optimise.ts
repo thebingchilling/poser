@@ -188,6 +188,9 @@ export async function optimiseGlb(glb: ArrayBuffer, quality: ImportQuality, limi
     await MeshoptSimplifier.ready;
     for (const p of prims) simplifyPrimitive(doc, p, limit / welded);
   }
+  // Morph offsets touch only part of a mesh (Daz figures carry dozens of correctives): store them sparse.
+  for (const mesh of doc.getRoot().listMeshes())
+    for (const p of mesh.listPrimitives()) for (const t of p.listTargets()) for (const a of t.listAttributes()) a.setSparse(true);
   const out = await io.writeBinary(doc);
   const bytes = out.buffer.slice(out.byteOffset, out.byteOffset + out.byteLength) as ArrayBuffer;
   return {

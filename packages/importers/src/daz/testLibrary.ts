@@ -67,6 +67,22 @@ export function library(): Record<string, DsonFile> {
       },
     ],
   };
+  // A corrective: bending the abdomen 90° about z pushes the top ring out 5 cm.
+  const jcm: DsonFile = {
+    modifier_library: [
+      {
+        id: 'pJCMAbdomenBend',
+        channel: { id: 'value', value: 0 },
+        morph: { vertex_count: 16, deltas: { count: 4, values: [12, 13, 14, 15].map((i) => [i, 5, 0, 0] as [number, number, number, number]) } },
+        formulas: [
+          {
+            output: 'Fig:/data/Test%20Lib/Figure/Morphs/JCM.dsf#pJCMAbdomenBend?value',
+            operations: [{ op: 'push', url: 'abdomen:/data/Test%20Lib/Figure/Fig.dsf#abdomen?rotation/z' }, { op: 'push', val: [0, 0] }, { op: 'push', val: [90, 1] }, { op: 'push', val: 2 }, { op: 'spline_linear' }],
+          },
+        ],
+      },
+    ],
+  };
   const shirtVerts = [...ring(105, 11), ...ring(130, 11)] as [number, number, number][];
   const shirt: DsonFile = {
     geometry_library: [
@@ -109,6 +125,7 @@ export function library(): Record<string, DsonFile> {
       modifiers: [
         { id: 'Character', parent: '#Fig', url: '/data/Test%20Lib/Figure/Morphs/Character.dsf#Character', channel: { id: 'value', current_value: 1 } },
         { id: 'Tall', parent: '#Fig', url: '/data/Test%20Lib/Figure/Morphs/Tall.dsf#Tall', channel: { id: 'value', current_value: 0 } },
+        { id: 'pJCMAbdomenBend', parent: '#Fig', url: '/data/Test%20Lib/Figure/Morphs/JCM.dsf#pJCMAbdomenBend' },
       ],
       materials: [{ id: 'Skin', geometry: '#Fig-1', groups: ['Skin'], url: '/data/Test%20Lib/Figure/Fig.dsf#Skin', diffuse: { channel: { id: 'diffuse', current_value: [1, 0, 0] } } }],
     },
@@ -118,6 +135,7 @@ export function library(): Record<string, DsonFile> {
     'data/Test Lib/Figure/UV.dsf': uv,
     'data/Test Lib/Figure/Morphs/Tall.dsf': tall,
     'data/Test Lib/Figure/Morphs/Character.dsf': character,
+    'data/Test Lib/Figure/Morphs/JCM.dsf': jcm,
     'data/Test Lib/Shirt/Shirt.dsf': shirt,
     'People/Test.duf': scene,
   };

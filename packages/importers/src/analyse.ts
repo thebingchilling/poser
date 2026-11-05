@@ -143,7 +143,8 @@ export function analyseModel(root: Object3D, format: string, vrmHumanoid?: Recor
     const g = o.geometry;
     triangles += (g.index ? g.index.count : g.getAttribute('position').count) / 3;
     if (o instanceof SkinnedMesh) skinned = true;
-    for (const name of Object.keys(o.morphTargetDictionary ?? {})) morphs.add(name);
+    // Daz corrective morphs (jcm:…) are driven by the pose, not shown as shape sliders.
+    for (const name of Object.keys(o.morphTargetDictionary ?? {})) if (!name.startsWith('jcm:')) morphs.add(name);
   });
   const box = new Box3().setFromObject(root, true);
   const raw = box.getSize(new Vector3());

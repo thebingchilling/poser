@@ -6,6 +6,7 @@ import { Box3, Group, Mesh, Vector3, type Bone, type Material, type Object3D } f
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import type { AnatomyLayer } from './mannequin';
 import type { PosableFigure } from './types';
+import { Correctives } from './correctives';
 
 /**
  * An imported figure or prop (PLAN.md section 4): the normalised GLB from
@@ -19,6 +20,7 @@ export class ImportedFigure implements PosableFigure {
   private readonly bones: (Bone | undefined)[] = [];
   private readonly morphMeshes: Mesh[] = [];
   private readonly materials: Material[] = [];
+  private readonly correctives: Correctives;
 
   private constructor(model: Object3D, rig?: AssetRigInfo) {
     this.root.add(model);
@@ -31,6 +33,7 @@ export class ImportedFigure implements PosableFigure {
         for (const m of Array.isArray(o.material) ? o.material : [o.material]) this.materials.push(m);
       }
     });
+    this.correctives = new Correctives(model);
     const size = new Box3().setFromObject(model, true).getSize(new Vector3());
     this.height = size.y;
     this.root.userData.height = this.height;
@@ -67,13 +70,15 @@ export class ImportedFigure implements PosableFigure {
     if (!this.retargeter) return;
     const local = this.retargeter.apply(pose);
     local.forEach((q, i) => this.bones[i]?.quaternion.set(q[0], q[1], q[2], q[3]));
+    this.correctives.update();
   }
 
   setMorphs(values: Record<string, number>): void {
     for (const mesh of this.morphMeshes) {
       const dict = mesh.morphTargetDictionary!;
       const infl = mesh.morphTargetInfluences!;
-      for (const [name, i] of Object.entries(dict)) infl[i] = values[name] ?? 0;
+      // Corrective morphs (jcm:…) follow the pose, not the shape sliders.
+      for (const [name, i] of Object.entries(dict)) if (!name.startsWith('jcm:')) infl[i] = values[name] ?? 0;
     }
   }
 

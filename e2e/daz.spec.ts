@@ -46,4 +46,19 @@ test('imports a Daz scene, asking for the library when its assets are missing', 
   await page.getByRole('button', { name: 'Import', exact: true }).click();
   await expect(page.getByRole('dialog')).toBeHidden({ timeout: 60_000 });
   await expect(page.getByText('Test', { exact: true }).first()).toBeVisible();
+
+  // The stored model keeps the corrective morph and what drives it.
+  const stored = await page.evaluate(async () => {
+    const assets = await (await navigator.storage.getDirectory()).getDirectoryHandle('assets');
+    for await (const [, dir] of (assets as unknown as { entries(): AsyncIterable<[string, FileSystemDirectoryHandle]> }).entries()) {
+      const file = await (await dir.getFileHandle('model.glb')).getFile();
+      const buf = await file.arrayBuffer();
+      const len = new DataView(buf).getUint32(12, true);
+      return new TextDecoder().decode(new Uint8Array(buf, 20, len));
+    }
+    return '';
+  });
+  expect(stored).toContain('jcm:pJCMAbdomenBend');
+  expect(stored).toContain('dazCorrectives');
+  expect(stored).not.toContain('sourceVertex');
 });
