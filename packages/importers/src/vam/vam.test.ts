@@ -3,7 +3,8 @@ import { Mesh } from 'three';
 import type { ContentSource } from '../content';
 import { MissingContentError } from '../content';
 import { library } from '../daz/testLibrary';
-import { buildVamLook, parseLook, parseVarMeta, parseVmb, vamPath } from './vam';
+import { zipSync } from 'fflate';
+import { VamFiles, buildVamLook, parseLook, parseVarMeta, parseVmb, vamPath } from './vam';
 
 const look = {
   storables: [
@@ -85,6 +86,23 @@ describe('VaM import', () => {
     expect(top).toBeCloseTo(155);
     expect(r.warnings.join(' ')).toMatch(/built-in morphs/);
     expect(r.warnings.join(' ')).toMatch(/clothing and hair can't be read yet \(2 items/);
+  });
+
+  it('reads files from other packages in AddonPackages, picking the latest version', async () => {
+    const pkg = (text: string) => new Blob([zipSync({ 'Custom/Atom/Person/Textures/face.jpg': new TextEncoder().encode(text) })]);
+    const vars = new Map([
+      ['AddonPackages/Author.Skins.2.var', pkg('v2')],
+      ['AddonPackages/sub/Author.Skins.10.var', pkg('v10')],
+    ]);
+    const src: ContentSource = {
+      name: 'vam',
+      read: async (p) => vars.get(p) ?? null,
+      list: async (dir, match) => [...vars.keys()].filter((k) => k.startsWith(dir) && match(k.split('/').pop()!)),
+    };
+    const files = new VamFiles([src]);
+    expect(await (await files.read('Author.Skins.2:/Custom/Atom/Person/Textures/face.jpg'))!.text()).toBe('v2');
+    expect(await (await files.read('Author.Skins.latest:/Custom/Atom/Person/Textures/face.jpg'))!.text()).toBe('v10');
+    expect(await files.read('Author.Missing.1:/Custom/x.jpg')).toBeNull();
   });
 
   it('asks for the Daz library when Genesis 2 is missing', async () => {

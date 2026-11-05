@@ -1,3 +1,4 @@
+import { unzipSync } from 'fflate';
 import { BufferAttribute, Mesh, MeshStandardMaterial, SRGBColorSpace, TextureLoader, type Group, type Material } from 'three';
 import { MissingContentError, readContent, type ContentSource } from '../content';
 import { buildDaz } from '../daz/build';
@@ -71,6 +72,71 @@ export function vamPath(url: string): string {
 }
 
 /**
+ * Reads VaM URLs: "SELF:/…" and plain paths from the dropped files, and
+ * "Author.Package.3:/…" (or ".latest") from that package, found in the
+ * dropped files or in a VaM folder's AddonPackages (the .var is opened and
+ * only the needed file is unpacked).
+ */
+export class VamFiles {
+  private packageIndex: Promise<Map<string, { source: ContentSource; path: string }>> | null = null;
+  private readonly opened = new Map<string, Promise<Uint8Array | null>>();
+
+  constructor(private readonly sources: ContentSource[]) {}
+
+  /** Every .var in the sources' AddonPackages, by package name ("Author.Package.3"). */
+  private packages() {
+    this.packageIndex ??= (async () => {
+      const out = new Map<string, { source: ContentSource; path: string }>();
+      for (const source of this.sources) {
+        const list = (await source.list?.('AddonPackages', (n) => /\.var$/i.test(n)).catch(() => [])) ?? [];
+        for (const path of list) out.set(path.split('/').pop()!.replace(/\.var$/i, '').toLowerCase(), { source, path });
+      }
+      return out;
+    })();
+    return this.packageIndex;
+  }
+
+  /** The package for "Author.Package.N" or "Author.Package.latest" (highest version found). */
+  private async findPackage(name: string): Promise<{ source: ContentSource; path: string } | null> {
+    const index = await this.packages();
+    const lower = name.toLowerCase();
+    if (!lower.endsWith('.latest')) return index.get(lower) ?? null;
+    const stem = lower.slice(0, -'latest'.length);
+    let best: { v: number; hit: { source: ContentSource; path: string } } | null = null;
+    for (const [key, hit] of index) {
+      if (!key.startsWith(stem)) continue;
+      const v = Number(key.slice(stem.length));
+      if (Number.isFinite(v) && (!best || v > best.v)) best = { v, hit };
+    }
+    return best?.hit ?? null;
+  }
+
+  async read(url: string): Promise<Blob | null> {
+    const inner = vamPath(url);
+    const pkg = /^([^:/]+):\//.exec(url)?.[1];
+    // Dropped files (an unpacked .var) first, also for other packages' files.
+    const local = await readContent(inner, this.sources);
+    if (local || !pkg || pkg === 'SELF') return local;
+    const found = await this.findPackage(pkg);
+    if (!found) return null;
+    const key = `${found.path}|${inner.toLowerCase()}`;
+    let p = this.opened.get(key);
+    if (!p) {
+      p = (async () => {
+        const zip = await found.source.read(found.path);
+        if (!zip) return null;
+        const want = inner.toLowerCase();
+        const files = unzipSync(new Uint8Array(await zip.arrayBuffer()), { filter: (f) => f.name.toLowerCase() === want });
+        return Object.values(files)[0] ?? null;
+      })();
+      this.opened.set(key, p);
+    }
+    const bytes = await p;
+    return bytes ? new Blob([bytes as Uint8Array<ArrayBuffer>]) : null;
+  }
+}
+
+/**
  * VaM morph deltas (.vmb): a count, then per delta a vertex index and an
  * offset in Unity space (metres, x mirrored). Checked against the count in
  * the matching .vmi so a layout surprise is reported, not applied.
@@ -111,6 +177,7 @@ export async function buildVamLook(look: VamLook, sources: ContentSource[]): Pro
   warnings.push(...built.warnings);
 
   // Custom morphs from packages (.vmi + .vmb); VaM's built-in morphs live inside VaM itself.
+  const files = new VamFiles(sources);
   let applied = 0;
   const builtIn: string[] = [];
   const pos = body.geometry.attributes.position as BufferAttribute;
@@ -122,9 +189,9 @@ export async function buildVamLook(look: VamLook, sources: ContentSource[]): Pro
       builtIn.push(m.name ?? m.uid);
       continue;
     }
-    const base = vamPath(m.uid).replace(/\.vmi$/i, '');
-    const vmi = await readContent(`${base}.vmi`, sources);
-    const vmb = await readContent(`${base}.vmb`, sources);
+    const base = m.uid.replace(/\.vmi$/i, '');
+    const vmi = await files.read(`${base}.vmi`);
+    const vmb = await files.read(`${base}.vmb`);
     if (!vmb) {
       warnings.push(`Missing morph ${base.split('/').pop()}`);
       continue;
@@ -147,7 +214,7 @@ export async function buildVamLook(look: VamLook, sources: ContentSource[]): Pro
   for (const [key, url] of Object.entries(look.textures)) {
     const m = /^(face|torso|limbs|genitals)(Diffuse|Normal|Specular|Gloss)$/i.exec(key);
     if (!m || typeof document === 'undefined') continue;
-    const blob = await readContent(vamPath(url), sources);
+    const blob = await files.read(url);
     if (!blob) {
       warnings.push(`Missing texture ${url.split('/').pop()}`);
       continue;
