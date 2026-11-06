@@ -26,6 +26,9 @@ import { parseOff } from './more/off';
 import { buildMmd, parsePmd, parsePmx } from './more/mmd';
 import { buildXps, parseXpsAscii, parseXpsBinary } from './more/xps';
 import { parseSmd } from './more/smd';
+import { parseDirectX } from './more/directx';
+import { buildVrml, parseVrml, parseX3dXml } from './more/vrml';
+import { gunzipSync } from 'fflate';
 import { buildPoser, decodePoser } from './more/poser';
 import { buildSource, parseMdl } from './more/sourceMdl';
 import { parseVmt, vtfTexture } from './more/vtf';
@@ -275,6 +278,17 @@ async function parse(vfs: VirtualFiles, path: string, format: ModelFormat, manag
       warnings.push(...built.warnings);
       return { root: built.root, animations: [], warnings };
     }
+    case 'wrl':
+    case 'x3dv':
+    case 'x3d': {
+      // VRML is often gzipped whatever its name says.
+      const bytes = new Uint8Array(buffer);
+      const src = new TextDecoder().decode(bytes[0] === 0x1f && bytes[1] === 0x8b ? gunzipSync(bytes) : bytes);
+      const nodes = format === 'x3d' || src.trimStart().startsWith('<') ? parseX3dXml(src) : parseVrml(src);
+      return { root: buildVrml(nodes, modelTexture(manager)), animations: [], warnings };
+    }
+    case 'x':
+      return { root: parseDirectX(text(), modelTexture(manager)), animations: [], warnings };
     case 'smd':
       return { root: parseSmd(text(), modelTexture(manager)), animations: [], warnings };
     case 'off':

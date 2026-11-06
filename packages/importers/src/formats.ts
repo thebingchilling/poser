@@ -42,6 +42,8 @@ export function classifyFile(path: string): FileRole {
     case 'xyz':
     case 'off':
     case 'x':
+    case 'wrz':
+      return { kind: 'model', format: 'wrl' };
     case 'wrl':
     case 'x3d':
     case 'x3dv':

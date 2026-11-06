@@ -231,3 +231,88 @@ textureMap NO_MAP
     expect(r.root.children[0]!.name).toBe('box');
   });
 });
+
+describe('DirectX', () => {
+  it('reads frames, a skinned mesh, materials, and UVs from a text .x file', async () => {
+    const { parseDirectX } = await import('./directx');
+    const { SkinnedMesh } = await import('three');
+    const x = `xof 0303txt 0032
+template Header { <3D82AB43-62DA-11cf-AB39-0020AF71E433> WORD major; }
+Material Red { 1.0;0.0;0.0;1.0;; 10.0; 0;0;0;; 0;0;0;; TextureFilename { "skin.png"; } }
+Frame Root {
+  FrameTransformMatrix { 1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1;; }
+  Frame Spine {
+    FrameTransformMatrix { 1,0,0,0, 0,1,0,0, 0,0,1,0, 0,1,0,1;; }
+  }
+  Mesh Body {
+    4;
+    0;0;0;, 1;0;0;, 1;2;0;, 0;2;0;;
+    1;
+    4;0,1,2,3;;
+    MeshTextureCoords { 4; 0;1;, 1;1;, 1;0;, 0;0;; }
+    MeshMaterialList { 1; 1; 0;; { Red } }
+    SkinWeights { "Root"; 2; 0,1; 1.0,1.0; 1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1;; }
+    SkinWeights { "Spine"; 2; 2,3; 1.0,1.0; 1,0,0,0,0,1,0,0,0,0,1,0,0,-1,0,1;; }
+  }
+}`;
+    const root = parseDirectX(x, () => null);
+    let mesh: InstanceType<typeof SkinnedMesh> | undefined;
+    root.traverse((o) => (mesh ??= o instanceof SkinnedMesh ? o : undefined));
+    expect(mesh!.skeleton.bones.map((b) => b.name)).toEqual(['Root', 'Spine']);
+    expect(mesh!.skeleton.bones[1]!.position.y).toBe(1);
+    expect(mesh!.geometry.index!.count).toBe(6);
+    expect(mesh!.geometry.attributes.skinIndex!.getX(3)).toBe(1);
+    expect((mesh!.material as unknown as { name: string }[])[0]!.name).toBe('Red');
+    expect(mesh!.geometry.attributes.uv!.getY(0)).toBeCloseTo(0);
+  });
+});
+
+describe('VRML and X3D', () => {
+  it('reads VRML 97 transforms, face sets, DEF/USE, and materials', async () => {
+    const { buildVrml, parseVrml } = await import('./vrml');
+    const { Mesh } = await import('three');
+    const wrl = `#VRML V2.0 utf8
+PROTO Thing [ field SFFloat x 1 ] { Group {} }
+DEF T Transform {
+  translation 0 1 0
+  rotation 0 1 0 1.5708
+  children [
+    DEF S Shape {
+      appearance Appearance { material Material { diffuseColor 1 0 0 transparency 0.5 } }
+      geometry IndexedFaceSet {
+        coord Coordinate { point [ 0 0 0, 1 0 0, 1 1 0, 0 1 0 ] }
+        coordIndex [ 0 1 2 3 -1 ]
+        solid FALSE
+      }
+    }
+    Transform { translation 2 0 0 children [ USE S ] }
+  ]
+}
+ROUTE A.b TO C.d`;
+    const root = buildVrml(parseVrml(wrl), () => null);
+    const meshes: InstanceType<typeof Mesh>[] = [];
+    root.traverse((o) => o instanceof Mesh && meshes.push(o));
+    expect(meshes.length).toBe(2);
+    expect(meshes[0]!.geometry).toBe(meshes[1]!.geometry);
+    expect(meshes[0]!.geometry.attributes.position!.count).toBe(6);
+    const mat = meshes[0]!.material as unknown as { color: { r: number }; opacity: number; side: number };
+    expect(mat.color.r).toBeCloseTo(1);
+    expect(mat.opacity).toBeCloseTo(0.5);
+    expect(mat.side).toBe(2);
+    expect(root.children[0]!.position.y).toBe(1);
+  });
+
+  it('reads X3D XML', async () => {
+    const { buildVrml, parseX3dXml } = await import('./vrml');
+    const { Mesh } = await import('three');
+    const x3d = `<?xml version="1.0"?><!DOCTYPE X3D><X3D><Scene><Transform translation="0 0 1"><Shape>
+      <Appearance><Material diffuseColor="0 1 0"/></Appearance>
+      <IndexedTriangleSet index="0 1 2"><Coordinate point="0 0 0 1 0 0 0 1 0"/></IndexedTriangleSet>
+    </Shape><Shape><Box size="1 2 3"/></Shape></Transform></Scene></X3D>`;
+    const root = buildVrml(parseX3dXml(x3d), () => null);
+    const meshes: InstanceType<typeof Mesh>[] = [];
+    root.traverse((o) => o instanceof Mesh && meshes.push(o));
+    expect(meshes.length).toBe(2);
+    expect((meshes[0]!.material as unknown as { color: { g: number } }).color.g).toBeCloseTo(1);
+  });
+});
