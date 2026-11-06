@@ -1,0 +1,3 @@
+rhino3dm (openNURBS for JavaScript), used to read Rhino .3dm files.
+Copyright (c) Robert McNeel & Associates. MIT License.
+Source: https://github.com/mcneel/rhino3dm

@@ -17,8 +17,13 @@ for (const line of readFileSync(join(root, '_headers'), 'utf8').split('\n')) {
     current = { path: line.trim(), headers: [] };
     rules.push(current);
   } else if (current) {
-    const i = line.indexOf(':');
-    current.headers.push([line.slice(0, i).trim(), line.slice(i + 1).trim()]);
+    // "! Name" detaches a header set by an earlier rule (as Cloudflare does).
+    const detach = /^\s*!\s*(\S+)/.exec(line);
+    if (detach) current.headers.push([detach[1], null]);
+    else {
+      const i = line.indexOf(':');
+      current.headers.push([line.slice(0, i).trim(), line.slice(i + 1).trim()]);
+    }
   }
 }
 
@@ -40,7 +45,7 @@ const types = {
 
 createServer((req, res) => {
   const path = normalize(decodeURIComponent(new URL(req.url, 'http://x').pathname));
-  for (const r of rules) if (matches(r.path, path)) for (const [k, v] of r.headers) res.setHeader(k, v);
+  for (const r of rules) if (matches(r.path, path)) for (const [k, v] of r.headers) v === null ? res.removeHeader(k) : res.setHeader(k, v);
   let file = join(root, path);
   if (!file.startsWith(root) || !existsSync(file) || statSync(file).isDirectory()) file = join(root, 'index.html');
   res.setHeader('Content-Type', types[extname(file)] ?? 'application/octet-stream');

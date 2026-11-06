@@ -14,6 +14,7 @@
     "@poser/rig": "workspace:*",
     "fflate": "^0.8.2",
     "meshoptimizer": "^1.3.0",
+    "rhino3dm": "8.17.0",
     "three": "^0.186.1"
   },
   "devDependencies": {

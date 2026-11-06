@@ -10,3 +10,11 @@
 
 /sw.js
   Cache-Control: no-cache
+
+# rhino3dm (Rhino .3dm imports) generates code at runtime, so it runs only in
+# its own worker, which gets a policy allowing that and nothing else: no
+# network access beyond this site, no other scripts. The app's policy above
+# never allows runtime code.
+/vendor/rhino3dm/*
+  ! Content-Security-Policy
+  Content-Security-Policy: default-src 'none'; script-src 'self' 'unsafe-eval' 'wasm-unsafe-eval'; connect-src 'self'

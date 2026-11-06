@@ -36,6 +36,7 @@ test.describe('import', () => {
     { file: ['vrm1.vrm'], kind: 'Figure', name: 'vrm1', rig: /VRM: 16 of 16/, height: [1.3, 1.9] },
     { file: ['miku_v2.pmd'], kind: 'Figure', name: 'miku v2', rig: /MikuMikuDance: 16 of 16/, height: [1.4, 2.1] },
     { file: ['male02.obj', 'male02.mtl'], kind: 'Prop', name: 'male02' },
+    { file: ['panel.3dm'], kind: 'Prop', name: 'panel' },
     { file: ['mdl/candles.mdl', 'mdl/candles.vvd', 'mdl/candles.dx90.vtx'], kind: 'Prop', name: 'candles' },
     { file: ['elf.dae'], kind: 'Prop', name: 'elf' },
     { file: ['slotted_disk.stl'], kind: 'Prop', name: 'slotted disk' },
