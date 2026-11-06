@@ -24,6 +24,7 @@ import { XYZLoader } from 'three/addons/loaders/XYZLoader.js';
 import { LDrawLoader } from 'three/addons/loaders/LDrawLoader.js';
 import { parseOff } from './more/off';
 import { buildMmd, parsePmd, parsePmx } from './more/mmd';
+import { buildXps, parseXpsAscii, parseXpsBinary } from './more/xps';
 import { MissingContentError, VirtualFilesSource, contentSources } from './content';
 import { buildDaz } from './daz/build';
 import { DsonResolver, parseDson } from './daz/dson';
@@ -85,6 +86,20 @@ export async function loadModel(vfs: VirtualFiles, path: string, format: ModelFo
   const model = await parse(vfs, path, format, manager, warnings);
   if (started && !done) await Promise.race([idle, new Promise((r) => setTimeout(r, TEXTURE_WAIT_MS))]);
   return model;
+}
+
+/** Loads textures by the path a model gives (each once), with the TGA/DDS/TIFF handlers where needed. */
+function modelTexture(manager: LoadingManager): (ref: string) => Texture {
+  const textures = new Map<string, Texture>();
+  const loader = new TextureLoader(manager);
+  return (ref) => {
+    const key = ref.toLowerCase();
+    if (!textures.has(key)) {
+      const handler = manager.getHandler(ref) as TextureLoader | null;
+      textures.set(key, (handler ?? loader).load(ref));
+    }
+    return textures.get(key)!;
+  };
 }
 
 function plainMesh(geometry: BufferGeometry): Group {
@@ -188,17 +203,13 @@ async function parse(vfs: VirtualFiles, path: string, format: ModelFormat, manag
     case 'pmd': {
       const model = format === 'pmx' ? parsePmx(buffer) : parsePmd(buffer);
       warnings.push(...model.skipped);
-      const textures = new Map<string, Texture>();
-      const loader = new TextureLoader(manager);
-      const texture = (ref: string) => {
-        const key = ref.toLowerCase();
-        if (!textures.has(key)) {
-          const handler = manager.getHandler(ref) as TextureLoader | null;
-          textures.set(key, (handler ?? loader).load(ref));
-        }
-        return textures.get(key)!;
-      };
-      return { root: buildMmd(model, texture), animations: [], warnings };
+      return { root: buildMmd(model, modelTexture(manager)), animations: [], warnings };
+    }
+    case 'xps':
+    case 'mesh':
+    case 'ascii': {
+      const model = format === 'ascii' ? parseXpsAscii(text()) : parseXpsBinary(buffer);
+      return { root: buildXps(model, modelTexture(manager)), animations: [], warnings };
     }
     case 'off':
       return { root: plainMesh(parseOff(text())), animations: [], warnings };
