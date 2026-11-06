@@ -1,5 +1,5 @@
 import { VRMLoaderPlugin, VRMUtils, type VRM } from '@pixiv/three-vrm';
-import { Group, LoadingManager, Mesh, MeshStandardMaterial, type AnimationClip, type BufferGeometry, type Object3D } from 'three';
+import { Group, LoadingManager, Mesh, MeshStandardMaterial, Points, PointsMaterial, TextureLoader, type AnimationClip, type BufferGeometry, type Object3D, type Texture } from 'three';
 import { ColladaLoader } from 'three/addons/loaders/ColladaLoader.js';
 import { FBXLoader } from 'three/addons/loaders/FBXLoader.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
@@ -16,6 +16,14 @@ import { KMZLoader } from 'three/addons/loaders/KMZLoader.js';
 import { MD2Loader } from 'three/addons/loaders/MD2Loader.js';
 import { VTKLoader } from 'three/addons/loaders/VTKLoader.js';
 import { VOXLoader, buildMesh } from 'three/addons/loaders/VOXLoader.js';
+import { TGALoader } from 'three/addons/loaders/TGALoader.js';
+import { DDSLoader } from 'three/addons/loaders/DDSLoader.js';
+import { TIFFLoader } from 'three/addons/loaders/TIFFLoader.js';
+import { PCDLoader } from 'three/addons/loaders/PCDLoader.js';
+import { XYZLoader } from 'three/addons/loaders/XYZLoader.js';
+import { LDrawLoader } from 'three/addons/loaders/LDrawLoader.js';
+import { parseOff } from './more/off';
+import { buildMmd, parsePmd, parsePmx } from './more/mmd';
 import { MissingContentError, VirtualFilesSource, contentSources } from './content';
 import { buildDaz } from './daz/build';
 import { DsonResolver, parseDson } from './daz/dson';
@@ -68,6 +76,11 @@ export async function loadModel(vfs: VirtualFiles, path: string, format: ModelFo
     }
     return vfs.url(found)!;
   });
+
+  // Texture formats browsers can't show on their own; loaders look these up by the referenced name.
+  manager.addHandler(/\.tga$/i, new TGALoader(manager));
+  manager.addHandler(/\.dds$/i, new DDSLoader(manager));
+  manager.addHandler(/\.tiff?$/i, new TIFFLoader(manager));
 
   const model = await parse(vfs, path, format, manager, warnings);
   if (started && !done) await Promise.race([idle, new Promise((r) => setTimeout(r, TEXTURE_WAIT_MS))]);
@@ -171,6 +184,45 @@ async function parse(vfs: VirtualFiles, path: string, format: ModelFormat, manag
       const meta = await packageMeta(vfs, path);
       return { root: g, animations: [], warnings, meta: meta && { creator: meta.creator, license: meta.license } };
     }
+    case 'pmx':
+    case 'pmd': {
+      const model = format === 'pmx' ? parsePmx(buffer) : parsePmd(buffer);
+      warnings.push(...model.skipped);
+      const textures = new Map<string, Texture>();
+      const loader = new TextureLoader(manager);
+      const texture = (ref: string) => {
+        const key = ref.toLowerCase();
+        if (!textures.has(key)) {
+          const handler = manager.getHandler(ref) as TextureLoader | null;
+          textures.set(key, (handler ?? loader).load(ref));
+        }
+        return textures.get(key)!;
+      };
+      return { root: buildMmd(model, texture), animations: [], warnings };
+    }
+    case 'off':
+      return { root: plainMesh(parseOff(text())), animations: [], warnings };
+    case 'pcd':
+    case 'xyz': {
+      // Point clouds (scans): kept as points.
+      const geometry: BufferGeometry = format === 'pcd' ? (new PCDLoader(manager).parse(buffer) as Points).geometry : (new XYZLoader(manager) as unknown as { parse(t: string): BufferGeometry }).parse(text());
+      const g = new Group();
+      g.add(new Points(geometry, new PointsMaterial({ size: 0.005, vertexColors: geometry.hasAttribute('color'), color: geometry.hasAttribute('color') ? 0xffffff : 0xbcbcbc })));
+      return { root: g, animations: [], warnings };
+    }
+    case 'ldr':
+    case 'mpd': {
+      // LEGO models: parts not packed into the file are looked up among the dropped files (an LDraw parts folder).
+      const loader = new LDrawLoader(manager);
+      loader.setPartsLibraryPath('');
+      const group = await new Promise<Group>((resolve, reject) => loader.parse(text(), resolve, reject));
+      // LDraw units: 1 LDU = 0.4 mm, y down.
+      group.rotation.x = Math.PI;
+      group.scale.setScalar(0.0004);
+      const g = new Group();
+      g.add(group);
+      return { root: g, animations: [], warnings };
+    }
     case '3ds':
       return { root: new TDSLoader(manager).parse(buffer, ''), animations: [], warnings };
     case '3mf':
@@ -203,6 +255,8 @@ async function parse(vfs: VirtualFiles, path: string, format: ModelFormat, manag
       for (const chunk of result.chunks) g.add(buildMesh(chunk));
       return { root: g, animations: [], warnings };
     }
+    default:
+      throw new Error(`.${format} files can’t be read yet.`);
   }
 }
 

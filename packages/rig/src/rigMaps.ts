@@ -15,7 +15,7 @@ export interface BoneMapping {
 
 export type RigMap = Partial<Record<string, BoneMapping>>;
 
-export type RigKind = 'daz-g8' | 'daz-g9' | 'vam' | 'mixamo' | 'cc4' | 'vrm' | 'generic';
+export type RigKind = 'daz-g8' | 'daz-g9' | 'vam' | 'mixamo' | 'cc4' | 'mmd' | 'xps' | 'valve' | 'vrm' | 'generic';
 
 export const RIG_LABELS: Record<RigKind, string> = {
   'daz-g8': 'Daz Genesis 8 / 8.1',
@@ -23,6 +23,9 @@ export const RIG_LABELS: Record<RigKind, string> = {
   vam: 'Virt-a-Mate (Genesis 2)',
   mixamo: 'Mixamo',
   cc4: 'Character Creator 4',
+  mmd: 'MikuMikuDance',
+  xps: 'XNALara / XPS',
+  valve: 'Source engine (ValveBiped)',
   vrm: 'VRM',
   generic: 'Other rig (matched by name)',
 };
@@ -186,6 +189,81 @@ export const RIG_MAPS: Record<Exclude<RigKind, 'generic' | 'vrm'>, RigMap> = {
       };
     },
   ),
+  // MikuMikuDance (Japanese names; full-width digits are normalised away).
+  mmd: build(
+    {
+      hips: { bone: '下半身' },
+      spine: { bone: '上半身' },
+      chest: { bone: '上半身2' },
+      upperChest: { bone: '上半身3' },
+      neck: { bone: '首' },
+      head: { bone: '頭' },
+    },
+    (side) => {
+      const s = side === 'left' ? '左' : '右';
+      const MMD: Record<(typeof FINGERS)[number], string> = { Thumb: '親指', Index: '人指', Middle: '中指', Ring: '薬指', Little: '小指' };
+      return {
+        [side + 'Eye']: { bone: `${s}目` },
+        [side + 'Shoulder']: { bone: `${s}肩` },
+        [side + 'UpperArm']: { bone: `${s}腕`, twist: [`${s}腕捩`] },
+        [side + 'LowerArm']: { bone: `${s}ひじ`, twist: [`${s}手捩`] },
+        [side + 'Hand']: { bone: `${s}手首` },
+        [side + 'UpperLeg']: { bone: `${s}足` },
+        [side + 'LowerLeg']: { bone: `${s}ひざ` },
+        [side + 'Foot']: { bone: `${s}足首` },
+        [side + 'Toes']: { bone: `${s}つま先` },
+        // Thumbs count 0-1-2, other fingers 1-2-3.
+        ...fingerMap(side, (f, i) => `${s}${MMD[f]}${f === 'Thumb' ? i - 1 : i}`),
+      };
+    },
+  ),
+  xps: build(
+    {
+      hips: { bone: 'root hips' },
+      spine: { bone: 'spine lower' },
+      chest: { bone: 'spine middle' },
+      upperChest: { bone: 'spine upper' },
+      neck: { bone: 'head neck lower' },
+      head: { bone: 'head neck upper' },
+    },
+    (side) => ({
+      [side + 'Eye']: { bone: `head eyeball ${side}` },
+      [side + 'Shoulder']: { bone: `arm ${side} shoulder 1` },
+      [side + 'UpperArm']: { bone: `arm ${side} shoulder 2` },
+      [side + 'LowerArm']: { bone: `arm ${side} elbow` },
+      [side + 'Hand']: { bone: `arm ${side} wrist` },
+      [side + 'UpperLeg']: { bone: `leg ${side} thigh` },
+      [side + 'LowerLeg']: { bone: `leg ${side} knee` },
+      [side + 'Foot']: { bone: `leg ${side} ankle` },
+      [side + 'Toes']: { bone: `leg ${side} toes` },
+      ...fingerMap(side, (f, i) => `arm ${side} finger ${FINGERS.indexOf(f) + 1}${'abc'[i - 1]}`),
+    }),
+  ),
+  valve: build(
+    {
+      hips: { bone: 'ValveBiped.Bip01_Pelvis' },
+      spine: { bone: 'ValveBiped.Bip01_Spine' },
+      chest: { bone: 'ValveBiped.Bip01_Spine1' },
+      upperChest: { bone: 'ValveBiped.Bip01_Spine2' },
+      neck: { bone: 'ValveBiped.Bip01_Neck1' },
+      head: { bone: 'ValveBiped.Bip01_Head1' },
+    },
+    (side) => {
+      const s = `ValveBiped.Bip01_${side === 'left' ? 'L' : 'R'}_`;
+      return {
+        [side + 'Shoulder']: { bone: `${s}Clavicle` },
+        [side + 'UpperArm']: { bone: `${s}UpperArm` },
+        [side + 'LowerArm']: { bone: `${s}Forearm` },
+        [side + 'Hand']: { bone: `${s}Hand` },
+        [side + 'UpperLeg']: { bone: `${s}Thigh` },
+        [side + 'LowerLeg']: { bone: `${s}Calf` },
+        [side + 'Foot']: { bone: `${s}Foot` },
+        [side + 'Toes']: { bone: `${s}Toe0` },
+        // Finger0/01/02 is the thumb, Finger1/11/12 the index, and so on.
+        ...fingerMap(side, (f, i) => `${s}Finger${FINGERS.indexOf(f)}${i === 1 ? '' : i - 1}`),
+      };
+    },
+  ),
 };
 
 /**
@@ -194,6 +272,7 @@ export const RIG_MAPS: Record<Exclude<RigKind, 'generic' | 'vrm'>, RigMap> = {
  */
 export function normaliseBoneName(name: string): string {
   return name
+    .normalize('NFKC')
     .replace(/^.*[:|]/, '')
     .replace(/^(mixamorig\d*|def-|org-|bip0?1\s*|armature_?)/i, '')
     .toLowerCase()

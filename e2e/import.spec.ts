@@ -34,6 +34,7 @@ test.describe('import', () => {
     { file: ['Xbot.glb'], kind: 'Figure', name: 'Xbot', rig: /Mixamo: 16 of 16/, height: [1.6, 1.9] },
     { file: ['Samba Dancing.fbx'], kind: 'Figure', name: 'Samba Dancing', rig: /Mixamo: 16 of 16/, height: [1.4, 2.0] },
     { file: ['vrm1.vrm'], kind: 'Figure', name: 'vrm1', rig: /VRM: 16 of 16/, height: [1.3, 1.9] },
+    { file: ['miku_v2.pmd'], kind: 'Figure', name: 'miku v2', rig: /MikuMikuDance: 16 of 16/, height: [1.4, 2.1] },
     { file: ['male02.obj', 'male02.mtl'], kind: 'Prop', name: 'male02' },
     { file: ['elf.dae'], kind: 'Prop', name: 'elf' },
     { file: ['slotted_disk.stl'], kind: 'Prop', name: 'slotted disk' },

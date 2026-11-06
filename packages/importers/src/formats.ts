@@ -3,7 +3,8 @@ export type ModelFormat =
   | 'gltf' | 'glb' | 'vrm' | 'fbx' | 'obj' | 'dae' | 'stl' | 'ply'
   | '3ds' | '3mf' | 'amf' | 'usd' | 'usda' | 'usdc' | 'usdz' | 'lwo' | 'kmz' | 'md2' | 'vtk' | 'vtp' | 'vox'
   | 'duf' | 'dsf'
-  | 'vap' | 'vamscene' | 'vamitem';
+  | 'vap' | 'vamscene' | 'vamitem'
+  | 'ldr' | 'mpd' | 'pcd' | 'xyz' | 'off' | 'x' | 'wrl' | 'x3d' | 'x3dv' | 'pmx' | 'pmd' | 'xps' | 'mesh' | 'ascii' | 'smd' | 'mdl' | 'cr2' | 'pz3' | 'pp2' | 'hr2' | 'obz' | 'crz' | 'pzz' | 'p2z' | 'blend' | '3dm';
 export type PoseFormat = 'bvh' | 'vrma' | 'pose-json';
 export type ImageFormat = 'image' | 'hdr';
 
@@ -35,7 +36,39 @@ export function classifyFile(path: string): FileRole {
     case 'vox':
     case 'duf':
     case 'dsf':
+    case 'ldr':
+    case 'mpd':
+    case 'pcd':
+    case 'xyz':
+    case 'off':
+    case 'x':
+    case 'wrl':
+    case 'x3d':
+    case 'x3dv':
+    case 'pmx':
+    case 'pmd':
+    case 'xps':
+    case 'smd':
+    case 'cr2':
+    case 'pz3':
+    case 'pp2':
+    case 'hr2':
+    case 'crz':
+    case 'pzz':
+    case 'p2z':
+    case 'obz':
+    case 'blend':
+    case '3dm':
       return { kind: 'model', format: ext };
+    case 'mdl':
+      // Source engine models (the .vvd/.vtx beside them hold the mesh); Quake .mdl files have no .vvd and are reported then.
+      return { kind: 'model', format: 'mdl' };
+    case 'mesh':
+      // XNALara binary meshes (generic_item.mesh); .mesh.ascii is the text form.
+      return { kind: 'model', format: 'mesh' };
+    case 'ascii':
+      return path.toLowerCase().endsWith('.mesh.ascii') ? { kind: 'model', format: 'ascii' } : { kind: 'other' };
+
     case 'bvh':
       return { kind: 'pose', format: 'bvh' };
     case 'vrma':
