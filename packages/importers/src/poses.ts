@@ -22,7 +22,7 @@ import { dazPoseToCanonical } from './daz/pose';
 /**
  * Pose files (PLAN.md sections 4.2 and 6): BVH and VRMA single frames, and
  * our own pose JSON. Imports retarget onto the canonical rig; exports write
- * the canonical skeleton, so a pose made here opens in Blender, VRM tools,
+ * the canonical skeleton, so a pose made here opens in VRM tools
  * and other posers.
  */
 

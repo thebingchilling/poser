@@ -12,7 +12,7 @@ export function MissingContent({ error, onRetry, onSkip }: { error: MissingConte
       <p>{error.message}</p>
       <p className="hint">
         {error.library === 'daz'
-          ? 'Choose the folder that holds “data” and “Runtime” (in Daz Studio: Edit › Preferences › Content › Content Directory Manager). Poser reads only the files a scene needs.'
+          ? 'Choose your Daz content folder: the one that holds the “data” and “Runtime” folders. Poser reads only the files a scene needs.'
           : 'Choose your VaM folder (the one with “AddonPackages”).'}
       </p>
       <ul className="hint">

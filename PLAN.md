@@ -46,7 +46,7 @@ A web app that is a **realistic, physics-based NSFW figure modeller and anatomy 
 
 | Topic | Finding | Consequence |
 |---|---|---|
-| **Daz3D files** | There's no official glTF export. The common routes are Daz Studio → FBX, or the Diffeomorphic add-on → Blender → glTF. Genesis 9 has known export issues (HD mesh, armature scaling, some hair/shoe problems). Daz's native `.dsf/.duf` files are gzipped JSON. | v1 imports user-exported FBX/glTF and ships an in-app export guide. Phase 3 adds a native reader for the user's installed Daz library folder. |
+| **Daz3D files** | There's no official glTF export. The common routes are Daz Studio → FBX, or the Diffeomorphic add-on → Blender → glTF. Genesis 9 has known export issues (HD mesh, armature scaling, some hair/shoe problems). Daz's native `.dsf/.duf` files are gzipped JSON. | *Decided:* the owner uses only premade models and this app, never other software. Phase 1 reads Daz content natively from the user's Daz library folder; no export steps or guides. |
 | **Daz licensing** | Using Daz 3D data inside an application (rather than as renders) needs an **Interactive License**. | Never bundle or host Daz content. Users load their own files locally. *(Not legal advice; get it reviewed before launch.)* |
 | **Virt-a-Mate** | `.var` packages are zip files with a `meta.json` (license, dependencies), plus morphs, clothing, and textures. VaM 1.x figures use a Daz Genesis 2 base mesh that **isn't inside the packages**. | Read `.var` zips and the VaM install folder. Apply morphs and clothing onto the base mesh from the user's own VaM install. |
 | **Physics engine** | Jolt (WASM) has rigid bodies, ragdolls with motors, constraints, and soft bodies. Rapier has no soft bodies. | Use Jolt for bodies and props. |
@@ -239,8 +239,8 @@ Heavy work runs in background **Web Workers** with a progress bar, so the UI nev
 - **VaM install:** index `AddonPackages/*.var`, `Custom/Atom/Person/Morphs`, `Custom/Clothing`, `Custom/Hair`, and `Saves/` looks. Read `meta.json` for licenses and dependencies.
 - **Generic folders:** index every supported format with thumbnails generated on first view.
 
-### 4.5 Daz export guide (in-app help, Phase 1)
-Step-by-step instructions with screenshots: Daz Studio → FBX for Genesis 8 (base resolution, include morphs, don't merge clothing), and Diffeomorphic → Blender → glTF for Genesis 9. This covers Daz content until the Phase 3 native reader exists.
+### 4.5 Daz export guide
+*Dropped:* the owner uses only premade models and this app, so the app gives no instructions for exporting or for other software. Daz content is read natively (section 4.2).
 
 ### 4.6 Performance budget at import
 - Figures: base resolution, or decimated to about 50–80k triangles with normal maps baked to keep detail. Genesis 9 HD is reduced by default.
@@ -969,12 +969,12 @@ Each phase ends with something usable. Week estimates assume one full-time devel
 - [x] Body measurements readout; pose blending; random pose and camera; reference image overlay and camera match
 - [x] ~~Built-in CC0 environments~~ Dropped: rooms and objects are imported as needed (section 16.5)
 - [x] Imported props (visual only; move, turn, lock, recolour in the Objects workspace), lighting presets, lens/ortho cameras, study modes (clay, silhouette, notan); also camera bookmarks and rule-of-thirds/golden-ratio guides
-- [x] Screenshot capture; Daz export guide (text steps for now; screenshots can be added once the owner captures them in Daz Studio)
-- **Done when:** a Daz G8 FBX and a Mixamo character are imported, posed convincingly with IK and limits, lit, and captured.
+- [x] Screenshot capture. ~~Daz export guide~~ dropped: premade models and this app only, Daz content read natively
+- **Done when:** a premade Daz Genesis 8/9 figure (read from the Daz library) and a Mixamo character are imported, posed convincingly with IK and limits, lit, and captured.
 - **Remaining Phase 1 work, in order:**
   1. ~~**Body measurements readout:**~~ *Done* (Body workspace). height, bust, underbust, waist, and hips (tape-measure circumference of the mesh at each level), bra size, estimated weight from body volume, and limb lengths, in metric, updating with morphs.
   2. ~~**Reference image overlay and camera match:**~~ *Done* (Render workspace; the photo is kept for the session only). a semi-transparent photo over the viewport or behind the scene, with a draggable horizon line, lens, and camera height so the floor and figure match the photo's perspective.
-  3. ~~**Daz export guide:**~~ *Done* (Library and import wizard). step-by-step in-app help for Daz Studio → FBX (Genesis 8) and Diffeomorphic → Blender → glTF (Genesis 9), opened from the Library and the import wizard.
+  3. ~~**Daz export guide:**~~ *Dropped* (removed from the app at the owner's request).
   4. ~~**Mesh and texture optimisation in workers:**~~ *Done*. decimation and texture downscaling by quality level, and pruning unused morphs, run off the main thread during import.
   5. ~~**Default base figure**~~ *Done* (see below).
 

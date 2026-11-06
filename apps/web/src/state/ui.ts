@@ -60,7 +60,6 @@ interface UiState {
   viewportGeneration: number;
   locked: boolean;
   settingsOpen: boolean;
-  dazGuideOpen: boolean;
   settingsTab: string;
   set(patch: Partial<Omit<UiState, 'set'>>): void;
   openWorkspace(id: WorkspaceId): void;
@@ -103,7 +102,6 @@ export const useUi = create<UiState>()((set, get) => ({
   viewportGeneration: 0,
   locked: false,
   settingsOpen: false,
-  dazGuideOpen: false,
   settingsTab: 'appearance',
   set: (patch) => set(patch),
   openWorkspace: (id) => {

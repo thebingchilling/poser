@@ -72,3 +72,22 @@ test.describe('import', () => {
     });
   }
 });
+
+test('an imported figure added to the scene is full size', async ({ page }, info) => {
+  test.skip(info.project.name !== 'desktop', 'desktop only');
+  test.skip(!has('Xbot.glb'), 'test asset not available');
+  await start(page);
+  await importFiles(page, ['Xbot.glb']);
+  await page.getByRole('button', { name: 'Import', exact: true }).click();
+  await expect(page.getByRole('dialog')).toBeHidden({ timeout: 60_000 });
+  await page.locator('.asset-card').first().getByRole('button', { name: 'Add' }).click();
+  // Measure it: the Body workspace reads the loaded model itself.
+  await page.getByRole('button', { name: 'Scene', exact: true }).first().click();
+  await page.getByText('Xbot', { exact: true }).first().click();
+  await page.getByRole('button', { name: 'Body', exact: true }).first().click();
+  await expect(page.locator('.measure-list')).toBeVisible({ timeout: 20_000 });
+  const height = await page.locator('.measure-list > div').first().locator('dd').innerText();
+  const cm = parseFloat(height);
+  expect(cm).toBeGreaterThan(150);
+  expect(cm).toBeLessThan(200);
+});
