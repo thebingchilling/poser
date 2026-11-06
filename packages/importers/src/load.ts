@@ -25,7 +25,10 @@ import { LDrawLoader } from 'three/addons/loaders/LDrawLoader.js';
 import { parseOff } from './more/off';
 import { buildMmd, parsePmd, parsePmx } from './more/mmd';
 import { buildXps, parseXpsAscii, parseXpsBinary } from './more/xps';
-import { MissingContentError, VirtualFilesSource, contentSources } from './content';
+import { parseSmd } from './more/smd';
+import { buildSource, parseMdl } from './more/sourceMdl';
+import { parseVmt, vtfTexture } from './more/vtf';
+import { MissingContentError, VirtualFilesSource, contentSources, readContent } from './content';
 import { buildDaz } from './daz/build';
 import { DsonResolver, parseDson } from './daz/dson';
 import { buildVabItem } from './vam/vab';
@@ -211,6 +214,44 @@ async function parse(vfs: VirtualFiles, path: string, format: ModelFormat, manag
       const model = format === 'ascii' ? parseXpsAscii(text()) : parseXpsBinary(buffer);
       return { root: buildXps(model, modelTexture(manager)), animations: [], warnings };
     }
+    case 'mdl': {
+      if (new TextDecoder().decode(new Uint8Array(buffer, 0, 4)) === 'IDPO') throw new Error('This is a Quake model (.mdl), which isn’t supported; Source engine .mdl files are.');
+      const stem = path.replace(/\.mdl$/i, '');
+      const sibling = async (...exts: string[]) => {
+        for (const ext of exts) {
+          const found = vfs.resolve(stem.split('/').pop()! + ext, path);
+          if (found) return vfs.get(found)!.arrayBuffer();
+        }
+        return null;
+      };
+      const files = { mdl: buffer, vvd: await sibling('.vvd'), vtx: await sibling('.dx90.vtx', '.vtx', '.dx80.vtx', '.sw.vtx') };
+      // Materials (.vmt) name their colour texture (.vtf); both are looked up among the dropped files.
+      const info = parseMdl(buffer);
+      const sources = [new VirtualFilesSource(vfs), ...contentSources()];
+      const found = new Map<string, { map: Texture | null; translucent: boolean }>();
+      for (const name of info.textures)
+        for (const dir of info.textureDirs.length ? info.textureDirs : ['']) {
+          const key = `materials/${dir}${name}`.replace(/\\/g, '/').replace(/\/+/g, '/').toLowerCase();
+          if (found.has(key)) continue;
+          const vmt = await readContent(`${key}.vmt`, sources);
+          if (!vmt) continue;
+          const parsed = parseVmt(await vmt.text());
+          const vtf = parsed.base ? await readContent(`materials/${parsed.base.replace(/\\/g, '/').replace(/\.vtf$/i, '')}.vtf`.toLowerCase(), sources) : null;
+          let map: Texture | null = null;
+          if (vtf)
+            try {
+              map = vtfTexture(await vtf.arrayBuffer());
+            } catch (err) {
+              warnings.push(`${parsed.base}: ${err instanceof Error ? err.message : String(err)}`);
+            }
+          found.set(key, { map, translucent: parsed.translucent });
+        }
+      const built = buildSource(files, (paths) => paths.map((p) => found.get(p)).find((f) => f) ?? { map: null, translucent: false });
+      warnings.push(...built.warnings);
+      return { root: built.root, animations: [], warnings };
+    }
+    case 'smd':
+      return { root: parseSmd(text(), modelTexture(manager)), animations: [], warnings };
     case 'off':
       return { root: plainMesh(parseOff(text())), animations: [], warnings };
     case 'pcd':

@@ -91,3 +91,60 @@ describe('XNALara', () => {
     expect(m.meshes[0]!.skin[0]!.weights[0]).toBe(1);
   });
 });
+
+describe('Source SMD', () => {
+  it('reads the skeleton and skinned triangles, Z-up inches to Y-up metres', async () => {
+    const { parseSmd } = await import('./smd');
+    const { SkinnedMesh, Vector3 } = await import('three');
+    const smd = `version 1
+nodes
+0 "ValveBiped.Bip01_Pelvis" -1
+1 "ValveBiped.Bip01_Spine" 0
+end
+skeleton
+time 0
+0 0 0 40 0 0 0
+1 0 0 4 0 0 1.5708
+end
+triangles
+body.tga
+0 0 0 40 0 0 1 0 0 1 0 1.0
+0 1 0 40 0 0 1 1 0
+1 0 0 50 0 0 1 0 1 2 0 0.25 1 0.75
+end
+`;
+    const root = parseSmd(smd, () => null);
+    let mesh: InstanceType<typeof SkinnedMesh> | undefined;
+    root.traverse((o) => (mesh ??= o instanceof SkinnedMesh ? o : undefined));
+    const p = mesh!.geometry.attributes.position!;
+    expect(p.getY(2)).toBeCloseTo(50 * 0.0254);
+    expect(p.getZ(1)).toBeCloseTo(0.0254);
+    const spine = mesh!.skeleton.bones[1]!;
+    root.updateMatrixWorld(true);
+    expect(new Vector3().setFromMatrixPosition(spine.matrixWorld).y).toBeCloseTo(44 * 0.0254);
+    expect(mesh!.geometry.attributes.skinWeight!.getY(2)).toBeCloseTo(0.25);
+  });
+});
+
+describe('Valve materials', () => {
+  it('reads a .vmt and decodes DXT1 and BGR888 .vtf images', async () => {
+    const { parseVmt, parseVtf } = await import('./vtf');
+    expect(parseVmt('"VertexLitGeneric"\n{\n\t"$basetexture" "models/brutal/candles"\n\t"$alphatest" "1"\n}')).toEqual({ base: 'models/brutal/candles', bump: undefined, translucent: true });
+    const vtf = (fmt: number, data: number[], w = 4, h = 4) => {
+      const b = new Uint8Array(80 + data.length);
+      const dv = new DataView(b.buffer);
+      dv.setUint32(0, 0x00465456, true);
+      dv.setUint16(16, w, true);
+      dv.setUint16(18, h, true);
+      dv.setUint16(24, 1, true);
+      dv.setInt32(52, fmt, true);
+      b.set(data, 80);
+      return b.buffer;
+    };
+    // One DXT1 block: colour 0 = pure red, colour 1 = pure blue, all pixels index 0.
+    const red = parseVtf(vtf(13, [0x00, 0xf8, 0x1f, 0x00, 0, 0, 0, 0]));
+    expect([...red.rgba.slice(0, 4)]).toEqual([255, 0, 0, 255]);
+    const bgr = parseVtf(vtf(3, [10, 20, 30], 1, 1));
+    expect([...bgr.rgba]).toEqual([30, 20, 10, 255]);
+  });
+});

@@ -164,6 +164,9 @@ export function explainSkipped(paths: string[]): string[] {
     else if (/^(mp3|wav|ogg|m4a|flac|mp4|webm|mov|avi)$/.test(ext)) bump('Sound and video: not models');
     else if (/^(txt|md|pdf|html?|url|rtf|nfo|jpg_|db|ini)$/.test(ext) || /readme|licen[cs]e/.test(name)) bump('Read-me and documents');
     else if (ext === 'json' || ext === 'vac' || ext === 'vajson') bump('Settings and data files');
+    else if (/^(vvd|vtx|phy|ani)$/.test(ext)) bump('Source model parts: read with their .mdl');
+    else if (/^(vmt|vtf)$/.test(ext)) bump('Source materials and textures: used by the models that need them');
+    else if (/^(sph|spa|bmp|dds|tga)$/.test(ext)) bump('Textures: used by the models that need them');
     else if (/^(mtl|bin|mat)$/.test(ext)) bump('Material and data files: used by the models that need them');
     else if (/^(meta|prefab|controller|anim|asset|shader|cginc)$/.test(ext)) bump('Unity project files: not models');
     else bump(ext ? `.${ext} files: not a 3D format this app can read` : 'Files without a type: not recognised');
