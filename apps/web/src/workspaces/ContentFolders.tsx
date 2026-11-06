@@ -4,11 +4,12 @@ import { useEffect, useState } from 'react';
 import { useImport } from '../import/importStore';
 import { folderPickerSupported, useContentFolders, type ContentFolder, type FolderKind } from '../state/contentFolders';
 
-const KIND_LABEL: Record<FolderKind, string> = { daz: 'Daz content library', vam: 'VaM folder', other: 'Models folder' };
+const KIND_LABEL: Record<FolderKind, string> = { daz: 'Daz content library', vam: 'VaM folder', poser: 'Poser content', other: 'Models folder' };
 
 /** What to list when browsing each kind of folder. */
 const BROWSE: Record<FolderKind, { dirs: string[]; match: (name: string) => boolean; hint: string }> = {
   daz: { dirs: ['People'], match: (n) => /\.duf$/i.test(n), hint: 'Figures, characters, and outfits saved as Daz scenes or presets (.duf).' },
+  poser: { dirs: ['Runtime/Libraries/Character', 'Runtime/Libraries/Props', 'Runtime/Libraries/Hair'], match: (n) => /\.(cr2|crz|pp2|ppz|hr2|hrz|pz3|pzz)$/i.test(n), hint: 'Poser figures, props, hair, and scenes.' },
   vam: { dirs: ['AddonPackages', 'Saves'], match: (n) => /\.(var|json)$/i.test(n), hint: 'VaM packages (.var) and saved scenes.' },
   other: { dirs: [''], match: (n) => /\.(glb|gltf|fbx|obj|vrm|dae|stl|ply|3ds|3mf|usdz|duf)$/i.test(n), hint: 'Model files.' },
 };
@@ -60,7 +61,7 @@ export function ContentFoldersSection() {
   return (
     <>
       <ListSubheader>Content folders</ListSubheader>
-      <p className="hint">Give Poser read access to your Daz content library or VaM folder, so Daz scenes and VaM looks import with everything they use.</p>
+      <p className="hint">Give Poser read access to your Daz content library, Poser Runtime, or VaM folder, so scenes, figures, and looks import with everything they use.</p>
       {folders.map((f) => (
         <ListItem
           key={f.handle.name + f.kind}
@@ -84,6 +85,7 @@ export function ContentFoldersSection() {
         <div className="button-wrap">
           <Button variant="tonal" icon="folder_open" onClick={() => void add('daz')}>Add Daz library</Button>
           <Button variant="text" icon="folder_open" onClick={() => void add('vam')}>Add VaM folder</Button>
+          <Button variant="text" icon="folder_open" onClick={() => void add('poser')}>Add Poser content</Button>
         </div>
       ) : (
         <p className="hint">This browser can’t open folders. Drop a Daz scene together with its library folders onto the app instead.</p>

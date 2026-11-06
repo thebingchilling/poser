@@ -148,3 +148,86 @@ describe('Valve materials', () => {
     expect([...bgr.rgba]).toEqual([30, 20, 10, 255]);
   });
 });
+
+describe('Poser', () => {
+  const obj = ['v 0 0 0', 'v 0.1 0 0', 'v 0 0.3 0', 'v 0.1 0.3 0', 'v 0 0.6 0', 'v 0.1 0.6 0', 'usemtl Skin', 'g hip', 'f 1 2 4 3', 'g chest', 'f 3 4 6 5'].join('\n');
+  const cr2 = `{
+version { number 6 }
+figureResFile :Runtime:Geometries:Test:test.obj
+actor BODY:1 { storageOffset 0 0 0 }
+actor hip:1 { storageOffset 0 0 0 }
+actor chest:1 { storageOffset 0 0 0 }
+actor BODY:1
+{
+name BODY
+}
+actor hip:1
+{
+name hip
+parent BODY:1
+origin 0 0.25 0
+channels
+{
+targetGeom Taller
+{
+keys
+{
+k 0 1
+}
+deltas
+{
+numbDeltas 1
+d 2 0 0.1 0
+}
+}
+}
+}
+actor chest:1
+{
+parent hip:1
+origin 0 0.35 0
+}
+figure
+{
+material Skin
+{
+KdColor 1 0 0 1
+textureMap NO_MAP
+}
+}
+}`;
+  const files = (map: Record<string, string>) => ({ name: 't', read: async (p: string) => (map[p.toLowerCase()] !== undefined ? new Blob([map[p.toLowerCase()]!]) : null) });
+
+  it('builds a figure from its Runtime geometry: actor bones, dial morphs, materials', async () => {
+    const { buildPoser, poserPath } = await import('./poser');
+    const { SkinnedMesh, Vector3 } = await import('three');
+    expect(poserPath(':Runtime:Geometries:Test:test.obj')).toBe('Runtime/Geometries/Test/test.obj');
+    expect(poserPath('C:\\Poser\\Runtime\\Textures\\skin.jpg')).toBe('Runtime/Textures/skin.jpg');
+    const r = await buildPoser(cr2, 'Test', [files({ 'runtime/geometries/test/test.obj': obj })], async () => null);
+    let mesh: InstanceType<typeof SkinnedMesh> | undefined;
+    r.root.traverse((o) => (mesh ??= o instanceof SkinnedMesh ? o : undefined));
+    expect(mesh!.skeleton.bones.map((b) => b.name)).toEqual(['BODY', 'hip', 'chest']);
+    r.root.updateMatrixWorld(true);
+    expect(new Vector3().setFromMatrixPosition(mesh!.skeleton.bones[2]!.matrixWorld).y).toBeCloseTo(0.35 * 2.62128);
+    const pos = mesh!.geometry.attributes.position!;
+    let top = 0;
+    for (let i = 0; i < pos.count; i++) top = Math.max(top, pos.getY(i));
+    expect(top).toBeCloseTo(0.6 * 2.62128);
+    // The hip's "Taller" dial (value 1) moves its third vertex (OBJ vertex 4) up 0.1.
+    let raised = 0;
+    for (let i = 0; i < pos.count; i++) raised = Math.max(raised, Math.abs(pos.getY(i) - 0.4 * 2.62128) < 1e-4 ? 1 : 0);
+    expect(raised).toBe(1);
+    expect(((mesh!.material as unknown as { color: { r: number } }[])[0]!).color.r).toBeCloseTo(1);
+    // Seam vertices (OBJ 3 and 4) follow hip and chest equally.
+    expect(mesh!.geometry.attributes.skinWeight!.getX(2)).toBeCloseTo(0.5);
+  });
+
+  it('asks for the Runtime when the geometry is missing, and reads inline prop geometry', async () => {
+    const { buildPoser } = await import('./poser');
+    const { MissingContentError } = await import('../content');
+    await expect(buildPoser(cr2, 'Test', [files({})], async () => null)).rejects.toBeInstanceOf(MissingContentError);
+    const pp2 = '{\nprop box:1\n{\ngeomCustom\n{\nnumbVerts 3\nv 0 0 0\nv 1 0 0\nv 0 1 0\nf 1 2 3\n}\n}\n}';
+    const r = await buildPoser(pp2, 'Box', [], async () => null);
+    expect(r.root.children[0]!.name).toBe('box');
+  });
+});

@@ -4,7 +4,7 @@ export type ModelFormat =
   | '3ds' | '3mf' | 'amf' | 'usd' | 'usda' | 'usdc' | 'usdz' | 'lwo' | 'kmz' | 'md2' | 'vtk' | 'vtp' | 'vox'
   | 'duf' | 'dsf'
   | 'vap' | 'vamscene' | 'vamitem'
-  | 'ldr' | 'mpd' | 'pcd' | 'xyz' | 'off' | 'x' | 'wrl' | 'x3d' | 'x3dv' | 'pmx' | 'pmd' | 'xps' | 'mesh' | 'ascii' | 'smd' | 'mdl' | 'cr2' | 'pz3' | 'pp2' | 'hr2' | 'obz' | 'crz' | 'pzz' | 'p2z' | 'blend' | '3dm';
+  | 'ldr' | 'mpd' | 'pcd' | 'xyz' | 'off' | 'x' | 'wrl' | 'x3d' | 'x3dv' | 'pmx' | 'pmd' | 'xps' | 'mesh' | 'ascii' | 'smd' | 'mdl' | 'cr2' | 'pz3' | 'pp2' | 'hr2' | 'crz' | 'pzz' | 'ppz' | 'hrz' | 'blend' | '3dm';
 export type PoseFormat = 'bvh' | 'vrma' | 'pose-json';
 export type ImageFormat = 'image' | 'hdr';
 
@@ -55,8 +55,8 @@ export function classifyFile(path: string): FileRole {
     case 'hr2':
     case 'crz':
     case 'pzz':
-    case 'p2z':
-    case 'obz':
+    case 'ppz':
+    case 'hrz':
     case 'blend':
     case '3dm':
       return { kind: 'model', format: ext };

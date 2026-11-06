@@ -26,6 +26,7 @@ import { parseOff } from './more/off';
 import { buildMmd, parsePmd, parsePmx } from './more/mmd';
 import { buildXps, parseXpsAscii, parseXpsBinary } from './more/xps';
 import { parseSmd } from './more/smd';
+import { buildPoser, decodePoser } from './more/poser';
 import { buildSource, parseMdl } from './more/sourceMdl';
 import { parseVmt, vtfTexture } from './more/vtf';
 import { MissingContentError, VirtualFilesSource, contentSources, readContent } from './content';
@@ -247,6 +248,30 @@ async function parse(vfs: VirtualFiles, path: string, format: ModelFormat, manag
           found.set(key, { map, translucent: parsed.translucent });
         }
       const built = buildSource(files, (paths) => paths.map((p) => found.get(p)).find((f) => f) ?? { map: null, translucent: false });
+      warnings.push(...built.warnings);
+      return { root: built.root, animations: [], warnings };
+    }
+    case 'cr2':
+    case 'crz':
+    case 'pz3':
+    case 'pzz':
+    case 'pp2':
+    case 'ppz':
+    case 'hr2':
+    case 'hrz': {
+      const textLoader = new TextureLoader();
+      const loadTex = async (blob: Blob, name: string) => {
+        const url = URL.createObjectURL(blob);
+        try {
+          const handler = manager.getHandler(name) as TextureLoader | null;
+          return await (handler ?? textLoader).loadAsync(url);
+        } catch {
+          return null;
+        } finally {
+          URL.revokeObjectURL(url);
+        }
+      };
+      const built = await buildPoser(decodePoser(new Uint8Array(buffer)), path.split('/').pop()!.replace(/\.[^.]+$/, ''), [new VirtualFilesSource(vfs), ...contentSources()], loadTex);
       warnings.push(...built.warnings);
       return { root: built.root, animations: [], warnings };
     }

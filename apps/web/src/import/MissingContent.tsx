@@ -6,14 +6,16 @@ import { folderPickerSupported, useContentFolders } from '../state/contentFolder
 export function MissingContent({ error, onRetry, onSkip }: { error: MissingContentError; onRetry: () => void; onSkip: () => void }) {
   const { folders, add, grantAll } = useContentFolders();
   const needsGrant = folders.some((f) => !f.granted);
-  const what = error.library === 'daz' ? 'Daz content library' : 'VaM folder';
+  const what = error.library === 'daz' ? 'Daz content library' : error.library === 'poser' ? 'Poser content folder' : 'VaM folder';
   return (
     <>
       <p>{error.message}</p>
       <p className="hint">
         {error.library === 'daz'
           ? 'Choose your Daz content folder: the one that holds the “data” and “Runtime” folders. Poser reads only the files a scene needs.'
-          : 'Choose your VaM folder (the one with “AddonPackages”).'}
+          : error.library === 'poser'
+            ? 'Choose the folder that holds the “Runtime” folder with this figure’s geometry and textures. Only the files it needs are read.'
+            : 'Choose your VaM folder (the one with “AddonPackages”).'}
       </p>
       <ul className="hint">
         {error.paths.slice(0, 5).map((p) => (

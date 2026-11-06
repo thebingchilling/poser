@@ -136,12 +136,14 @@ export class MissingContentError extends Error {
   override name = 'MissingContentError';
   constructor(
     readonly paths: string[],
-    readonly library: 'daz' | 'vam',
+    readonly library: 'daz' | 'vam' | 'poser',
   ) {
     super(
       library === 'daz'
         ? `This needs files from your Daz content library (${paths.length} not found, e.g. ${paths[0]}).`
-        : `This needs files from your VaM install (${paths.length} not found, e.g. ${paths[0]}).`,
+        : library === 'poser'
+          ? `This needs files from your Poser Runtime (${paths.length} not found, e.g. ${paths[0]}).`
+          : `This needs files from your VaM install (${paths.length} not found, e.g. ${paths[0]}).`,
     );
   }
 }

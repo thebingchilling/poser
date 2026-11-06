@@ -8,7 +8,7 @@ import { create } from 'zustand';
  * The handles are kept in IndexedDB; the browser asks again for read access
  * in a later session, which needs a click (so it happens on import or browse).
  */
-export type FolderKind = 'daz' | 'vam' | 'other';
+export type FolderKind = 'daz' | 'vam' | 'poser' | 'other';
 
 export interface ContentFolder {
   handle: FileSystemDirectoryHandle;
