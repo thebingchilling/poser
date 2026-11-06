@@ -1,5 +1,6 @@
 import { detectRig, type RigDetection, type SourceBone } from '@poser/rig';
 import { Box3, Bone, Matrix4, Mesh, Quaternion, SkinnedMesh, Vector3, type Object3D } from 'three';
+import { bindWorldMatrix } from './bindPose';
 
 /**
  * Inspects a loaded model (PLAN.md section 4.3): what it is, its skeleton in
@@ -72,8 +73,7 @@ function collectSkeleton(root: Object3D): { bones: Bone[]; bindWorld: Map<Bone, 
     const sk = o.skeleton;
     sk.bones.forEach((b, i) => {
       if (bindWorld.has(b)) return;
-      // In three.js skinning a bone's bind-pose world matrix is the inverse of its bone inverse.
-      bindWorld.set(b, new Matrix4().copy(sk.boneInverses[i]!).invert());
+      bindWorld.set(b, bindWorldMatrix(o, i));
       bones.push(b);
     });
   });

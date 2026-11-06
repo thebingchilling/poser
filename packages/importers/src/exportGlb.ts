@@ -1,4 +1,5 @@
-import { Box3, Group, Matrix4, SkinnedMesh, Vector3, type Object3D } from 'three';
+import { Box3, Group, Matrix4, Vector3, type Object3D } from 'three';
+import { restoreBindPose } from './bindPose';
 import { GLTFExporter } from 'three/addons/exporters/GLTFExporter.js';
 import { normalisationMatrix, type Normalisation } from './analyse';
 import { prepareMaterials } from './materials';
@@ -16,8 +17,8 @@ export const TEXTURE_LIMITS: Record<ImportQuality, number> = { high: 4096, balan
  */
 export async function exportNormalisedGlb(root: Object3D, n: Normalisation, quality: ImportQuality): Promise<{ glb: ArrayBuffer; normalised: Object3D; warnings: string[] }> {
   const warnings = prepareMaterials(root);
+  restoreBindPose(root);
   root.traverse((o) => {
-    if (o instanceof SkinnedMesh) o.skeleton.pose();
     // Import-time helpers (e.g. Daz source-vertex maps) aren't part of the model.
     const geo = (o as { geometry?: { userData: Record<string, unknown> } }).geometry;
     if (geo) delete geo.userData.sourceVertex;
