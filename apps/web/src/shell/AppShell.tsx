@@ -226,7 +226,6 @@ function Banners() {
 /** Drag-and-drop import anywhere on the app (PLAN.md section 4.1). */
 function useFileDrop() {
   const [over, setOver] = useState(false);
-  const snackbar = useSnackbar();
   useEffect(() => {
     let depth = 0;
     const hasFiles = (e: DragEvent) => [...(e.dataTransfer?.types ?? [])].includes('Files');
@@ -247,8 +246,8 @@ function useFileDrop() {
       depth = 0;
       setOver(false);
       const files = await filesFromDataTransfer(e.dataTransfer);
-      const count = await startImport(false, files);
-      if (!count) snackbar('No models found in what was dropped');
+      // An empty drop explains itself (the import store shows what was found).
+      await startImport(false, files);
     };
     window.addEventListener('dragenter', enter);
     window.addEventListener('dragleave', leave);
@@ -260,7 +259,7 @@ function useFileDrop() {
       window.removeEventListener('dragover', overFn);
       window.removeEventListener('drop', drop);
     };
-  }, [snackbar]);
+  }, []);
   return over;
 }
 

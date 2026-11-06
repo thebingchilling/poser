@@ -1,4 +1,5 @@
-import { unzipSync } from 'fflate';
+import { archiveKind, sniffArchive, unpack } from './archive';
+import { classifyFile } from './formats';
 
 /**
  * A virtual folder of the files the user dropped or picked (PLAN.md section
@@ -23,17 +24,32 @@ export class VirtualFiles {
     this.files.set(VirtualFiles.normalise(path), data);
   }
 
-  /** Adds files; zips are unpacked into a folder named after the zip. */
-  async addFiles(entries: { path: string; file: Blob }[]): Promise<void> {
+  /** Problems met while unpacking archives (shown in the import summary). */
+  readonly problems: string[] = [];
+
+  /**
+   * Adds files; archives (zip, VaM .var, 7z, RAR, tar, gzip, Unity
+   * packages, also inside each other) are unpacked into a folder named
+   * after the archive.
+   */
+  async addFiles(entries: { path: string; file: Blob }[], depth = 0): Promise<void> {
     for (const { path, file } of entries) {
-      if (/\.(zip|var)$/i.test(path)) {
-        const unzipped = unzipSync(new Uint8Array(await file.arrayBuffer()));
-        const base = path.replace(/\.(zip|var)$/i, '');
-        for (const [inner, bytes] of Object.entries(unzipped)) {
-          if (!inner.endsWith('/')) this.add(`${base}/${inner}`, new Blob([bytes as Uint8Array<ArrayBuffer>]));
-        }
-      } else {
+      // Archives by name, or by their first bytes when the name says nothing useful.
+      const kind = archiveKind(path) ?? (classifyFile(path).kind === 'other' ? await sniffArchive(file).catch(() => null) : null);
+      if (!kind || depth >= 3) {
         this.add(path, file);
+        continue;
+      }
+      const base = path.replace(/\.(zip|var|tar\.gz|tgz|tar|gz|7z|rar|unitypackage)$/i, '');
+      try {
+        const inner: { path: string; file: Blob }[] = [];
+        for await (const e of unpack(file, kind, path)) {
+          if ('error' in e) this.problems.push(e.error);
+          else inner.push({ path: `${base}/${e.path}`, file: e.data });
+        }
+        await this.addFiles(inner, depth + 1);
+      } catch (err) {
+        this.problems.push(`${path.split('/').pop()}: ${err instanceof Error ? err.message : String(err)}`);
       }
     }
   }

@@ -1,4 +1,5 @@
 export * from './files';
+export * from './archive';
 export * from './formats';
 export * from './analyse';
 export * from './load';

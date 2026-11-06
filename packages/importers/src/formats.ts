@@ -44,8 +44,12 @@ export function classifyFile(path: string): FileRole {
       if (path.toLowerCase().endsWith('.pose.json')) return { kind: 'pose', format: 'pose-json' };
       // VaM scenes (Saves/scene/…json) hold people with their looks.
       if (/(^|\/)saves\/scene\//i.test(path)) return { kind: 'model', format: 'vamscene' };
+      // Older VaM looks: Saves/Person/appearance (or full) presets.
+      if (/(^|\/)saves\/person\/(appearance|full)\//i.test(path)) return { kind: 'model', format: 'vap' };
       return { kind: 'other' };
     case 'vap':
+      // Only appearance (look) presets are people; others tune a part (pose, skin, morphs, a clothing item's materials).
+      if (/(^|\/)custom\/(clothing|hair|assets|scripts)\//i.test(path) || /(^|\/)custom\/atom\/person\/(?!appearance\/|general\/)/i.test(path)) return { kind: 'other' };
       return { kind: 'model', format: 'vap' };
     case 'vam':
       return { kind: 'model', format: 'vamitem' };
@@ -75,4 +79,61 @@ export function importableItems(paths: string[]): { path: string; role: FileRole
   if (items.some((x) => x.role.kind === 'model' && x.role.format === 'duf')) items = items.filter((x) => !(x.role.kind === 'model' && x.role.format === 'dsf'));
   // A .gltf and its .bin, or an .obj and .mtl, are one item: only the main file is listed.
   return items.sort((a, b) => a.path.localeCompare(b.path));
+}
+
+/** Formats saved by one program for its own use, which no other program can read. */
+const PROPRIETARY: Record<string, string> = {
+  max: '3ds Max scenes (.max)',
+  c4d: 'Cinema 4D scenes (.c4d)',
+  ma: 'Maya scenes (.ma)',
+  mb: 'Maya scenes (.mb)',
+  skp: 'SketchUp models (.skp)',
+  ztl: 'ZBrush tools (.ztl)',
+  zpr: 'ZBrush projects (.zpr)',
+  hip: 'Houdini scenes (.hip)',
+  hipnc: 'Houdini scenes (.hipnc)',
+  lxo: 'Modo scenes (.lxo)',
+  mud: 'Mudbox scenes (.mud)',
+  spp: 'Substance Painter projects (.spp)',
+  '3dc': '3D-Coat scenes (.3dc)',
+  hda: 'Houdini assets (.hda)',
+  iclone: 'iClone projects',
+  ccproject: 'Character Creator projects (.ccProject)',
+  iavatar: 'iClone avatars (.iAvatar)',
+  ichr: 'Character Creator characters (.iChr)',
+  hcf: 'Honey Select cards',
+  assetbundle: 'Unity asset bundles (.assetbundle)',
+  unity3d: 'Unity web player bundles (.unity3d)',
+  uasset: 'Unreal assets (.uasset)',
+  upk: 'Unreal packages (.upk)',
+};
+
+/**
+ * Plain-language notes on files in a drop that won't be imported, so
+ * nothing disappears silently: what they are and why they're left out.
+ */
+export function explainSkipped(paths: string[]): string[] {
+  const groups = new Map<string, number>();
+  const bump = (note: string) => groups.set(note, (groups.get(note) ?? 0) + 1);
+  for (const path of paths) {
+    const lower = path.toLowerCase();
+    const name = lower.split('/').pop()!;
+    const ext = name.includes('.') ? name.split('.').pop()! : '';
+    const role = classifyFile(path);
+    if (role.kind !== 'other' && !(role.kind === 'image' && role.format === 'image')) continue;
+    if (role.kind === 'image') bump('Images: used as textures by the models that need them');
+    else if (ext === 'vmi' || ext === 'vmb' || ext === 'dsf') bump(ext === 'dsf' ? 'Daz library files: used by the Daz scenes that need them' : 'VaM morphs: used automatically by looks that need them');
+    else if (ext === 'vap') bump('VaM presets for poses, skin, morphs, or an item’s materials: not people or models on their own');
+    else if (ext === 'vaj' || ext === 'vab') bump('VaM clothing and hair parts: imported through their .vam file');
+    else if (name === 'meta.json') bump('Package information (meta.json): read with the package');
+    else if (PROPRIETARY[ext]) bump(`${PROPRIETARY[ext]}: saved in a private format that only that program can read`);
+    else if (/^(cs|cslist|dll|js|py|exe|bat)$/.test(ext)) bump('Plugins and scripts: not models');
+    else if (/^(mp3|wav|ogg|m4a|flac|mp4|webm|mov|avi)$/.test(ext)) bump('Sound and video: not models');
+    else if (/^(txt|md|pdf|html?|url|rtf|nfo|jpg_|db|ini)$/.test(ext) || /readme|licen[cs]e/.test(name)) bump('Read-me and documents');
+    else if (ext === 'json' || ext === 'vac' || ext === 'vajson') bump('Settings and data files');
+    else if (/^(mtl|bin|mat)$/.test(ext)) bump('Material and data files: used by the models that need them');
+    else if (/^(meta|prefab|controller|anim|asset|shader|cginc)$/.test(ext)) bump('Unity project files: not models');
+    else bump(ext ? `.${ext} files: not a 3D format this app can read` : 'Files without a type: not recognised');
+  }
+  return [...groups].map(([note, n]) => `${n} × ${note}`);
 }

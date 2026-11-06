@@ -1,5 +1,6 @@
-import { unzipSync } from 'fflate';
-import { BufferAttribute, Mesh, MeshStandardMaterial, SRGBColorSpace, TextureLoader, type Group, type Material } from 'three';
+import { ZipReader } from '../archive';
+import { BufferAttribute, Mesh, MeshStandardMaterial, SRGBColorSpace, SkinnedMesh, TextureLoader, type Group, type Material } from 'three';
+import { buildVabItem, nearestVertices, parseVab, vabGeometry, vajTextures, wrapToBody, type VabMesh } from './vab';
 import { MissingContentError, readContent, type ContentSource } from '../content';
 import { buildDaz } from '../daz/build';
 import { DsonResolver, type DsonFile } from '../daz/dson';
@@ -36,6 +37,8 @@ export interface VamLook {
   morphs: { uid: string; name?: string; value: number }[];
   clothing: string[];
   hair: string[];
+  /** A look's settings for each clothing or hair item (materials, textures), by item id. */
+  itemStorables: Record<string, Storable[]>;
   /** Skin texture URLs by region (face, torso, limbs, genitals) and map (diffuse, normal). */
   textures: Record<string, string>;
 }
@@ -60,7 +63,11 @@ export function parseLook(text: string): VamLook {
     .filter((m) => m.uid && Number.isFinite(m.value) && m.value !== 0);
   const tex: Record<string, string> = {};
   for (const [k, v] of Object.entries(textures)) if (typeof v === 'string' && /Url$/.test(k) && v) tex[k.replace(/Url$/, '')] = v;
-  return { character, male: /^male/i.test(character), morphs, clothing: items('clothing'), hair: items('hair'), textures: tex };
+  const clothing = items('clothing');
+  const hair = items('hair');
+  const itemStorables: Record<string, Storable[]> = {};
+  for (const id of [...clothing, ...hair]) itemStorables[id] = storables.filter((s) => s.id !== id && s.id.startsWith(id));
+  return { character, male: /^male/i.test(character), morphs, clothing, hair, itemStorables, textures: tex };
 }
 
 /**
@@ -125,9 +132,9 @@ export class VamFiles {
       p = (async () => {
         const zip = await found.source.read(found.path);
         if (!zip) return null;
-        const want = inner.toLowerCase();
-        const files = unzipSync(new Uint8Array(await zip.arrayBuffer()), { filter: (f) => f.name.toLowerCase() === want });
-        return Object.values(files)[0] ?? null;
+        // Only this one entry is unpacked; the rest of the package stays on disk.
+        const blob = await (await ZipReader.open(zip)).read(inner);
+        return blob ? new Uint8Array(await blob.arrayBuffer()) : null;
       })();
       this.opened.set(key, p);
     }
@@ -164,6 +171,40 @@ const REGION_SURFACES: Record<string, RegExp> = {
 };
 
 /** Builds a VaM look on the Genesis 2 body from the Daz library. */
+/** Reads a clothing or hair item (.vam, with its .vaj and .vab beside it). */
+export async function loadVamItem(url: string, files: { read(url: string): Promise<Blob | null> }, extra?: unknown): Promise<{ vab: VabMesh; name: string; textures: ReturnType<typeof vajTextures>; read: (u: string) => Promise<Blob | null>; warnings: string[] } | null> {
+  const base = url.replace(/\.vam$/i, '');
+  const vabBlob = await files.read(`${base}.vab`);
+  if (!vabBlob) return null;
+  const vam = await files.read(`${base}.vam`);
+  const vaj = await files.read(`${base}.vaj`);
+  const info = vam ? (JSON.parse(await vam.text()) as { displayName?: string }) : {};
+  const settings = vaj ? (JSON.parse(await vaj.text()) as unknown) : {};
+  const pkg = /^([^:/]+):\//.exec(url)?.[1];
+  // Texture paths inside an item are relative to the item's folder, or SELF: (its own package).
+  const dir = base.slice(0, base.lastIndexOf('/') + 1);
+  const read = (u: string) => {
+    if (/^[^:/]+:\//.test(u)) return files.read(u.startsWith('SELF:') && pkg ? `${pkg}:${u.slice(5)}` : u);
+    return u.includes('/') ? files.read(pkg ? `${pkg}:/${vamPath(u)}` : u) : files.read(dir + u);
+  };
+  return { vab: parseVab(await vabBlob.arrayBuffer()), name: info.displayName ?? base.split('/').pop()!, textures: [...vajTextures(settings), ...vajTextures(extra ?? {})], read, warnings: [] };
+}
+
+/** Builds the item's mesh, choosing the mirroring that lands it on the body. */
+async function fitToBody(item: NonNullable<Awaited<ReturnType<typeof loadVamItem>>>, body: SkinnedMesh): Promise<Mesh> {
+  const bodyPos = body.geometry.attributes.position as BufferAttribute;
+  const mirrored = vabGeometry(item.vab, true);
+  const straight = vabGeometry(item.vab, false);
+  const m = nearestVertices(mirrored.attributes.position as BufferAttribute, bodyPos).mean;
+  const geometry = m < 2 ? mirrored : nearestVertices(straight.attributes.position as BufferAttribute, bodyPos).mean < m ? straight : mirrored;
+  // Materials and textures come from the item builder; the geometry is the fitted one.
+  const built = await buildVabItem(item.name, item.vab, { mirror: false, textures: item.textures, read: item.read });
+  built.mesh.geometry.dispose();
+  built.mesh.geometry = geometry;
+  item.warnings.push(...built.warnings);
+  return built.mesh;
+}
+
 export async function buildVamLook(look: VamLook, sources: ContentSource[]): Promise<{ root: Group; warnings: string[] }> {
   const warnings: string[] = [];
   const figure = look.male ? 'Genesis2Male' : 'Genesis2Female';
@@ -234,8 +275,27 @@ export async function buildVamLook(look: VamLook, sources: ContentSource[]): Pro
     }
   }
 
-  const skipped = [...look.clothing, ...look.hair];
-  if (skipped.length) warnings.push(`VaM clothing and hair can't be read yet (${skipped.length} items, e.g. ${skipped[0]}); send a sample package so the format can be added.`);
+  // Clothing and hair: custom items (.vam/.vab from packages) are wrapped onto the body; VaM's built-in items live inside VaM.
+  const builtInItems: string[] = [];
+  for (const id of [...look.clothing, ...look.hair]) {
+    if (!/\.vam$/i.test(id)) {
+      builtInItems.push(id);
+      continue;
+    }
+    try {
+      const item = await loadVamItem(id, files, look.itemStorables[id]);
+      if (!item) {
+        warnings.push(`Missing ${id.split('/').pop()}`);
+        continue;
+      }
+      const skinned = wrapToBody(await fitToBody(item, body as SkinnedMesh), body as SkinnedMesh);
+      warnings.push(...item.warnings);
+      body.parent!.add(skinned);
+    } catch (err) {
+      warnings.push(`${id.split('/').pop()}: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  }
+  if (builtInItems.length) warnings.push(`${builtInItems.length} of VaM's built-in clothing and hair items aren't available outside VaM and were skipped (for example ${builtInItems[0]}).`);
   built.root.name = `VaM ${look.character}`;
   return { root: built.root, warnings };
 }

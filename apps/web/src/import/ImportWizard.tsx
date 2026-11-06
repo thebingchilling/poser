@@ -201,7 +201,44 @@ function ModelStep({ prepared, onDone, onSkip }: { prepared: PreparedImport; onD
   );
 }
 
+/** Opening progress, and the "nothing to import" explanation. */
+function ImportStatus() {
+  const opening = useImport((s) => s.opening);
+  const notice = useImport((s) => s.notice);
+  const dismiss = useImport((s) => s.dismissNotice);
+  if (opening)
+    return (
+      <Dialog open title="Opening files" icon="download">
+        <LinearProgress label="Opening files" />
+        <p className="hint">Unpacking archives and looking for models…</p>
+      </Dialog>
+    );
+  if (!notice) return null;
+  return (
+    <Dialog open onOpenChange={(o) => !o && dismiss()} title={notice.title} icon="info">
+      <p>No models, looks, poses, or environments were found. What was there:</p>
+      <ul className="notice-list">
+        {notice.lines.map((l) => (
+          <li key={l}>{l}</li>
+        ))}
+      </ul>
+      <div className="button-wrap">
+        <Button onClick={dismiss}>OK</Button>
+      </div>
+    </Dialog>
+  );
+}
+
 export function ImportWizard() {
+  return (
+    <>
+      <ImportStatus />
+      <ImportItems />
+    </>
+  );
+}
+
+function ImportItems() {
   const { vfs, items, index, next, close } = useImport();
   const item = items[index];
   const [prepared, setPrepared] = useState<PreparedImport | null>(null);

@@ -85,7 +85,7 @@ describe('VaM import', () => {
     // 0.1 m × 0.5 = 5 cm on the top ring.
     expect(top).toBeCloseTo(155);
     expect(r.warnings.join(' ')).toMatch(/built-in morphs/);
-    expect(r.warnings.join(' ')).toMatch(/clothing and hair can't be read yet \(2 items/);
+    expect(r.warnings.join(' ')).toMatch(/2 of VaM's built-in clothing and hair items/);
   });
 
   it('reads files from other packages in AddonPackages, picking the latest version', async () => {

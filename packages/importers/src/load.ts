@@ -19,7 +19,8 @@ import { VOXLoader, buildMesh } from 'three/addons/loaders/VOXLoader.js';
 import { MissingContentError, VirtualFilesSource, contentSources } from './content';
 import { buildDaz } from './daz/build';
 import { DsonResolver, parseDson } from './daz/dson';
-import { buildVamLook, parseLook, parseVarMeta } from './vam/vam';
+import { buildVabItem } from './vam/vab';
+import { VamFiles, buildVamLook, loadVamItem, parseLook, parseVarMeta } from './vam/vam';
 import type { VirtualFiles } from './files';
 import type { ModelFormat } from './formats';
 
@@ -153,14 +154,23 @@ async function parse(vfs: VirtualFiles, path: string, format: ModelFormat, manag
       const look = parseLook(text());
       const built = await buildVamLook(look, [new VirtualFilesSource(vfs), ...contentSources()]);
       warnings.push(...built.warnings);
-      // The package's meta.json sits at the top of the unpacked .var.
-      const metaPath = vfs.paths.find((p) => p.split('/')[0] === path.split('/')[0] && /(^|\/)meta\.json$/i.test(p) && p.split('/').length <= 2);
-      const meta = metaPath ? parseVarMeta(await vfs.get(metaPath)!.text()) : undefined;
+      const meta = await packageMeta(vfs, path);
       if (meta?.dependencies.length) warnings.push(`This package depends on ${meta.dependencies.length} other packages; drop them too if parts are missing.`);
       return { root: built.root, animations: [], warnings, meta: meta && { creator: meta.creator, license: meta.license } };
     }
-    case 'vamitem':
-      throw new Error('VaM clothing and hair (.vam/.vab) are VaM’s own binary format and can’t be read yet. Please send a sample package so support can be added.');
+    case 'vamitem': {
+      // A clothing or hair item on its own: its mesh in Genesis 2's rest space (worn items come with looks).
+      const files = new VamFiles([new VirtualFilesSource(vfs), ...contentSources()]);
+      const item = await loadVamItem(path, files);
+      if (!item) throw new Error('This VaM item’s mesh (.vab) isn’t beside its .vam file. Drop the whole package (.var).');
+      const built = await buildVabItem(item.name, item.vab, { mirror: true, textures: item.textures, read: item.read });
+      warnings.push(...built.warnings);
+      const g = new Group();
+      g.name = item.name;
+      g.add(built.mesh);
+      const meta = await packageMeta(vfs, path);
+      return { root: g, animations: [], warnings, meta: meta && { creator: meta.creator, license: meta.license } };
+    }
     case '3ds':
       return { root: new TDSLoader(manager).parse(buffer, ''), animations: [], warnings };
     case '3mf':
@@ -194,4 +204,14 @@ async function parse(vfs: VirtualFiles, path: string, format: ModelFormat, manag
       return { root: g, animations: [], warnings };
     }
   }
+}
+
+/** The meta.json of the .var a file came from (it sits at the top of the unpacked package). */
+async function packageMeta(vfs: VirtualFiles, path: string) {
+  const top = path.split('/').slice(0, -1);
+  for (let n = top.length; n >= 1; n--) {
+    const metaPath = vfs.paths.find((p) => p.toLowerCase() === `${top.slice(0, n).join('/')}/meta.json`.toLowerCase());
+    if (metaPath) return parseVarMeta(await vfs.get(metaPath)!.text());
+  }
+  return undefined;
 }
